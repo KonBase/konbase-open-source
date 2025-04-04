@@ -29,11 +29,11 @@ const LoginForm = () => {
         description: 'Welcome back to EventNexus!',
       });
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         title: 'Login failed',
-        description: 'Invalid email or password.',
+        description: error.message || 'Invalid email or password.',
         variant: 'destructive',
       });
     } finally {

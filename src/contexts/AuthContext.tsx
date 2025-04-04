@@ -1,6 +1,9 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import { User, UserRole } from "../types";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -26,14 +29,36 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  
+  // Map Supabase user to our User type
+  const mapSupabaseUser = (supabaseUser: SupabaseUser): User => {
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email || "",
+      name: supabaseUser.user_metadata?.name || "User",
+      role: supabaseUser.user_metadata?.role || "member",
+      associationId: supabaseUser.user_metadata?.associationId,
+      twoFactorEnabled: supabaseUser.user_metadata?.twoFactorEnabled || false,
+      createdAt: supabaseUser.created_at || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  };
 
   useEffect(() => {
-    // Check for stored auth
+    // Check current auth state
     const checkAuth = async () => {
       try {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking auth:", error);
+          return;
+        }
+        
+        if (session?.user) {
+          const mappedUser = mapSupabaseUser(session.user);
+          setUser(mappedUser);
         }
       } catch (error) {
         console.error("Error checking auth:", error);
@@ -42,29 +67,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const mappedUser = mapSupabaseUser(session.user);
+          setUser(mappedUser);
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
     checkAuth();
+    
+    // Clean up subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Mock functions for now - would connect to backend API
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Mock login
-      const mockUser: User = {
-        id: "1",
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: "John Doe",
-        role: "admin",
-        associationId: "1",
-        twoFactorEnabled: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
       
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-    } catch (error) {
-      console.error("Login error:", error);
+      if (data.user) {
+        const mappedUser = mapSupabaseUser(data.user);
+        setUser(mappedUser);
+      }
+    } catch (error: any) {
+      console.error("Login error:", error.message);
       throw error;
     } finally {
       setIsLoading(false);
@@ -74,10 +115,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
       setUser(null);
-      localStorage.removeItem("user");
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch (error: any) {
+      console.error("Logout error:", error.message);
       throw error;
     } finally {
       setIsLoading(false);
@@ -87,21 +131,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
-      // Mock registration
-      const mockUser: User = {
-        id: "1",
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        role: "member", // Default role for new users
-        twoFactorEnabled: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+        password,
+        options: {
+          data: {
+            name,
+            role: "member"
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
       
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-    } catch (error) {
-      console.error("Registration error:", error);
+      if (data.user) {
+        const mappedUser = mapSupabaseUser(data.user);
+        setUser(mappedUser);
+        
+        // Note: This is where you would normally add the user to your database
+        // For now, we're just using the Supabase Auth user
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error.message);
       throw error;
     } finally {
       setIsLoading(false);
@@ -111,13 +164,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUser = async (userData: Partial<User>) => {
     setIsLoading(true);
     try {
-      if (user) {
-        const updatedUser = { ...user, ...userData, updatedAt: new Date().toISOString() };
-        setUser(updatedUser);
-        localStorage.setItem("user", JSON.stringify(updatedUser));
+      if (!user) throw new Error("No user logged in");
+      
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          ...userData,
+          updatedAt: new Date().toISOString(),
+        }
+      });
+      
+      if (error) {
+        throw error;
       }
-    } catch (error) {
-      console.error("Update user error:", error);
+      
+      setUser(prev => prev ? { ...prev, ...userData, updatedAt: new Date().toISOString() } : null);
+    } catch (error: any) {
+      console.error("Update user error:", error.message);
       throw error;
     } finally {
       setIsLoading(false);

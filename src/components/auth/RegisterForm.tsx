@@ -39,11 +39,11 @@ const RegisterForm = () => {
         description: 'Your account has been created.',
       });
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         title: 'Registration failed',
-        description: 'There was an error creating your account.',
+        description: error.message || 'There was an error creating your account.',
         variant: 'destructive',
       });
     } finally {
