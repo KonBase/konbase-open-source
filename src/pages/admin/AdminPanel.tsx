@@ -12,10 +12,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserRoleManager } from '@/components/admin/UserRoleManager';
+import { AddUserToAssociation } from '@/components/admin/AddUserToAssociation';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { Search, Trash2, Plus, Check, X } from 'lucide-react';
+import { Search, Trash2, Plus, Check, X, ExternalLink } from 'lucide-react';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,8 @@ import { Association } from '@/types';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Link } from 'react-router-dom';
+import { useAssociation } from '@/contexts/AssociationContext';
 
 // Interface for user profiles
 interface UserProfile {
@@ -71,6 +74,7 @@ const AdminPanel = () => {
 
   const { toast } = useToast();
   const { profile } = useUserProfile();
+  const { setCurrentAssociation } = useAssociation();
   
   useEffect(() => {
     fetchUsers();
@@ -248,6 +252,17 @@ const AdminPanel = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleManageAssociation = (association: Association) => {
+    // Set this association as the current association for admin to manage
+    setCurrentAssociation(association);
+    
+    // Notify the admin
+    toast({
+      title: "Association Selected",
+      description: `You are now managing ${association.name}`,
+    });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -512,36 +527,48 @@ const AdminPanel = () => {
                       <CardHeader className="pb-4">
                         <div className="flex justify-between">
                           <CardTitle>{association.name}</CardTitle>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Association</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this association? This action cannot be undone and will remove all related data.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleDeleteAssociation(association.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleManageAssociation(association)}
+                              title="Manage this association"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              Manage
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Association</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this association? This action cannot be undone and will remove all related data.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteAssociation(association.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                         <CardDescription>
                           {association.description || 'No description provided'}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="pb-2">
+                      <CardContent className="pb-2 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h4 className="font-semibold text-sm">Contact</h4>
@@ -553,12 +580,34 @@ const AdminPanel = () => {
                             <p className="text-sm">{association.website || 'N/A'}</p>
                           </div>
                         </div>
+                        
                         {association.address && (
-                          <div className="mt-2">
+                          <div>
                             <h4 className="font-semibold text-sm">Address</h4>
                             <p className="text-sm">{association.address}</p>
                           </div>
                         )}
+                        
+                        <Separator />
+                        
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Association Members</h4>
+                          <AddUserToAssociation 
+                            associationId={association.id}
+                            onUserAdded={() => fetchUsers()}
+                          />
+                          
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            className="ml-2"
+                            asChild
+                          >
+                            <Link to={`/association/members?associationId=${association.id}`}>
+                              View All Members
+                            </Link>
+                          </Button>
+                        </div>
                       </CardContent>
                       <CardFooter className="text-xs text-muted-foreground pt-0">
                         ID: {association.id} | Created: {new Date(association.createdAt).toLocaleDateString()}

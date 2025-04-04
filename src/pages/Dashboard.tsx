@@ -15,13 +15,16 @@ import {
   ArchiveIcon,
   BoxIcon,
   FileUp,
-  FileDown
+  FileDown,
+  MessageCircle,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
+import { ChatModule } from '@/components/chat/ChatModule';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -33,6 +36,7 @@ const Dashboard = () => {
     conventionsCount: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -64,9 +68,16 @@ const Dashboard = () => {
           .select('*', { count: 'exact', head: true })
           .eq('association_id', currentAssociation.id);
         
-        if (itemsError || categoriesError || locationsError || conventionsError) {
+        // Fetch unread notifications count
+        const { count: notificationsCount, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user?.id)
+          .eq('read', false);
+        
+        if (itemsError || categoriesError || locationsError || conventionsError || notificationsError) {
           console.error("Error fetching stats:", { 
-            itemsError, categoriesError, locationsError, conventionsError 
+            itemsError, categoriesError, locationsError, conventionsError, notificationsError 
           });
           return;
         }
@@ -77,6 +88,8 @@ const Dashboard = () => {
           locationsCount: locationsCount || 0,
           conventionsCount: conventionsCount || 0
         });
+        
+        setUnreadNotifications(notificationsCount || 0);
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       } finally {
@@ -85,7 +98,38 @@ const Dashboard = () => {
     };
 
     fetchDashboardStats();
-  }, [currentAssociation]);
+    
+    // Set up subscription for notifications
+    if (user) {
+      const notificationsChannel = supabase
+        .channel('notifications-changes-dashboard')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', 
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            // Refresh unread notifications count
+            supabase
+              .from('notifications')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('read', false)
+              .then(({ count }) => {
+                setUnreadNotifications(count || 0);
+              });
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(notificationsChannel);
+      };
+    }
+  }, [currentAssociation, user]);
   
   if (associationLoading || isLoading) {
     return (
@@ -165,6 +209,12 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground">Total conventions</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Association Chat */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Association Chat</h2>
+        <ChatModule />
       </div>
 
       {/* Association Management Module */}
@@ -388,6 +438,43 @@ const Dashboard = () => {
                 <div>
                   <h3 className="font-semibold">Templates</h3>
                   <p className="text-sm text-muted-foreground">Create convention templates</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+        </div>
+      </div>
+
+      {/* Communication Module */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Communication</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/chat" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <MessageCircle className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Association Chat</h3>
+                  <p className="text-sm text-muted-foreground">Chat with association members</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/notifications" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <Bell className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Notifications</h3>
+                  <p className="text-sm text-muted-foreground">
+                    View all notifications 
+                    {unreadNotifications > 0 && (
+                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
+                        {unreadNotifications}
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
             </Link>
