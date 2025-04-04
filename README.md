@@ -1,73 +1,108 @@
-# Welcome to your Lovable project
 
-## Project info
+# EventNexus Supply Management System
 
-**URL**: https://lovable.dev/projects/a0841df3-b09e-42f2-bd4e-946f798c7471
+EventNexus Supply is a comprehensive inventory and convention management system built for associations that organize events and need to track their equipment and supplies.
 
-## How can I edit this code?
+## Key Features
 
-There are several ways of editing your application.
+### Association Management Module
+- Association registration and profile management
+- Inventory management with categorization and location tracking
+- User management with permission levels
+- Warranty and documentation tracking
+- Equipment sets management
+- Import/export functionality
+- Local backup capabilities
 
-**Use Lovable**
+### Convention Management Module
+- Create convention from association template
+- Equipment issuing and return tracking
+- Consumable items tracking
+- Room/location mapping
+- Requirements gathering and fulfillment tracking
+- Comprehensive logging of all actions
+- Reports generation
+- Post-convention archiving
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a0841df3-b09e-42f2-bd4e-946f798c7471) and start prompting.
+### Security Features
+- Role-based access control
+- Super-admin role with full system access
+- Enhanced security for log files
+- Two-factor authentication for sensitive operations
+- Data encryption for sensitive information
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v16 or higher)
+- Supabase account (for database and authentication)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Supabase Setup
 
-Follow these steps:
+1. Create a Supabase project at [supabase.com](https://supabase.com)
+2. Run the database schema setup script from the `schema.sql` file in the SQL editor
+3. Configure authentication providers as needed
+4. Get your Supabase URL and anonymous key
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Installation
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. Clone the repository
+   ```
+   git clone https://github.com/your-username/eventnexus-supply.git
+   cd eventnexus-supply
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. Install dependencies
+   ```
+   npm install
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+3. Create an `.env.local` file with your Supabase credentials
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-**Edit a file directly in GitHub**
+4. Start the development server
+   ```
+   npm run dev
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+5. Build for production
+   ```
+   npm run build
+   ```
 
-**Use GitHub Codespaces**
+### GitHub Pages Deployment
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+To deploy to GitHub Pages:
 
-## What technologies are used for this project?
+1. Configure GitHub repository settings:
+   - Go to Settings > Pages
+   - Set source to GitHub Actions
 
-This project is built with:
+2. Set up repository secrets:
+   - SUPABASE_URL: Your Supabase project URL
+   - SUPABASE_ANON_KEY: Your Supabase anonymous key
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+3. Push changes to the main branch to trigger automatic deployment
 
-## How can I deploy this project?
+## Technologies Used
 
-Simply open [Lovable](https://lovable.dev/projects/a0841df3-b09e-42f2-bd4e-946f798c7471) and click on Share -> Publish.
+- React with TypeScript
+- Vite for build tooling
+- Tailwind CSS for styling
+- Supabase for backend (database, auth, storage)
+- Tanstack Query for data fetching
+- shadcn/ui for components
+- Recharts for data visualization
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes it is!
+This project is licensed under the MIT License.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Acknowledgments
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- [Supabase](https://supabase.com) for the backend infrastructure
+- [shadcn/ui](https://ui.shadcn.com) for the component library

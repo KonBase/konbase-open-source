@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { User, UserRole } from "../types";
-import { supabase } from "@/lib/supabase";
+import { supabase, isUsingDefaultCredentials } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
@@ -14,6 +14,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   updateUser: (user: Partial<User>) => Promise<void>;
   hasPermission: (requiredRole: UserRole) => boolean;
+  isUsingDefaultCredentials: boolean; // Add this to warn users about demo mode
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [usingDefaultCredentials, setUsingDefaultCredentials] = useState(false);
   
   // Map Supabase user to our User type
   const mapSupabaseUser = (supabaseUser: SupabaseUser): User => {
@@ -46,6 +48,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    // Check if we're using default credentials
+    setUsingDefaultCredentials(isUsingDefaultCredentials());
+    
+    if (isUsingDefaultCredentials()) {
+      toast({
+        title: "Demo Mode Active",
+        description: "Using default Supabase credentials. Some features may be limited.",
+        variant: "warning",
+        duration: 6000,
+      });
+    }
+    
     // Check current auth state
     const checkAuth = async () => {
       try {
@@ -213,7 +227,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         register,
         updateUser,
-        hasPermission
+        hasPermission,
+        isUsingDefaultCredentials: usingDefaultCredentials
       }}
     >
       {children}
