@@ -859,6 +859,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_member_of_association: {
+        Args: {
+          user_id: string
+          assoc_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       convention_status: "planned" | "active" | "completed" | "archived"
