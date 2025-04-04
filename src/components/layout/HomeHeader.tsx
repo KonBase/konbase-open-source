@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { 
   NavigationMenu,
   NavigationMenuContent,
@@ -23,6 +24,7 @@ import {
 const HomeHeader = () => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   
   // Extract user display values with fallbacks
   const userName = user?.name || 'User';
@@ -30,8 +32,21 @@ const HomeHeader = () => {
   const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      await logout();
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account."
+      });
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast({
+        title: "Logout failed",
+        description: "An error occurred during logout. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLogin = () => {
@@ -57,25 +72,25 @@ const HomeHeader = () => {
           <NavigationMenu className="hidden md:flex">
             <NavigationMenuList>
               <NavigationMenuItem>
-                <Link to="/#features">
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                <NavigationMenuLink asChild>
+                  <Link to="/#features" className={navigationMenuTriggerStyle()}>
                     Features
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link to="/#about">
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                <NavigationMenuLink asChild>
+                  <Link to="/#about" className={navigationMenuTriggerStyle()}>
                     About
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <a href="https://github.com/ShiroLuxferre/KonBase" target="_blank" rel="noopener noreferrer">
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                <NavigationMenuLink asChild>
+                  <a href="https://github.com/ShiroLuxferre/KonBase" target="_blank" rel="noopener noreferrer" className={navigationMenuTriggerStyle()}>
                     GitHub
-                  </NavigationMenuLink>
-                </a>
+                  </a>
+                </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>

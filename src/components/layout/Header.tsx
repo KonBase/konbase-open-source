@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -19,6 +20,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const [notifications] = useState<{ id: string; title: string; read: boolean }[]>([
     { id: '1', title: 'New equipment request', read: false },
     { id: '2', title: 'Equipment return due', read: false },
@@ -33,8 +35,21 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      await logout();
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account."
+      });
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast({
+        title: "Logout failed",
+        description: "An error occurred during logout. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

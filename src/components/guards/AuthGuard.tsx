@@ -30,6 +30,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   if (!isAuthenticated) {
+    // Use replace to avoid back button issues
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         const enhancedUser = {
           ...user,
-          name: profileData.name || profileData.email || 'User',
+          name: profileData.name || profileData.email?.split('@')[0] || 'User',
           profileImage: profileData.profile_image,
           role: profileData.role || 'guest',
           email: user.email || profileData.email

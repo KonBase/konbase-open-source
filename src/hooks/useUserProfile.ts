@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 export type UserRole = 'super_admin' | 'admin' | 'manager' | 'member' | 'guest';
 
@@ -21,6 +22,7 @@ export function useUserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Get the current session
@@ -61,31 +63,57 @@ export function useUserProfile() {
     try {
       setLoading(true);
       
-      // Use maybeSingle instead of single to handle the case where no profile is found
+      // Use single to handle the case where no profile is found
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
         
-      if (error) throw error;
-      
-      if (data) {
+      if (error) {
+        // If the error is because the profile doesn't exist, create a default one
+        if (error.code === 'PGRST116') {
+          console.warn(`No profile found for user ID: ${userId}, creating default profile`);
+          
+          if (user?.email) {
+            const defaultProfile = {
+              id: userId,
+              email: user.email,
+              name: user.email.split('@')[0] || "User",
+              role: 'guest' as UserRole,
+              association_id: null,
+              profile_image: null,
+              two_factor_enabled: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            
+            // Try to create the profile in the database
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert(defaultProfile);
+              
+            if (!insertError) {
+              setProfile(defaultProfile);
+            } else {
+              console.error('Error creating default profile:', insertError);
+              toast({
+                title: "Profile Error",
+                description: "Could not create a profile for your account.",
+                variant: "destructive"
+              });
+            }
+          }
+        } else {
+          console.error('Error loading profile:', error);
+          toast({
+            title: "Profile Error",
+            description: "Could not load your profile information.",
+            variant: "destructive"
+          });
+        }
+      } else if (data) {
         setProfile(data);
-      } else {
-        console.warn(`No profile found for user ID: ${userId}`);
-        // Create a minimal profile with defaults
-        setProfile({
-          id: userId,
-          email: user?.email || "",
-          name: user?.email?.split('@')[0] || "User",
-          role: 'guest' as UserRole,
-          association_id: null,
-          profile_image: null,
-          two_factor_enabled: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
       }
     } catch (error) {
       console.error('Error loading profile:', error);

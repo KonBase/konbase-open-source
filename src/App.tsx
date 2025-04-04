@@ -19,6 +19,7 @@ import Home from "./pages/Home";
 
 // Protected Pages
 import Dashboard from "./pages/Dashboard";
+import ProfilePage from "./pages/profile/ProfilePage";
 import Unauthorized from "./pages/error/Unauthorized";
 import NotFound from "./pages/NotFound";
 
@@ -93,6 +94,7 @@ const App = () => (
                 </AuthGuard>
               }>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
                 
                 {/* Association management */}
                 <Route path="/association">
