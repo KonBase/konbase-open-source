@@ -1,199 +1,398 @@
 
-import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts';
-import { StatCard } from '@/components/ui/stat-card';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Users, Calendar, AlertTriangle, ArrowUpFromLine, Truck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  Building2, 
+  Package, 
+  Users, 
+  FileBox, 
+  MapPin, 
+  Calendar, 
+  FileText,
+  BarChart3,
+  ArrowUpDown,
+  FileWarning,
+  ArchiveIcon,
+  BoxIcon,
+  FileUp,
+  FileDown
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { currentAssociation } = useAssociation();
+  const { currentAssociation, isLoading: associationLoading } = useAssociation();
+  const [stats, setStats] = useState({
+    itemsCount: 0,
+    categoriesCount: 0,
+    locationsCount: 0,
+    conventionsCount: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      if (!currentAssociation) return;
+      
+      setIsLoading(true);
+      try {
+        // Fetch items count
+        const { count: itemsCount, error: itemsError } = await supabase
+          .from('items')
+          .select('*', { count: 'exact', head: true })
+          .eq('association_id', currentAssociation.id);
+        
+        // Fetch categories count
+        const { count: categoriesCount, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*', { count: 'exact', head: true })
+          .eq('association_id', currentAssociation.id);
+        
+        // Fetch locations count
+        const { count: locationsCount, error: locationsError } = await supabase
+          .from('locations')
+          .select('*', { count: 'exact', head: true })
+          .eq('association_id', currentAssociation.id);
+        
+        // Fetch conventions count
+        const { count: conventionsCount, error: conventionsError } = await supabase
+          .from('conventions')
+          .select('*', { count: 'exact', head: true })
+          .eq('association_id', currentAssociation.id);
+        
+        if (itemsError || categoriesError || locationsError || conventionsError) {
+          console.error("Error fetching stats:", { 
+            itemsError, categoriesError, locationsError, conventionsError 
+          });
+          return;
+        }
+        
+        setStats({
+          itemsCount: itemsCount || 0,
+          categoriesCount: categoriesCount || 0,
+          locationsCount: locationsCount || 0,
+          conventionsCount: conventionsCount || 0
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, [currentAssociation]);
   
-  // Mock data for charts
-  const inventoryData = [
-    { name: 'Electronics', value: 42 },
-    { name: 'Furniture', value: 28 },
-    { name: 'Props', value: 35 },
-    { name: 'Decor', value: 15 },
-    { name: 'Costumes', value: 22 },
-  ];
-  
-  const movementData = [
-    { date: 'Jan', checkouts: 20, returns: 15 },
-    { date: 'Feb', checkouts: 15, returns: 18 },
-    { date: 'Mar', checkouts: 25, returns: 22 },
-    { date: 'Apr', checkouts: 30, returns: 28 },
-    { date: 'May', checkouts: 18, returns: 20 },
-    { date: 'Jun', checkouts: 22, returns: 19 },
-  ];
-  
-  // Mock data for alerts
-  const [alerts] = useState([
-    { id: 1, message: 'Low stock warning: 5 HDMI cables remaining', priority: 'high' },
-    { id: 2, message: 'Equipment maintenance due: Projector #P-1002', priority: 'medium' },
-    { id: 3, message: 'Upcoming convention: Fantasy Con 2025 (25 days)', priority: 'low' },
-  ]);
-  
-  // Mock data for recent activities
-  const [activities] = useState([
-    { id: 1, user: 'John Doe', action: 'checked out 3 speakers', time: '2 hours ago' },
-    { id: 2, user: 'Jane Smith', action: 'returned 5 microphones', time: '5 hours ago' },
-    { id: 3, user: 'Mike Johnson', action: 'added 10 new badges to inventory', time: '1 day ago' },
-    { id: 4, user: 'Sarah Lee', action: 'created a new convention: Board Game Expo', time: '2 days ago' },
-  ]);
+  if (associationLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!currentAssociation) {
+    return (
+      <div className="space-y-4 p-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome to EventNexus</CardTitle>
+            <CardDescription>You need to set up your association first</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">To get started with EventNexus, you need to create or join an association.</p>
+            <Button asChild>
+              <Link to="/setup">Set Up Association</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back, {user?.name}! Here's an overview of your inventory system.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline">
-            <ArrowUpFromLine className="mr-2 h-4 w-4" />
-            Export Data
-          </Button>
-          <Button size="sm">
-            <Truck className="mr-2 h-4 w-4" />
-            Manage Inventory
-          </Button>
-        </div>
-      </div>
-      
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Total Items" 
-          value="142" 
-          description="15 items added this month" 
-          icon={<Package className="w-4 h-4" />}
-          trend={{ value: 12, positive: true }}
-        />
-        <StatCard 
-          title="Active Members" 
-          value="28" 
-          description="5 new members this month" 
-          icon={<Users className="w-4 h-4" />}
-          trend={{ value: 8, positive: true }}
-        />
-        <StatCard 
-          title="Upcoming Events" 
-          value="3" 
-          description="Next event in 25 days" 
-          icon={<Calendar className="w-4 h-4" />}
-        />
-        <StatCard 
-          title="Pending Requests" 
-          value="7" 
-          description="2 new requests today" 
-          icon={<AlertTriangle className="w-4 h-4" />}
-          trend={{ value: 5, positive: false }}
-        />
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Welcome back, {user?.name || 'User'}! Here's an overview of {currentAssociation.name}.
+        </p>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Inventory by Category</CardTitle>
-            <CardDescription>Distribution of items across categories</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={inventoryData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="text-2xl font-bold">{stats.itemsCount}</div>
+            <p className="text-xs text-muted-foreground">Items in inventory</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>Equipment Movement Trends</CardTitle>
-            <CardDescription>Checkouts vs Returns over time</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Categories</CardTitle>
+            <FileBox className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={movementData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="checkouts" stroke="hsl(var(--primary))" strokeWidth={2} />
-                  <Line type="monotone" dataKey="returns" stroke="hsl(var(--accent))" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="text-2xl font-bold">{stats.categoriesCount}</div>
+            <p className="text-xs text-muted-foreground">Item categories</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Locations</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.locationsCount}</div>
+            <p className="text-xs text-muted-foreground">Storage locations</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Conventions</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.conventionsCount}</div>
+            <p className="text-xs text-muted-foreground">Total conventions</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Alerts and Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Alerts & Notifications</CardTitle>
-            <CardDescription>Important system notifications</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {alerts.length > 0 ? (
-                alerts.map((alert) => (
-                  <div 
-                    key={alert.id} 
-                    className={`p-3 rounded-md flex items-start ${
-                      alert.priority === 'high' 
-                        ? 'bg-red-50 border-l-4 border-red-500 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
-                        : alert.priority === 'medium' 
-                        ? 'bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300' 
-                        : 'bg-blue-50 border-l-4 border-blue-500 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
-                    }`}
-                  >
-                    <AlertTriangle className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0" />
-                    <p>{alert.message}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No current alerts</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest actions in your association</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <div key={activity.id} className="border-b pb-4 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-medium">{activity.user}</p>
-                    <span className="text-xs text-muted-foreground">{activity.time}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{activity.action}</p>
+      {/* Association Management Module */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Association Management</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/association/profile" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <Building2 className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Association Profile</h3>
+                  <p className="text-sm text-muted-foreground">Manage association details</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/inventory/items" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <Package className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Inventory</h3>
+                  <p className="text-sm text-muted-foreground">Manage your equipment</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/association/members" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <Users className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">User Management</h3>
+                  <p className="text-sm text-muted-foreground">Manage members and permissions</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/inventory/categories" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <FileBox className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Categories</h3>
+                  <p className="text-sm text-muted-foreground">Manage item categories</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/inventory/locations" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <MapPin className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Locations</h3>
+                  <p className="text-sm text-muted-foreground">Manage storage locations</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/inventory/sets" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <BoxIcon className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Equipment Sets</h3>
+                  <p className="text-sm text-muted-foreground">Manage predefined sets</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/inventory/warranties" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <FileWarning className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Warranties</h3>
+                  <p className="text-sm text-muted-foreground">Track warranties and docs</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/inventory/import-export" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <ArrowUpDown className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Import/Export</h3>
+                  <p className="text-sm text-muted-foreground">Data import and export</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/settings/backup" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <ArchiveIcon className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Backups</h3>
+                  <p className="text-sm text-muted-foreground">Manage local backups</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+        </div>
+      </div>
+
+      {/* Convention Management Module */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Convention Management</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <Calendar className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Conventions</h3>
+                  <p className="text-sm text-muted-foreground">Manage conventions</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions/equipment" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <ArrowUpDown className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Equipment Tracking</h3>
+                  <p className="text-sm text-muted-foreground">Issue and return equipment</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions/consumables" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <Package className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Consumables</h3>
+                  <p className="text-sm text-muted-foreground">Track consumable items</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions/locations" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <MapPin className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Room Mapping</h3>
+                  <p className="text-sm text-muted-foreground">Manage convention locations</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions/requirements" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <FileText className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Requirements</h3>
+                  <p className="text-sm text-muted-foreground">Manage equipment needs</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions/logs" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <FileText className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Activity Logs</h3>
+                  <p className="text-sm text-muted-foreground">View all convention activities</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/reports" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <BarChart3 className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Reports</h3>
+                  <p className="text-sm text-muted-foreground">Generate reports</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/conventions/archive" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <ArchiveIcon className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Archiving</h3>
+                  <p className="text-sm text-muted-foreground">Archive past conventions</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+          
+          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
+            <Link to="/templates" className="block p-6">
+              <div className="flex items-center space-x-4">
+                <FileUp className="h-10 w-10 text-primary" />
+                <div>
+                  <h3 className="font-semibold">Templates</h3>
+                  <p className="text-sm text-muted-foreground">Create convention templates</p>
+                </div>
+              </div>
+            </Link>
+          </Card>
+        </div>
       </div>
     </div>
   );
