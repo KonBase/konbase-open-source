@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -15,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
-import { PersonAddIcon } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -114,7 +113,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <PersonAddIcon className="mr-2 h-4 w-4" />
+          <UserPlus className="mr-2 h-4 w-4" />
           Invite Member
         </Button>
       </DialogTrigger>

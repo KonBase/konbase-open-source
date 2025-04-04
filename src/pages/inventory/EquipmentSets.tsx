@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ const EquipmentSets = () => {
     
     setIsLoading(true);
     try {
-      // Fetch sets
       const { data: sets, error } = await supabase
         .from('equipment_sets')
         .select('*')
@@ -37,7 +35,6 @@ const EquipmentSets = () => {
       
       if (error) throw error;
       
-      // Count items in each set
       const setsWithItemCounts = await Promise.all(
         sets.map(async (set) => {
           const { count, error: countError } = await supabase
@@ -139,7 +136,7 @@ const EquipmentSets = () => {
                 </p>
                 <div className="flex justify-between items-center mt-2">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/inventory/sets/${set.id}`}>
+                    <Link to={`/inventory/sets/${set.id}`}>
                       View Details
                     </Link>
                   </Button>

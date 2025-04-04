@@ -45,7 +45,7 @@ export function ChatModule() {
             filter: `association_id=eq.${currentAssociation.id}`
           },
           (payload) => {
-            const newMessage = payload.new as ChatMessage;
+            const newMessage = payload.new as unknown as ChatMessage;
             setMessages(prev => [...prev, newMessage]);
           }
         )
@@ -101,7 +101,7 @@ export function ChatModule() {
         .order('created_at', { ascending: true });
       
       if (error) throw error;
-      setMessages(data || []);
+      setMessages(data as ChatMessage[] || []);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
     } finally {

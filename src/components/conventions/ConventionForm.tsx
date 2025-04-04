@@ -50,7 +50,15 @@ const ConventionForm = ({ onSubmit, isLoading = false, defaultValues }: Conventi
   });
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmit(values);
+    // Ensure all required fields are present
+    const data: ConventionFormData = {
+      name: values.name,
+      description: values.description || '',
+      start_date: values.start_date,
+      end_date: values.end_date,
+      location: values.location || '',
+    };
+    onSubmit(data);
   };
 
   return (

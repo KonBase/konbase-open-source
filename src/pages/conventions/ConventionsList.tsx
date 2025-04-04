@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -157,7 +156,7 @@ const ConventionsList = () => {
                 </p>
                 <div className="flex justify-between items-center mt-2">
                   <Button variant="outline" asChild size="sm">
-                    <Link href={`/conventions/${convention.id}`}>
+                    <Link to={`/conventions/${convention.id}`}>
                       View Details
                       <ArrowRightIcon className="ml-2 h-4 w-4" />
                     </Link>

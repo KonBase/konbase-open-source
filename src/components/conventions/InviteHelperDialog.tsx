@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -14,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
-import { PersonAddIcon, CopyIcon } from 'lucide-react';
+import { UserPlus, Copy } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,15 +50,13 @@ const InviteHelperDialog = ({
     setIsLoading(true);
 
     try {
-      // Generate a random code
       const code = Math.random().toString(36).substring(2, 10).toUpperCase();
       
-      // Create an invitation in the database
       const { error } = await supabase.from('convention_invitations').insert({
         code,
         convention_id: convention.id,
         created_by: (await supabase.auth.getUser()).data.user?.id,
-        expires_at: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm:ssXXX"), // Expires in 7 days
+        expires_at: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), "yyyy-MM-dd'T'HH:mm:ssXXX"),
         uses_remaining: 1
       });
       
@@ -67,7 +64,6 @@ const InviteHelperDialog = ({
       
       setInviteCode(code);
       
-      // In a real app, you'd send an email with the invitation code
       toast({
         title: 'Invitation Generated',
         description: `Invitation code created for ${values.email}.`,
@@ -108,7 +104,7 @@ const InviteHelperDialog = ({
     }}>
       <DialogTrigger asChild>
         <Button>
-          <PersonAddIcon className="mr-2 h-4 w-4" />
+          <UserPlus className="mr-2 h-4 w-4" />
           Invite Helper
         </Button>
       </DialogTrigger>
@@ -154,7 +150,7 @@ const InviteHelperDialog = ({
               <div className="flex items-center justify-between">
                 <code className="font-mono text-lg">{inviteCode}</code>
                 <Button variant="ghost" size="sm" onClick={copyInviteCode}>
-                  <CopyIcon className="h-4 w-4" />
+                  <Copy className="h-4 w-4" />
                 </Button>
               </div>
             </div>
