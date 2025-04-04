@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -45,7 +45,7 @@ const App = () => {
             <Route path="/home" element={<Home />} />
             
             {/* Guest routes (redirect to dashboard if authenticated) */}
-            <Route element={<GuestGuard />}>
+            <Route element={<GuestGuard><Outlet /></GuestGuard>}>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -55,7 +55,7 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Protected routes */}
-            <Route element={<AuthGuard />}>
+            <Route element={<AuthGuard><Outlet /></AuthGuard>}>
               {/* Setup route */}
               <Route path="/setup" element={<SetupWizard />} />
               
@@ -73,7 +73,11 @@ const App = () => {
                 <Route path="/associations/:id" element={<AssociationDetails />} />
                 
                 {/* Admin routes */}
-                <Route element={<RoleGuard allowedRoles={['admin', 'super_admin']} fallbackPath="/unauthorized" />}>
+                <Route element={
+                  <RoleGuard allowedRoles={['admin', 'super_admin']} fallbackPath="/unauthorized">
+                    <Outlet />
+                  </RoleGuard>
+                }>
                   <Route path="/admin" element={<AdminPanel />} />
                 </Route>
               </Route>
