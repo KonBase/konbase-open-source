@@ -1,0 +1,157 @@
+
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle
+} from '@/components/ui/navigation-menu';
+import { User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+
+const HomeHeader = () => {
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
+  
+  // Extract user display values with fallbacks
+  const userName = user?.name || 'User';
+  const userEmail = user?.email || '';
+  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  const handleRegister = () => {
+    navigate('/register');
+  };
+
+  const handleDashboard = () => {
+    navigate('/dashboard');
+  };
+
+  return (
+    <header className="w-full border-b bg-background">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-8">
+          <Link to="/" className="flex items-center">
+            <h1 className="text-2xl font-bold text-primary">KonBase</h1>
+          </Link>
+          
+          <NavigationMenu className="hidden md:flex">
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <Link to="/#features">
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    Features
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link to="/#about">
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    About
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <a href="https://github.com/ShiroLuxferre/KonBase" target="_blank" rel="noopener noreferrer">
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    GitHub
+                  </NavigationMenuLink>
+                </a>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleDashboard}>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      {user?.profileImage ? (
+                        <img 
+                          src={user.profileImage} 
+                          alt={userName} 
+                          className="w-8 h-8 rounded-full" 
+                        />
+                      ) : (
+                        <span className="font-medium text-primary">{userInitial}</span>
+                      )}
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="flex flex-col items-center p-4 border-b">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                      {user?.profileImage ? (
+                        <img 
+                          src={user.profileImage} 
+                          alt={userName} 
+                          className="w-12 h-12 rounded-full" 
+                        />
+                      ) : (
+                        <span className="text-lg font-medium text-primary">{userInitial}</span>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="font-medium">{userName}</p>
+                      <p className="text-xs text-muted-foreground">{userEmail}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleLogin}>
+                Login
+              </Button>
+              <Button onClick={handleRegister}>
+                Register
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default HomeHeader;

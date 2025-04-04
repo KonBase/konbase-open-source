@@ -4,43 +4,44 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ArrowRight, ExternalLink, Github, LayoutDashboard, LogOut, CheckCircle } from 'lucide-react';
+import { ArrowRight, ExternalLink, Github, LayoutDashboard } from 'lucide-react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import HomeHeader from '@/components/layout/HomeHeader';
 
 const Home = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const features = [
     {
       title: "Association Management",
       description: "Create and manage your fantasy associations, clubs and organizations with ease.",
-      icon: <CheckCircle className="h-5 w-5 text-primary" />
+      icon: <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">1</div>
     },
     {
       title: "Inventory Tracking",
       description: "Track all your equipment, consumables and assets in a centralized system.",
-      icon: <CheckCircle className="h-5 w-5 text-primary" />
+      icon: <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">2</div>
     },
     {
       title: "Convention Planning",
       description: "Plan and organize conventions with comprehensive resource allocation.",
-      icon: <CheckCircle className="h-5 w-5 text-primary" />
+      icon: <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">3</div>
     },
     {
       title: "Team Collaboration",
       description: "Collaborate with your team through role-based permissions and shared workspaces.",
-      icon: <CheckCircle className="h-5 w-5 text-primary" />
+      icon: <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">4</div>
     },
     {
       title: "Reporting & Analytics",
       description: "Generate detailed reports on inventory usage, convention performance and more.",
-      icon: <CheckCircle className="h-5 w-5 text-primary" />
+      icon: <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">5</div>
     },
     {
       title: "Secure Access Control",
       description: "Control access with role-based permissions and enhanced security features.",
-      icon: <CheckCircle className="h-5 w-5 text-primary" />
+      icon: <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">6</div>
     }
   ];
 
@@ -48,15 +49,12 @@ const Home = () => {
     navigate('/dashboard');
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
     <div className="min-h-screen bg-background">
+      <HomeHeader />
+      
       {/* Hero section */}
-      <section className="relative">
+      <section className="relative" id="home">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="max-w-2xl">
@@ -72,9 +70,6 @@ const Home = () => {
                 <div className="flex flex-wrap gap-4">
                   <Button size="lg" onClick={handleDashboard}>
                     Go to Dashboard <LayoutDashboard className="ml-2 h-5 w-5" />
-                  </Button>
-                  <Button variant="outline" size="lg" onClick={handleLogout}>
-                    Logout <LogOut className="ml-2 h-5 w-5" />
                   </Button>
                 </div>
               ) : (
@@ -101,7 +96,7 @@ const Home = () => {
       </section>
 
       {/* Features section */}
-      <section className="bg-muted/50 py-16">
+      <section className="bg-muted/50 py-16" id="features">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl font-bold mb-4">Powerful Features</h2>
@@ -129,7 +124,7 @@ const Home = () => {
       </section>
 
       {/* Open Source section */}
-      <section className="py-16">
+      <section className="py-16" id="about">
         <div className="container mx-auto px-4">
           <Card className="border-2 border-primary/20">
             <CardHeader>
