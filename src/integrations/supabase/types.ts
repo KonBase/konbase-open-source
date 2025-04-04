@@ -9,41 +9,80 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      association_members: {
+        Row: {
+          association_id: string
+          created_at: string | null
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string | null
+          role?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string | null
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       associations: {
         Row: {
           address: string | null
           contact_email: string
           contact_phone: string | null
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           logo: string | null
           name: string
-          updated_at: string
+          updated_at: string | null
           website: string | null
         }
         Insert: {
           address?: string | null
           contact_email: string
           contact_phone?: string | null
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           logo?: string | null
           name: string
-          updated_at?: string
+          updated_at?: string | null
           website?: string | null
         }
         Update: {
           address?: string | null
           contact_email?: string
           contact_phone?: string | null
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           logo?: string | null
           name?: string
-          updated_at?: string
+          updated_at?: string | null
           website?: string | null
         }
         Relationships: []
@@ -52,7 +91,7 @@ export type Database = {
         Row: {
           action: string
           changes: Json | null
-          created_at: string
+          created_at: string | null
           entity: string
           entity_id: string
           id: string
@@ -62,17 +101,17 @@ export type Database = {
         Insert: {
           action: string
           changes?: Json | null
-          created_at?: string
+          created_at?: string | null
           entity: string
           entity_id: string
-          id: string
+          id?: string
           ip_address?: string | null
           user_id: string
         }
         Update: {
           action?: string
           changes?: Json | null
-          created_at?: string
+          created_at?: string | null
           entity?: string
           entity_id?: string
           id?: string
@@ -84,7 +123,7 @@ export type Database = {
             foreignKeyName: "audit_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -92,7 +131,7 @@ export type Database = {
       backups: {
         Row: {
           association_id: string
-          created_at: string
+          created_at: string | null
           created_by: string
           file_url: string
           id: string
@@ -101,16 +140,16 @@ export type Database = {
         }
         Insert: {
           association_id: string
-          created_at?: string
+          created_at?: string | null
           created_by: string
           file_url: string
-          id: string
+          id?: string
           name: string
           size: number
         }
         Update: {
           association_id?: string
-          created_at?: string
+          created_at?: string | null
           created_by?: string
           file_url?: string
           id?: string
@@ -129,7 +168,7 @@ export type Database = {
             foreignKeyName: "backups_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -137,30 +176,30 @@ export type Database = {
       categories: {
         Row: {
           association_id: string
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           name: string
           parent_id: string | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           association_id: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           name: string
           parent_id?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           association_id?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           name?: string
           parent_id?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -179,10 +218,55 @@ export type Database = {
           },
         ]
       }
+      convention_locations: {
+        Row: {
+          convention_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          convention_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          convention_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_locations_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "convention_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conventions: {
         Row: {
           association_id: string
-          created_at: string
+          created_at: string | null
           description: string | null
           end_date: string
           id: string
@@ -190,23 +274,23 @@ export type Database = {
           name: string
           start_date: string
           status: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           association_id: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           end_date: string
-          id: string
+          id?: string
           location?: string | null
           name: string
           start_date: string
-          status: string
-          updated_at?: string
+          status?: string
+          updated_at?: string | null
         }
         Update: {
           association_id?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           end_date?: string
           id?: string
@@ -214,7 +298,7 @@ export type Database = {
           name?: string
           start_date?: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -228,33 +312,33 @@ export type Database = {
       }
       documents: {
         Row: {
-          created_at: string
+          created_at: string | null
           file_type: string
           file_url: string
           id: string
           item_id: string
           name: string
-          updated_at: string
+          updated_at: string | null
           uploaded_by: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           file_type: string
           file_url: string
-          id: string
+          id?: string
           item_id: string
           name: string
-          updated_at?: string
+          updated_at?: string | null
           uploaded_by: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           file_type?: string
           file_url?: string
           id?: string
           item_id?: string
           name?: string
-          updated_at?: string
+          updated_at?: string | null
           uploaded_by?: string
         }
         Relationships: [
@@ -269,26 +353,23 @@ export type Database = {
             foreignKeyName: "documents_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
       equipment_set_items: {
         Row: {
-          id: string
           item_id: string
           quantity: number
           set_id: string
         }
         Insert: {
-          id: string
           item_id: string
-          quantity: number
+          quantity?: number
           set_id: string
         }
         Update: {
-          id?: string
           item_id?: string
           quantity?: number
           set_id?: string
@@ -313,27 +394,27 @@ export type Database = {
       equipment_sets: {
         Row: {
           association_id: string
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           name: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           association_id: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           name: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           association_id?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           name?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -374,11 +455,11 @@ export type Database = {
           barcode: string | null
           category_id: string
           condition: string
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           image: string | null
-          is_consumable: boolean
+          is_consumable: boolean | null
           location_id: string
           minimum_quantity: number | null
           name: string
@@ -387,7 +468,7 @@ export type Database = {
           purchase_price: number | null
           quantity: number | null
           serial_number: string | null
-          updated_at: string
+          updated_at: string | null
           warranty_expiration: string | null
         }
         Insert: {
@@ -395,11 +476,11 @@ export type Database = {
           barcode?: string | null
           category_id: string
           condition: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           image?: string | null
-          is_consumable?: boolean
+          is_consumable?: boolean | null
           location_id: string
           minimum_quantity?: number | null
           name: string
@@ -408,7 +489,7 @@ export type Database = {
           purchase_price?: number | null
           quantity?: number | null
           serial_number?: string | null
-          updated_at?: string
+          updated_at?: string | null
           warranty_expiration?: string | null
         }
         Update: {
@@ -416,11 +497,11 @@ export type Database = {
           barcode?: string | null
           category_id?: string
           condition?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           image?: string | null
-          is_consumable?: boolean
+          is_consumable?: boolean | null
           location_id?: string
           minimum_quantity?: number | null
           name?: string
@@ -429,7 +510,7 @@ export type Database = {
           purchase_price?: number | null
           quantity?: number | null
           serial_number?: string | null
-          updated_at?: string
+          updated_at?: string | null
           warranty_expiration?: string | null
         }
         Relationships: [
@@ -459,33 +540,33 @@ export type Database = {
       locations: {
         Row: {
           association_id: string
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           is_room: boolean | null
           name: string
           parent_id: string | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           association_id: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           is_room?: boolean | null
           name: string
           parent_id?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           association_id?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           is_room?: boolean | null
           name?: string
           parent_id?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -507,7 +588,7 @@ export type Database = {
       movements: {
         Row: {
           convention_id: string | null
-          created_at: string
+          created_at: string | null
           from_location_id: string | null
           id: string
           item_id: string
@@ -515,25 +596,25 @@ export type Database = {
           notes: string | null
           quantity: number
           to_location_id: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           convention_id?: string | null
-          created_at?: string
+          created_at?: string | null
           from_location_id?: string | null
-          id: string
+          id?: string
           item_id: string
           movement_type: string
           notes?: string | null
-          quantity: number
+          quantity?: number
           to_location_id: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           convention_id?: string | null
-          created_at?: string
+          created_at?: string | null
           from_location_id?: string | null
           id?: string
           item_id?: string
@@ -541,7 +622,7 @@ export type Database = {
           notes?: string | null
           quantity?: number
           to_location_id?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -577,14 +658,14 @@ export type Database = {
             foreignKeyName: "movements_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
       notifications: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           link: string | null
           message: string
@@ -593,8 +674,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          created_at?: string
-          id: string
+          created_at?: string | null
+          id?: string
           link?: string | null
           message: string
           read?: boolean
@@ -602,7 +683,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           link?: string | null
           message?: string
@@ -615,7 +696,7 @@ export type Database = {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -628,7 +709,7 @@ export type Database = {
           id: string
           name: string
           profile_image: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
           two_factor_enabled: boolean
           updated_at: string | null
         }
@@ -639,7 +720,7 @@ export type Database = {
           id: string
           name: string
           profile_image?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           two_factor_enabled?: boolean
           updated_at?: string | null
         }
@@ -650,77 +731,26 @@ export type Database = {
           id?: string
           name?: string
           profile_image?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           two_factor_enabled?: boolean
           updated_at?: string | null
         }
         Relationships: []
       }
-      reports: {
-        Row: {
-          association_id: string
-          created_at: string
-          created_by: string
-          description: string | null
-          file_url: string | null
-          id: string
-          name: string
-          parameters: Json | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          association_id: string
-          created_at?: string
-          created_by: string
-          description?: string | null
-          file_url?: string | null
-          id: string
-          name: string
-          parameters?: Json | null
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          association_id?: string
-          created_at?: string
-          created_by?: string
-          description?: string | null
-          file_url?: string | null
-          id?: string
-          name?: string
-          parameters?: Json | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reports_association_id_fkey"
-            columns: ["association_id"]
-            isOneToOne: false
-            referencedRelation: "associations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reports_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       requirement_items: {
         Row: {
           item_id: string
+          quantity: number
           requirement_id: string
         }
         Insert: {
           item_id: string
+          quantity?: number
           requirement_id: string
         }
         Update: {
           item_id?: string
+          quantity?: number
           requirement_id?: string
         }
         Relationships: [
@@ -744,7 +774,7 @@ export type Database = {
         Row: {
           category_id: string | null
           convention_id: string
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           location_id: string | null
@@ -752,25 +782,25 @@ export type Database = {
           quantity: number
           requested_by: string
           status: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           category_id?: string | null
           convention_id: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          id: string
+          id?: string
           location_id?: string | null
           name: string
-          quantity: number
+          quantity?: number
           requested_by: string
-          status: string
-          updated_at?: string
+          status?: string
+          updated_at?: string | null
         }
         Update: {
           category_id?: string | null
           convention_id?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           location_id?: string | null
@@ -778,7 +808,7 @@ export type Database = {
           quantity?: number
           requested_by?: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -799,53 +829,17 @@ export type Database = {
             foreignKeyName: "requirements_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "convention_locations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "requirements_requested_by_fkey"
             columns: ["requested_by"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
-      }
-      users: {
-        Row: {
-          association_id: string | null
-          created_at: string
-          email: string
-          id: string
-          name: string
-          profile_image: string | null
-          role: string
-          two_factor_enabled: boolean
-          updated_at: string
-        }
-        Insert: {
-          association_id?: string | null
-          created_at?: string
-          email: string
-          id: string
-          name: string
-          profile_image?: string | null
-          role: string
-          two_factor_enabled?: boolean
-          updated_at?: string
-        }
-        Update: {
-          association_id?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          name?: string
-          profile_image?: string | null
-          role?: string
-          two_factor_enabled?: boolean
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {

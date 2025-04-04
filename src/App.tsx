@@ -1,139 +1,93 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { AssociationProvider } from "./contexts/AssociationContext";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeProvider';
+import { AuthProvider } from './contexts/AuthContext';
 
-// Layout
-import MainLayout from "./components/layout/MainLayout";
+// Pages
+import Home from './pages/Home';
+import Index from './pages/Index';
+import Dashboard from './pages/Dashboard';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+import ProfilePage from './pages/profile/ProfilePage';
+import Settings from './pages/settings/Settings';
+import NotFound from './pages/NotFound';
+import Unauthorized from './pages/error/Unauthorized';
+import SetupWizard from './pages/setup/SetupWizard';
+import AdminPanel from './pages/admin/AdminPanel';
+import AssociationsList from './pages/association/AssociationsList';
+import AssociationDetails from './pages/association/AssociationDetails';
+import InventoryList from './pages/inventory/InventoryList';
+import ConventionsList from './pages/conventions/ConventionsList';
+import ReportsList from './pages/reports/ReportsList';
 
-// Auth Pages
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-
-// Home Page
-import Home from "./pages/Home";
-
-// Protected Pages
-import Dashboard from "./pages/Dashboard";
-import ProfilePage from "./pages/profile/ProfilePage";
-import Unauthorized from "./pages/error/Unauthorized";
-import NotFound from "./pages/NotFound";
+// Layouts
+import MainLayout from './components/layout/MainLayout';
 
 // Guards
-import AuthGuard from "./components/guards/AuthGuard";
-import GuestGuard from "./components/guards/GuestGuard";
-import { RoleGuard } from "./components/auth/RoleGuard";
+import AuthGuard from './components/guards/AuthGuard';
+import GuestGuard from './components/guards/GuestGuard';
+import { RoleGuard } from './components/auth/RoleGuard';
 
-// Create pages - these will be implemented incrementally
-import SetupWizard from "./pages/setup/SetupWizard";
-import AssociationsList from "./pages/association/AssociationsList";
-import AssociationDetails from "./pages/association/AssociationDetails";
-import InventoryList from "./pages/inventory/InventoryList";
-import ConventionsList from "./pages/conventions/ConventionsList";
-import ReportsList from "./pages/reports/ReportsList";
-import Settings from "./pages/settings/Settings";
-import AdminPanel from "./pages/admin/AdminPanel";
+// Providers
+import { Toaster } from './components/ui/toaster';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
+const App = () => {
+  return (
+    <ThemeProvider defaultTheme="dark" storageKey="konbase-theme">
       <AuthProvider>
-        <AssociationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Home />} />
-
-              {/* Guest routes */}
-              <Route 
-                path="/login" 
-                element={
-                  <GuestGuard>
-                    <Login />
-                  </GuestGuard>
-                } 
-              />
-              <Route 
-                path="/register" 
-                element={
-                  <GuestGuard>
-                    <Register />
-                  </GuestGuard>
-                } 
-              />
+        <Router>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/home" element={<Home />} />
+            
+            {/* Guest routes (redirect to dashboard if authenticated) */}
+            <Route element={<GuestGuard />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+            </Route>
+            
+            {/* Special routes */}
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            {/* Protected routes */}
+            <Route element={<AuthGuard />}>
+              {/* Setup route */}
+              <Route path="/setup" element={<SetupWizard />} />
               
-              {/* Setup wizard (for new users) */}
-              <Route
-                path="/setup"
-                element={
-                  <AuthGuard>
-                    <SetupWizard />
-                  </AuthGuard>
-                }
-              />
-
-              {/* Protected routes */}
-              <Route element={
-                <AuthGuard>
-                  <MainLayout />
-                </AuthGuard>
-              }>
+              {/* Routes with main layout */}
+              <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                
-                {/* Association management */}
-                <Route path="/association">
-                  <Route index element={<AssociationsList />} />
-                  <Route path=":id" element={<AssociationDetails />} />
-                </Route>
-                
-                {/* Inventory management */}
-                <Route path="/inventory">
-                  <Route index element={<InventoryList />} />
-                  {/* Additional inventory routes will be added as needed */}
-                </Route>
-                
-                {/* Convention management */}
-                <Route path="/conventions">
-                  <Route index element={<ConventionsList />} />
-                  {/* Additional convention routes will be added as needed */}
-                </Route>
-                
-                <Route path="/reports" element={<ReportsList />} />
                 <Route path="/settings" element={<Settings />} />
                 
-                {/* Admin routes with role guard */}
-                <Route path="/admin/*" element={
-                  <RoleGuard allowedRoles={["admin", "super_admin"]}>
-                    <AdminPanel />
-                  </RoleGuard>
-                } />
+                <Route path="/inventory" element={<InventoryList />} />
+                <Route path="/conventions" element={<ConventionsList />} />
+                <Route path="/reports" element={<ReportsList />} />
+                
+                <Route path="/associations" element={<AssociationsList />} />
+                <Route path="/associations/:id" element={<AssociationDetails />} />
+                
+                {/* Admin routes */}
+                <Route element={<RoleGuard allowedRoles={['admin', 'super_admin']} fallbackPath="/unauthorized" />}>
+                  <Route path="/admin" element={<AdminPanel />} />
+                </Route>
               </Route>
-
-              {/* Error pages */}
-              <Route path="/unauthorized" element={<Unauthorized />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
-        </AssociationProvider>
+            </Route>
+            
+            {/* Error pages */}
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+        <Toaster />
       </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
+    </ThemeProvider>
+  );
+};
 
 export default App;

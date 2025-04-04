@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Spinner } from '@/components/ui/spinner';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   if (isLoading || isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <Spinner className="h-8 w-8" />
       </div>
     );
   }
