@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { componentTagger } from "lovable-tagger"
 
 // Get the repository name from environment variables or default to local development
 const base = process.env.GITHUB_REPOSITORY 
@@ -9,11 +10,15 @@ const base = process.env.GITHUB_REPOSITORY
   : '/'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    mode === 'development' && componentTagger(),
+  ].filter(Boolean),
   base,
   server: {
-    port: 8080
+    port: 8080,
+    host: "::",
   },
   resolve: {
     alias: {
@@ -34,4 +39,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))

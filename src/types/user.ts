@@ -6,4 +6,5 @@ export interface User extends SupabaseUser {
   name?: string;
   profileImage?: string;
   role?: string;
+  email?: string;
 }

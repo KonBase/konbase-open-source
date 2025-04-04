@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User, AuthError } from '@supabase/supabase-js';
@@ -16,7 +15,7 @@ interface AuthContextType {
   error: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  hasPermission: (role: UserRole | string) => boolean;
+  hasPermission: (role: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   userProfile: any | null;
@@ -43,7 +42,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(session?.user || null);
         setError(error?.message || null);
         
-        // Fetch user profile if user is authenticated
         if (session?.user) {
           await fetchUserProfile(session.user.id);
         }
@@ -72,7 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
   
-  // Fetch the user profile from the database
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -83,7 +80,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
       if (error) throw error;
       
-      // Add profileImage and name properties to the user object for components that rely on them
       if (user && data) {
         const enhancedUser = {
           ...user,
@@ -99,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const hasPermission = (requiredRole: UserRole | string) => {
+  const hasPermission = (requiredRole: string) => {
     if (!userProfile) return false;
     
     const roleHierarchy: Record<string, number> = {
@@ -110,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       'guest': 20
     };
     
-    const userRoleValue = roleHierarchy[userProfile.role] || 0;
+    const userRoleValue = roleHierarchy[userProfile.role as string] || 0;
     const requiredRoleValue = roleHierarchy[requiredRole] || 0;
     
     return userRoleValue >= requiredRoleValue;
@@ -182,7 +178,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Alias methods for backward compatibility
   const login = signIn;
   const logout = signOut;
 
