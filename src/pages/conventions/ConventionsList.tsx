@@ -103,7 +103,7 @@ const ConventionsList = () => {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/association">Go to Associations</Link>
+              <Link to="/association">Go to Associations</Link>
             </Button>
           </CardContent>
         </Card>

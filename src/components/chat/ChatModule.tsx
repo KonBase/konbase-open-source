@@ -45,7 +45,7 @@ export function ChatModule() {
             filter: `association_id=eq.${currentAssociation.id}`
           },
           (payload) => {
-            const newMessage = payload.new as unknown as ChatMessage;
+            const newMessage = payload.new as ChatMessage;
             setMessages(prev => [...prev, newMessage]);
           }
         )

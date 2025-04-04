@@ -218,6 +218,41 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          association_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_name: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_name: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       convention_access: {
         Row: {
           convention_id: string

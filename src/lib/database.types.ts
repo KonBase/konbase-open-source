@@ -247,6 +247,32 @@ export interface Database {
           updated_at?: string
         }
       }
+      chat_messages: {
+        Row: {
+          id: string
+          association_id: string
+          sender_id: string
+          sender_name: string
+          message: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          association_id: string
+          sender_id: string
+          sender_name: string
+          message: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          association_id?: string
+          sender_id?: string
+          sender_name?: string
+          message?: string
+          created_at?: string
+        }
+      }
     }
     Views: {}
     Functions: {}
