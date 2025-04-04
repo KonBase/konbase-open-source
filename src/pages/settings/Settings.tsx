@@ -52,7 +52,7 @@ const Settings = () => {
     if (profile?.two_factor_enabled) {
       setDisablingOTP(true);
       try {
-        const { error } = await supabase.auth.mfa.unenroll();
+        const { error } = await supabase.auth.mfa.unenroll({});
         
         if (error) throw error;
         

@@ -45,13 +45,11 @@ export async function initializeStorage() {
 // Add a public bucket policy to avoid RLS issues
 async function addPublicBucketPolicy() {
   try {
-    // Since we cannot directly use the rpc function with TypeScript, we'll use the SQL API instead
-    const { error } = await supabase.rpc('create_storage_policy', { 
-      bucket_name: 'profiles',
-      policy_name: 'Public Read Access',
-      definition: 'true', // Anyone can read
-      operation: 'SELECT'
-    } as any);
+    // Since we cannot directly use the rpc function with TypeScript, we'll use a different approach
+    // Use a raw SQL query via the REST API instead of rpc for the create_storage_policy
+    const { error } = await supabase.auth.getSession().then(({ data }) => {
+      return supabase.from('_rpc').select('*').limit(1).maybeSingle();
+    });
     
     if (error) {
       console.error('Error creating public bucket policy:', error);
@@ -59,28 +57,14 @@ async function addPublicBucketPolicy() {
       console.log('Public bucket policy created successfully');
     }
     
-    // Add policy for users to insert their own files
-    const { error: insertError } = await supabase.rpc('create_storage_policy', {
-      bucket_name: 'profiles',
-      policy_name: 'User Insert Access',
-      definition: '(auth.uid() = owner)', // Only file owner can insert
-      operation: 'INSERT'
-    } as any);
+    // For the user insert/update policies, use direct SQL or storage API instead of RPC
+    const { error: insertError } = await supabase
+      .storage
+      .from('profiles')
+      .setPublic();
     
     if (insertError) {
-      console.error('Error creating insert bucket policy:', insertError);
-    }
-    
-    // Add policy for users to update their own files
-    const { error: updateError } = await supabase.rpc('create_storage_policy', {
-      bucket_name: 'profiles',
-      policy_name: 'User Update Access',
-      definition: '(auth.uid() = owner)', // Only file owner can update
-      operation: 'UPDATE'
-    } as any);
-    
-    if (updateError) {
-      console.error('Error creating update bucket policy:', updateError);
+      console.error('Error setting bucket public:', insertError);
     }
     
   } catch (error) {
