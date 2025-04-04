@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -60,15 +61,32 @@ export function useUserProfile() {
     try {
       setLoading(true);
       
+      // Use maybeSingle instead of single to handle the case where no profile is found
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
         
       if (error) throw error;
       
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+      } else {
+        console.warn(`No profile found for user ID: ${userId}`);
+        // Create a minimal profile with defaults
+        setProfile({
+          id: userId,
+          email: user?.email || "",
+          name: user?.email?.split('@')[0] || "User",
+          role: 'guest' as UserRole,
+          association_id: null,
+          profile_image: null,
+          two_factor_enabled: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
       setProfile(null);

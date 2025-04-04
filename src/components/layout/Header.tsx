@@ -24,6 +24,11 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   ]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  
+  // Extract user display values with fallbacks
+  const userName = user?.name || 'User';
+  const userEmail = user?.email || '';
+  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4">
@@ -94,9 +99,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                     {user.profileImage ? (
-                      <img src={user.profileImage} alt={user.name} className="w-8 h-8 rounded-full" />
+                      <img src={user.profileImage} alt={userName} className="w-8 h-8 rounded-full" />
                     ) : (
-                      <span className="font-medium text-primary">{user.name.charAt(0)}</span>
+                      <span className="font-medium text-primary">{userInitial}</span>
                     )}
                   </div>
                 </Button>
@@ -105,14 +110,14 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                 <div className="flex flex-col items-center p-4 border-b">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                     {user.profileImage ? (
-                      <img src={user.profileImage} alt={user.name} className="w-12 h-12 rounded-full" />
+                      <img src={user.profileImage} alt={userName} className="w-12 h-12 rounded-full" />
                     ) : (
-                      <span className="text-lg font-medium text-primary">{user.name.charAt(0)}</span>
+                      <span className="text-lg font-medium text-primary">{userInitial}</span>
                     )}
                   </div>
                   <div className="text-center">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="font-medium">{userName}</p>
+                    <p className="text-xs text-muted-foreground">{userEmail}</p>
                   </div>
                 </div>
                 <DropdownMenuItem>Profile</DropdownMenuItem>

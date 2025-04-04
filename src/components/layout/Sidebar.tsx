@@ -105,6 +105,11 @@ const Sidebar: React.FC = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
+  
+  // Extract user display values with fallbacks
+  const userName = user?.name || 'User';
+  const userRole = user?.role || 'Guest';
+  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : '?';
 
   return (
     <aside className="h-screen w-64 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -197,16 +202,14 @@ const Sidebar: React.FC = () => {
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
               {user.profileImage ? (
-                <img src={user.profileImage} alt={user.name} className="w-8 h-8 rounded-full" />
+                <img src={user.profileImage} alt={userName} className="w-8 h-8 rounded-full" />
               ) : (
-                <span className="font-medium text-sidebar-foreground">
-                  {user.name && user.name.length > 0 ? user.name.charAt(0) : '?'}
-                </span>
+                <span className="font-medium text-sidebar-foreground">{userInitial}</span>
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-sidebar-foreground">{user.name || 'User'}</p>
-              <p className="text-xs text-sidebar-foreground/70">{user.role || 'Guest'}</p>
+              <p className="text-sm font-medium text-sidebar-foreground">{userName}</p>
+              <p className="text-xs text-sidebar-foreground/70">{userRole}</p>
             </div>
           </div>
           <Button 

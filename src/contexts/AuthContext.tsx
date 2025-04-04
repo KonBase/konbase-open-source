@@ -81,24 +81,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const fetchUserProfile = async (userId: string) => {
     try {
+      // Use maybeSingle instead of single to handle the case where no profile exists
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
         
       if (error) throw error;
       
-      if (user && data) {
+      if (user) {
+        // Create a default profile if none exists
+        const profileData = data || {
+          id: userId,
+          name: user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          role: 'guest',
+          profile_image: null
+        };
+        
         const enhancedUser = {
           ...user,
-          name: data.name || data.email || 'User',
-          profileImage: data.profile_image,
-          role: data.role || 'member',
-          email: user.email
+          name: profileData.name || profileData.email || 'User',
+          profileImage: profileData.profile_image,
+          role: profileData.role || 'guest',
+          email: user.email || profileData.email
         };
+        
         setUser(enhancedUser);
-        setUserProfile(data);
+        setUserProfile(profileData);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
