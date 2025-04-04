@@ -199,12 +199,14 @@ const Sidebar: React.FC = () => {
               {user.profileImage ? (
                 <img src={user.profileImage} alt={user.name} className="w-8 h-8 rounded-full" />
               ) : (
-                <span className="font-medium text-sidebar-foreground">{user.name.charAt(0)}</span>
+                <span className="font-medium text-sidebar-foreground">
+                  {user.name && user.name.length > 0 ? user.name.charAt(0) : '?'}
+                </span>
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-sidebar-foreground">{user.name}</p>
-              <p className="text-xs text-sidebar-foreground/70">{user.role}</p>
+              <p className="text-sm font-medium text-sidebar-foreground">{user.name || 'User'}</p>
+              <p className="text-xs text-sidebar-foreground/70">{user.role || 'Guest'}</p>
             </div>
           </div>
           <Button 
