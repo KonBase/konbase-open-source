@@ -93,7 +93,8 @@ export function useUserProfile() {
           console.warn(`No profile found for user ID: ${userId}, creating default profile`);
           
           if (user?.email) {
-            const defaultProfile: Partial<Profile> = {
+            // Create a properly typed object for insertion
+            const defaultProfile = {
               id: userId,
               email: user.email,
               name: user.email.split('@')[0] || "User",

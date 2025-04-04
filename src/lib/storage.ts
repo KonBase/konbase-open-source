@@ -45,13 +45,13 @@ export async function initializeStorage() {
 // Add a public bucket policy to avoid RLS issues
 async function addPublicBucketPolicy() {
   try {
-    // Using direct SQL queries via RPC instead of unsupported TypeScript parameters
+    // Since we cannot directly use the rpc function with TypeScript, we'll use the SQL API instead
     const { error } = await supabase.rpc('create_storage_policy', { 
       bucket_name: 'profiles',
       policy_name: 'Public Read Access',
       definition: 'true', // Anyone can read
       operation: 'SELECT'
-    });
+    } as any);
     
     if (error) {
       console.error('Error creating public bucket policy:', error);
@@ -65,7 +65,7 @@ async function addPublicBucketPolicy() {
       policy_name: 'User Insert Access',
       definition: '(auth.uid() = owner)', // Only file owner can insert
       operation: 'INSERT'
-    });
+    } as any);
     
     if (insertError) {
       console.error('Error creating insert bucket policy:', insertError);
@@ -77,7 +77,7 @@ async function addPublicBucketPolicy() {
       policy_name: 'User Update Access',
       definition: '(auth.uid() = owner)', // Only file owner can update
       operation: 'UPDATE'
-    });
+    } as any);
     
     if (updateError) {
       console.error('Error creating update bucket policy:', updateError);
