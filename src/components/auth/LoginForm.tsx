@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { supabase } from '@/lib/supabase';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const LoginForm = () => {
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -20,17 +23,44 @@ const LoginForm = () => {
   const { signIn } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const emailVerificationNeeded = location.state?.emailVerification;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
+      // First check if the user's email is verified
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (signInError) throw signInError;
+      
+      // Check if email is confirmed
+      if (!signInData?.user?.email_confirmed_at) {
+        toast({
+          title: "Email verification required",
+          description: "Please check your inbox and verify your email before logging in.",
+          variant: "destructive",
+        });
+        
+        // Sign out the user since we don't want unverified users to be signed in
+        await supabase.auth.signOut();
+        setIsLoading(false);
+        return;
+      }
+      
+      // If email is verified, proceed with normal login flow
       await signIn(email, password);
+      
       toast({
         title: 'Login successful',
         description: 'Welcome back to KonBase!',
       });
+      
+      // Redirect to dashboard
       navigate('/dashboard');
     } catch (error: any) {
       console.error(error);
@@ -75,6 +105,16 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {emailVerificationNeeded && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Email Verification Required</AlertTitle>
+            <AlertDescription>
+              Please check your inbox and verify your email before logging in.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
