@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { Bell, Menu, MessageSquare, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bell, Menu, MessageSquare, Search, LogOut, Settings, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -10,13 +11,15 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   toggleSidebar: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [notifications] = useState<{ id: string; title: string; read: boolean }[]>([
     { id: '1', title: 'New equipment request', read: false },
     { id: '2', title: 'Equipment return due', read: false },
@@ -30,12 +33,20 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
   const userEmail = user?.email || '';
   const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4">
       <div className="flex items-center">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden mr-2">
           <Menu className="h-5 w-5" />
         </Button>
+        
+        <Link to="/" className="font-bold text-lg text-primary mr-6">KonBase</Link>
+        
         <div className="relative hidden md:flex items-center">
           <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -120,10 +131,18 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
                     <p className="text-xs text-muted-foreground">{userEmail}</p>
                   </div>
                 </div>
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Account Settings</DropdownMenuItem>
-                <DropdownMenuItem>Support</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">Logout</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -1,7 +1,7 @@
 
-# EventNexus Supply Management System
+# KonBase Supply Management System
 
-EventNexus Supply is a comprehensive inventory and convention management system built for associations that organize events and need to track their equipment and supplies.
+KonBase is a comprehensive inventory and convention management system built for associations that organize events and need to track their equipment and supplies.
 
 ## Key Features
 
@@ -49,8 +49,8 @@ EventNexus Supply is a comprehensive inventory and convention management system 
 
 1. Clone the repository
    ```
-   git clone https://github.com/your-username/eventnexus-supply.git
-   cd eventnexus-supply
+   git clone https://github.com/ShiroLuxferre/KonBase.git
+   cd konbase
    ```
 
 2. Install dependencies
@@ -87,6 +87,11 @@ To deploy to GitHub Pages:
    - SUPABASE_ANON_KEY: Your Supabase anonymous key
 
 3. Push changes to the main branch to trigger automatic deployment
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request or create an issue on the project repository:
+[https://github.com/ShiroLuxferre/KonBase](https://github.com/ShiroLuxferre/KonBase)
 
 ## Technologies Used
 

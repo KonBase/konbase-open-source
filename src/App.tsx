@@ -14,6 +14,9 @@ import MainLayout from "./components/layout/MainLayout";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 
+// Home Page
+import Home from "./pages/Home";
+
 // Protected Pages
 import Dashboard from "./pages/Dashboard";
 import Unauthorized from "./pages/error/Unauthorized";
@@ -53,7 +56,7 @@ const App = () => (
             <Sonner />
             <Routes>
               {/* Public routes */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<Home />} />
 
               {/* Guest routes */}
               <Route 

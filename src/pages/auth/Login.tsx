@@ -74,7 +74,7 @@ const Login = () => {
       <ScrollArea className="flex-1 p-8 flex items-center justify-center">
         <div className="max-w-md mx-auto w-full">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">EventNexus</h1>
+            <h1 className="text-2xl font-bold">KonBase</h1>
             <p className="text-muted-foreground">Supply Chain Management</p>
           </div>
           <LoginForm />
