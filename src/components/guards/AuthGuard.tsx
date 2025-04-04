@@ -2,11 +2,10 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
-import { UserRole } from '@/types';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRole?: UserRole | string;
+  requiredRole?: string;
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRole }) => {

@@ -2,10 +2,10 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUserProfile, UserRole } from '@/hooks/useUserProfile';
-import Spinner from '@/components/ui/spinner';
+import { Spinner } from '@/components/ui/spinner';
 
 interface RoleGuardProps {
-  allowedRoles: UserRole[];
+  allowedRoles: string[];
   children: ReactNode;
   fallbackPath?: string;
 }

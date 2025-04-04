@@ -1,24 +1,14 @@
 
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../integrations/supabase/types';
 
-// Default values for development - these should be overridden in production
-const defaultUrl = 'https://your-project.supabase.co';
-const defaultAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Replace with your anon key or a placeholder
+const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
 
-// Get environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || defaultUrl;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || defaultAnonKey;
-
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
+    storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
   }
 });
-
-// Helper function to check if we're using default values (useful for development)
-export const isUsingDefaultCredentials = () => {
-  return supabaseUrl === defaultUrl || supabaseAnonKey === defaultAnonKey;
-};

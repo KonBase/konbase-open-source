@@ -1,9 +1,9 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Session, User, AuthError } from '@supabase/supabase-js';
+import { Session, AuthError } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
-import { UserRole } from '@/types';
+import { User } from '@/types/user';
 
 interface AuthContextType {
   session: Session | null;
@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const navigate = useNavigate();
   const isAuthenticated = !!session;
   const isLoading = loading;
 
@@ -39,12 +38,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         setSession(session);
-        setUser(session?.user || null);
-        setError(error?.message || null);
         
         if (session?.user) {
+          const userData = session.user as unknown as User;
+          setUser(userData);
           await fetchUserProfile(session.user.id);
+        } else {
+          setUser(null);
         }
+        
+        setError(error?.message || null);
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
@@ -55,13 +58,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
-        setUser(session?.user || null);
         
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          const userData = session.user as unknown as User;
+          setUser(userData);
+          
+          // Use setTimeout to prevent auth deadlock
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
         } else {
+          setUser(null);
           setUserProfile(null);
         }
       }
@@ -85,9 +94,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...user,
           name: data.name || data.email || 'User',
           profileImage: data.profile_image,
-          role: data.role || 'member'
+          role: data.role || 'member',
+          email: user.email
         };
-        setUser(enhancedUser as User);
+        setUser(enhancedUser);
         setUserProfile(data);
       }
     } catch (error) {
@@ -124,8 +134,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive"
         });
         setError(error.message);
-      } else {
-        navigate('/dashboard');
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -153,7 +161,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           title: "Registration successful",
           description: "Please check your email to confirm your account.",
         });
-        navigate('/login');
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -168,7 +175,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       await supabase.auth.signOut();
-      navigate('/');
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
