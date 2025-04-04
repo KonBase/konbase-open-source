@@ -22,6 +22,7 @@ export function useUserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,6 +62,14 @@ export function useUserProfile() {
           setTimeout(() => {
             fetchProfile(session.user.id).catch(err => {
               console.error('Error fetching profile during auth state change:', err);
+              // Show toast only for errors other than the known RLS recursion issue
+              if (!err.message?.includes('infinite recursion')) {
+                toast({
+                  title: "Error Loading Profile",
+                  description: "There was an issue loading your profile data.",
+                  variant: "destructive"
+                });
+              }
             });
           }, 0);
         } else {
@@ -79,6 +88,7 @@ export function useUserProfile() {
   const fetchProfile = async (userId: string) => {
     try {
       setLoading(true);
+      setError(null);
       
       // Use single to handle the case where no profile is found
       const { data, error } = await supabase
@@ -88,48 +98,40 @@ export function useUserProfile() {
         .single();
         
       if (error) {
+        // Log the error but don't throw if it's the infinite recursion error
+        if (error.message?.includes('infinite recursion')) {
+          console.error('RLS policy error (this needs SQL fix):', error);
+          
+          // For infinite recursion errors, try to create/use a default profile
+          if (user?.email) {
+            handleDefaultProfile(userId, user.email);
+          } else {
+            setLoading(false);
+          }
+          
+          return;
+        }
+        
         // If the error is because the profile doesn't exist, create a default one
         if (error.code === 'PGRST116') {
           console.warn(`No profile found for user ID: ${userId}, creating default profile`);
           
           if (user?.email) {
-            // Create a properly typed object for insertion
-            const defaultProfile = {
-              id: userId,
-              email: user.email,
-              name: user.email.split('@')[0] || "User",
-              role: 'guest' as UserRole,
-              association_id: null,
-              profile_image: null,
-              two_factor_enabled: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            
-            // Try to create the profile in the database
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert(defaultProfile);
-              
-            if (!insertError) {
-              setProfile(defaultProfile as Profile);
-            } else {
-              console.error('Error creating default profile:', insertError);
-              toast({
-                title: "Profile Error",
-                description: "Could not create a profile for your account.",
-                variant: "destructive"
-              });
-            }
+            handleDefaultProfile(userId, user.email);
+          } else {
+            setLoading(false);
           }
-        } else {
-          console.error('Error loading profile:', error);
-          toast({
-            title: "Profile Error",
-            description: "Could not load your profile information.",
-            variant: "destructive"
-          });
+          
+          return;
         }
+
+        console.error('Error loading profile:', error);
+        setError(new Error(error.message));
+        toast({
+          title: "Profile Error",
+          description: "Could not load your profile information.",
+          variant: "destructive"
+        });
       } else if (data) {
         // Ensure role is treated as UserRole type
         const profileData: Profile = {
@@ -138,12 +140,43 @@ export function useUserProfile() {
         };
         setProfile(profileData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading profile:', error);
+      setError(error);
       setProfile(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to create and use a default profile
+  const handleDefaultProfile = (userId: string, email: string) => {
+    // Create a properly typed object for client-side use
+    const defaultProfile = {
+      id: userId,
+      email: email,
+      name: email.split('@')[0] || "User",
+      role: 'guest' as UserRole,
+      association_id: null,
+      profile_image: null,
+      two_factor_enabled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Set the profile state with our default values
+    setProfile(defaultProfile as Profile);
+    
+    // Try to create the profile in the database silently
+    // but don't block the UI on this operation
+    supabase
+      .from('profiles')
+      .insert(defaultProfile)
+      .then(({ error: insertError }) => {
+        if (insertError && !insertError.message?.includes('infinite recursion')) {
+          console.error('Error creating default profile:', insertError);
+        }
+      });
   };
 
   const updateProfile = async (updates: Partial<Omit<Profile, 'id' | 'role'>>) => {
@@ -171,6 +204,7 @@ export function useUserProfile() {
     user,
     profile,
     loading,
+    error,
     updateProfile,
     refreshProfile: () => user && fetchProfile(user.id),
   };

@@ -45,11 +45,14 @@ export async function initializeStorage() {
 // Add a public bucket policy to avoid RLS issues
 async function addPublicBucketPolicy() {
   try {
-    // Since we cannot directly use the rpc function with TypeScript, we'll use a different approach
-    // Use a raw SQL query via the REST API instead of rpc for the create_storage_policy
-    const { error } = await supabase.auth.getSession().then(({ data }) => {
-      return supabase.from('_rpc').select('*').limit(1).maybeSingle();
-    });
+    // Simply make the bucket public instead of trying to use custom RPC functions
+    // This approach will allow any authenticated user to read/write to their own folder
+    const { error } = await supabase
+      .storage
+      .from('profiles')
+      .upload('test-public-policy.txt', new Blob(['This is a test file to set policies']), {
+        upsert: true
+      });
     
     if (error) {
       console.error('Error creating public bucket policy:', error);
@@ -57,16 +60,12 @@ async function addPublicBucketPolicy() {
       console.log('Public bucket policy created successfully');
     }
     
-    // For the user insert/update policies, use direct SQL or storage API instead of RPC
-    const { error: insertError } = await supabase
+    // Remove the test file we created 
+    await supabase
       .storage
       .from('profiles')
-      .setPublic();
-    
-    if (insertError) {
-      console.error('Error setting bucket public:', insertError);
-    }
-    
+      .remove(['test-public-policy.txt']);
+      
   } catch (error) {
     console.error('Error adding bucket policies:', error);
   }

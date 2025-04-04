@@ -52,7 +52,17 @@ const Settings = () => {
     if (profile?.two_factor_enabled) {
       setDisablingOTP(true);
       try {
-        const { error } = await supabase.auth.mfa.unenroll({});
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        
+        const totpFactor = factors?.totp?.[0];
+        
+        if (!totpFactor) {
+          throw new Error('No TOTP factor found to disable');
+        }
+        
+        const { error } = await supabase.auth.mfa.unenroll({
+          factorId: totpFactor.id
+        });
         
         if (error) throw error;
         
