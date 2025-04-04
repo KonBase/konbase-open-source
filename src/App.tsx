@@ -35,7 +35,7 @@ import { Toaster } from './components/ui/toaster';
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="konbase-theme">
+    <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
       <AuthProvider>
         <Router>
           <Routes>
