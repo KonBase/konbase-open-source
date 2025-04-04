@@ -218,6 +218,90 @@ export type Database = {
           },
         ]
       }
+      convention_access: {
+        Row: {
+          convention_id: string
+          created_at: string | null
+          id: string
+          invitation_code: string | null
+          user_id: string
+        }
+        Insert: {
+          convention_id: string
+          created_at?: string | null
+          id?: string
+          invitation_code?: string | null
+          user_id: string
+        }
+        Update: {
+          convention_id?: string
+          created_at?: string | null
+          id?: string
+          invitation_code?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_access_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      convention_invitations: {
+        Row: {
+          code: string
+          convention_id: string
+          created_at: string | null
+          created_by: string
+          expires_at: string | null
+          id: string
+          uses_remaining: number | null
+        }
+        Insert: {
+          code: string
+          convention_id: string
+          created_at?: string | null
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          uses_remaining?: number | null
+        }
+        Update: {
+          code?: string
+          convention_id?: string
+          created_at?: string | null
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          uses_remaining?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_invitations_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       convention_locations: {
         Row: {
           convention_id: string
@@ -846,11 +930,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_create_association: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       get_user_role: {
         Args: {
           user_id: string
         }
         Returns: string
+      }
+      has_convention_access: {
+        Args: {
+          user_id: string
+          conv_id: string
+        }
+        Returns: boolean
       }
       is_association_member: {
         Args: {
