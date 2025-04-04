@@ -76,29 +76,39 @@ export function useCategories() {
 
     try {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const id = crypto.randomUUID();
+      
+      const { error } = await supabase
         .from('categories')
         .insert({
+          id,
           name,
           description: description || null,
           association_id: currentAssociation.id,
           parent_id: parentId || null,
           created_at: now,
           updated_at: now
-        })
-        .select()
-        .single();
+        });
 
       if (error) throw error;
+      
+      // Fetch the newly created category
+      const { data: newCategoryData, error: fetchError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError) throw fetchError;
 
       const newCategory: Category = {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        associationId: data.association_id,
-        parentId: data.parent_id,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
+        id: newCategoryData.id,
+        name: newCategoryData.name,
+        description: newCategoryData.description,
+        associationId: newCategoryData.association_id,
+        parentId: newCategoryData.parent_id,
+        createdAt: newCategoryData.created_at,
+        updatedAt: newCategoryData.updated_at
       };
 
       setCategories(prev => [...prev, newCategory]);
@@ -216,7 +226,100 @@ export function useCategories() {
     loading,
     refreshCategories: fetchCategories,
     createCategory,
-    updateCategory,
-    deleteCategory
+    updateCategory: async (id: string, updates: { name?: string; description?: string; parentId?: string | null }) => {
+      try {
+        const { error } = await supabase
+          .from('categories')
+          .update({
+            name: updates.name,
+            description: updates.description,
+            parent_id: updates.parentId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setCategories(prev =>
+          prev.map(cat =>
+            cat.id === id
+              ? { 
+                  ...cat, 
+                  name: updates.name || cat.name, 
+                  description: updates.description !== undefined ? updates.description : cat.description,
+                  parentId: updates.parentId !== undefined ? updates.parentId : cat.parentId,
+                  updatedAt: new Date().toISOString()
+                }
+              : cat
+          )
+        );
+        
+        return true;
+      } catch (error: any) {
+        console.error('Error updating category:', error);
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive'
+        });
+        return false;
+      }
+    },
+    deleteCategory: async (id: string) => {
+      try {
+        // Check if category has items
+        const { count, error: countError } = await supabase
+          .from('items')
+          .select('id', { count: 'exact', head: true })
+          .eq('category_id', id);
+
+        if (countError) throw countError;
+        
+        if (count && count > 0) {
+          toast({
+            title: 'Cannot Delete',
+            description: `This category has ${count} items assigned to it. Please reassign or delete these items first.`,
+            variant: 'destructive'
+          });
+          return false;
+        }
+
+        // Check if category has children
+        const { count: childCount, error: childCountError } = await supabase
+          .from('categories')
+          .select('id', { count: 'exact', head: true })
+          .eq('parent_id', id);
+
+        if (childCountError) throw childCountError;
+        
+        if (childCount && childCount > 0) {
+          toast({
+            title: 'Cannot Delete',
+            description: `This category has ${childCount} subcategories. Please delete or reassign these subcategories first.`,
+            variant: 'destructive'
+          });
+          return false;
+        }
+
+        // Proceed with deletion
+        const { error } = await supabase
+          .from('categories')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setCategories(prev => prev.filter(cat => cat.id !== id));
+        return true;
+      } catch (error: any) {
+        console.error('Error deleting category:', error);
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive'
+        });
+        return false;
+      }
+    }
   };
 }

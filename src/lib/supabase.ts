@@ -12,3 +12,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     autoRefreshToken: true,
   }
 });
+
+// Helper function to check if using default credentials
+export const isUsingDefaultCredentials = () => {
+  return SUPABASE_URL === "https://ceeoxorrfduotwfgmegx.supabase.co";
+};

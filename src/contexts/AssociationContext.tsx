@@ -39,15 +39,26 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       setIsLoading(true);
       try {
-        // First get all associations this user is a member of
-        let { data: memberships, error: membershipError } = await supabase
-          .from('association_members')
+        // Get all associations this user belongs to (approach modified to work with available tables)
+        const { data: userAssocs, error } = await supabase
+          .from('users')
           .select('association_id')
-          .eq('user_id', profile.id);
-
-        if (membershipError) throw membershipError;
+          .eq('id', profile.id)
+          .not('association_id', 'is', null);
         
-        const associationIds = memberships?.map(m => m.association_id) || [];
+        if (error) throw error;
+        
+        // If user has no associations, exit early
+        if (!userAssocs || userAssocs.length === 0) {
+          setUserAssociations([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Get the association IDs
+        const associationIds = userAssocs
+          .filter(assoc => assoc.association_id) // Filter out null values
+          .map(assoc => assoc.association_id as string);
         
         if (associationIds.length > 0) {
           // Get detailed information about each association
@@ -59,7 +70,7 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           if (associationsError) throw associationsError;
           
           if (associations && associations.length > 0) {
-            setUserAssociations(associations.map(a => ({
+            const formattedAssociations = associations.map(a => ({
               id: a.id,
               name: a.name,
               description: a.description || undefined,
@@ -70,22 +81,13 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
               website: a.website || undefined,
               createdAt: a.created_at,
               updatedAt: a.updated_at
-            })));
+            }));
+            
+            setUserAssociations(formattedAssociations);
             
             // Set the first association as current if none is selected
-            if (!currentAssociation) {
-              setCurrentAssociation({
-                id: associations[0].id,
-                name: associations[0].name,
-                description: associations[0].description || undefined,
-                logo: associations[0].logo || undefined,
-                address: associations[0].address || undefined,
-                contactEmail: associations[0].contact_email,
-                contactPhone: associations[0].contact_phone || undefined,
-                website: associations[0].website || undefined,
-                createdAt: associations[0].created_at,
-                updatedAt: associations[0].updated_at
-              });
+            if (!currentAssociation && formattedAssociations.length > 0) {
+              setCurrentAssociation(formattedAssociations[0]);
             }
           }
         }
@@ -102,7 +104,7 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
 
     loadAssociations();
-  }, [profile]);
+  }, [profile, currentAssociation]);
 
   const updateAssociation = async (data: Partial<Association>) => {
     setIsLoading(true);
@@ -167,9 +169,13 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       if (!profile) throw new Error("You must be logged in to create an association");
       
+      // Generate UUID for new association
+      const id = crypto.randomUUID();
+      
       // Convert to snake_case for database
       const now = new Date().toISOString();
       const dbData = {
+        id,
         name: data.name || 'New Association',
         description: data.description,
         logo: data.logo,
@@ -182,39 +188,30 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       };
       
       // Insert new association
-      const { data: newAssociation, error } = await supabase
+      const { error } = await supabase
         .from('associations')
-        .insert(dbData)
-        .select()
-        .single();
+        .insert(dbData);
         
       if (error) throw error;
       
-      if (!newAssociation) throw new Error("Failed to create association");
-      
-      // Make the user a member (and admin) of the new association
+      // Update the user's association_id in the profiles table
       await supabase
-        .from('association_members')
-        .insert({
-          association_id: newAssociation.id,
-          user_id: profile.id,
-          role: 'admin',
-          created_at: now,
-          updated_at: now
-        });
+        .from('users')
+        .update({ association_id: id })
+        .eq('id', profile.id);
       
       // Format the association for our app
       const formattedAssociation: Association = {
-        id: newAssociation.id,
-        name: newAssociation.name,
-        description: newAssociation.description || undefined,
-        logo: newAssociation.logo || undefined,
-        address: newAssociation.address || undefined,
-        contactEmail: newAssociation.contact_email,
-        contactPhone: newAssociation.contact_phone || undefined,
-        website: newAssociation.website || undefined,
-        createdAt: newAssociation.created_at,
-        updatedAt: newAssociation.updated_at
+        id: dbData.id,
+        name: dbData.name,
+        description: dbData.description || undefined,
+        logo: dbData.logo || undefined,
+        address: dbData.address || undefined,
+        contactEmail: dbData.contact_email,
+        contactPhone: dbData.contact_phone || undefined,
+        website: dbData.website || undefined,
+        createdAt: dbData.created_at,
+        updatedAt: dbData.updated_at
       };
       
       // Add to user associations
