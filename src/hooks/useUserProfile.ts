@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { REQUIRED_SQL_FIXES } from '@/lib/supabase-sql-helpers';
 
 export type UserRole = 'super_admin' | 'admin' | 'manager' | 'member' | 'guest';
 
@@ -24,6 +25,7 @@ export function useUserProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
+  const [hasAttemptedSqlFix, setHasAttemptedSqlFix] = useState(false);
 
   useEffect(() => {
     // Get the current session
@@ -62,11 +64,13 @@ export function useUserProfile() {
           setTimeout(() => {
             fetchProfile(session.user.id).catch(err => {
               console.error('Error fetching profile during auth state change:', err);
-              // Show toast only for errors other than the known RLS recursion issue
-              if (!err.message?.includes('infinite recursion')) {
+              
+              if (err.message?.includes('infinite recursion') && !hasAttemptedSqlFix) {
+                setHasAttemptedSqlFix(true);
+                
                 toast({
-                  title: "Error Loading Profile",
-                  description: "There was an issue loading your profile data.",
+                  title: "Database Configuration Required",
+                  description: "Please run the SQL fix in supabase-sql-helpers.ts to resolve the infinite recursion error.",
                   variant: "destructive"
                 });
               }
@@ -90,12 +94,12 @@ export function useUserProfile() {
       setLoading(true);
       setError(null);
       
-      // Use single to handle the case where no profile is found
+      // Use maybeSingle instead of single to handle the case where no profile is found
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
         
       if (error) {
         // Log the error but don't throw if it's the infinite recursion error
@@ -139,6 +143,11 @@ export function useUserProfile() {
           role: data.role as UserRole
         };
         setProfile(profileData);
+      } else {
+        // No profile found and no error, create a default one
+        if (user?.email) {
+          handleDefaultProfile(userId, user.email);
+        }
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);

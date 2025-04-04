@@ -2,7 +2,7 @@
 /**
  * Helper file containing SQL snippets to resolve infinite recursion in RLS policies
  * 
- * To fix the infinite recursion error, run this SQL in the Supabase SQL editor:
+ * URGENT: To fix the infinite recursion error you're seeing, run this SQL in the Supabase SQL editor:
  * 
  * ```sql
  * -- First, create a security definer function to check association membership
