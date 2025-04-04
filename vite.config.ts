@@ -23,7 +23,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // Fix for relative paths in production build
-    assetsDir: 'assets'
+    // Ensure assets are properly referenced with the base path
+    assetsDir: 'assets',
+    // Make sure paths are correctly prefixed with base
+    rollupOptions: {
+      output: {
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js'
+      }
+    }
   }
 })
