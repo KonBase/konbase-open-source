@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -73,12 +72,14 @@ const RegisterForm = () => {
       
       // If email confirmation is disabled, navigate to setup wizard
       if (data.session) {
+        // No need to create profile manually anymore as it's handled by the database trigger
         navigate('/setup');
       } else {
         // If email confirmation is enabled, navigate to login
         navigate('/login');
       }
     } catch (error: any) {
+      console.error('Registration error:', error);
       toast({
         variant: "destructive",
         title: "Registration failed",

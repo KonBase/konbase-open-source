@@ -1,11 +1,10 @@
 
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
-import { ThemeProvider } from './contexts/ThemeProvider';
+import { ThemeProvider } from './components/ui/theme-provider';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Pages
 import Home from './pages/Home';
-import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -41,8 +40,7 @@ const App = () => {
         <Router>
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
+            <Route path="/" element={<Home />} />
             
             {/* Guest routes (redirect to dashboard if authenticated) */}
             <Route element={<GuestGuard><Outlet /></GuestGuard>}>
