@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -121,7 +122,7 @@ const Settings = () => {
       
       if (verifyError) throw verifyError;
       
-      // Update profile - Fix the error by passing the correct parameter
+      // Update profile with the correct parameter
       await updateProfile({ two_factor_enabled: true });
       
       toast({
