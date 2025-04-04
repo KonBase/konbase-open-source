@@ -27,12 +27,24 @@ export function useUserProfile() {
   useEffect(() => {
     // Get the current session
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          setLoading(false);
+          return;
+        }
+        
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Unexpected error in getSession:', error);
         setLoading(false);
       }
     };
@@ -45,7 +57,12 @@ export function useUserProfile() {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          // Using setTimeout to break potential circular dependencies in Supabase callbacks
+          setTimeout(() => {
+            fetchProfile(session.user.id).catch(err => {
+              console.error('Error fetching profile during auth state change:', err);
+            });
+          }, 0);
         } else {
           setProfile(null);
           setLoading(false);
@@ -144,6 +161,7 @@ export function useUserProfile() {
       
       return { success: true };
     } catch (error: any) {
+      console.error('Error updating profile:', error);
       return { success: false, error: error.message };
     }
   };

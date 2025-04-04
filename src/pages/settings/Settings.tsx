@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -51,14 +50,12 @@ const Settings = () => {
   
   const handleToggle2FA = async () => {
     if (profile?.two_factor_enabled) {
-      // Disable 2FA
       setDisablingOTP(true);
       try {
         const { error } = await supabase.auth.mfa.unenroll();
         
         if (error) throw error;
         
-        // Update profile
         await updateProfile({ two_factor_enabled: false });
         
         toast({
@@ -77,7 +74,6 @@ const Settings = () => {
         setDisablingOTP(false);
       }
     } else {
-      // Enable 2FA
       setEnablingOTP(true);
       try {
         const { data, error } = await supabase.auth.mfa.enroll({
@@ -122,7 +118,6 @@ const Settings = () => {
       
       if (verifyError) throw verifyError;
       
-      // Update profile with the correct parameter
       await updateProfile({ two_factor_enabled: true });
       
       toast({
@@ -168,10 +163,8 @@ const Settings = () => {
         description: 'Your account has been permanently deleted.',
       });
       
-      // Sign out the user
       await supabase.auth.signOut();
       
-      // Redirect to home page
       window.location.href = '/';
       
     } catch (error: any) {
