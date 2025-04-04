@@ -39,56 +39,77 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       setIsLoading(true);
       try {
-        // Get all associations this user belongs to (approach modified to work with available tables)
-        const { data: userAssocs, error } = await supabase
-          .from('users')
-          .select('association_id')
-          .eq('id', profile.id)
-          .not('association_id', 'is', null);
-        
-        if (error) throw error;
-        
-        // If user has no associations, exit early
-        if (!userAssocs || userAssocs.length === 0) {
-          setUserAssociations([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Get the association IDs
-        const associationIds = userAssocs
-          .filter(assoc => assoc.association_id) // Filter out null values
-          .map(assoc => assoc.association_id as string);
-        
-        if (associationIds.length > 0) {
-          // Get detailed information about each association
-          const { data: associations, error: associationsError } = await supabase
+        // Get user's association directly from the profile
+        if (profile.association_id) {
+          // Get detailed information about the association
+          const { data: association, error } = await supabase
             .from('associations')
             .select('*')
-            .in('id', associationIds);
+            .eq('id', profile.association_id)
+            .single();
             
-          if (associationsError) throw associationsError;
+          if (error) throw error;
           
-          if (associations && associations.length > 0) {
-            const formattedAssociations = associations.map(a => ({
-              id: a.id,
-              name: a.name,
-              description: a.description || undefined,
-              logo: a.logo || undefined,
-              address: a.address || undefined,
-              contactEmail: a.contact_email,
-              contactPhone: a.contact_phone || undefined,
-              website: a.website || undefined,
-              createdAt: a.created_at,
-              updatedAt: a.updated_at
-            }));
+          if (association) {
+            const formattedAssociation: Association = {
+              id: association.id,
+              name: association.name,
+              description: association.description || undefined,
+              logo: association.logo || undefined,
+              address: association.address || undefined,
+              contactEmail: association.contact_email,
+              contactPhone: association.contact_phone || undefined,
+              website: association.website || undefined,
+              createdAt: association.created_at,
+              updatedAt: association.updated_at
+            };
             
-            setUserAssociations(formattedAssociations);
+            setUserAssociations([formattedAssociation]);
+            setCurrentAssociation(formattedAssociation);
+          }
+        } else {
+          // Check association_members table as an alternative
+          const { data: memberships, error } = await supabase
+            .from('association_members')
+            .select('association_id')
+            .eq('user_id', profile.id);
+          
+          if (error) throw error;
+          
+          if (memberships && memberships.length > 0) {
+            const associationIds = memberships.map(m => m.association_id);
             
-            // Set the first association as current if none is selected
-            if (!currentAssociation && formattedAssociations.length > 0) {
-              setCurrentAssociation(formattedAssociations[0]);
+            // Get information about each association
+            const { data: associations, error: associationsError } = await supabase
+              .from('associations')
+              .select('*')
+              .in('id', associationIds);
+              
+            if (associationsError) throw associationsError;
+            
+            if (associations && associations.length > 0) {
+              const formattedAssociations = associations.map(a => ({
+                id: a.id,
+                name: a.name,
+                description: a.description || undefined,
+                logo: a.logo || undefined,
+                address: a.address || undefined,
+                contactEmail: a.contact_email,
+                contactPhone: a.contact_phone || undefined,
+                website: a.website || undefined,
+                createdAt: a.created_at,
+                updatedAt: a.updated_at
+              }));
+              
+              setUserAssociations(formattedAssociations);
+              
+              // Set the first association as current if none is selected
+              if (!currentAssociation && formattedAssociations.length > 0) {
+                setCurrentAssociation(formattedAssociations[0]);
+              }
             }
+          } else {
+            setUserAssociations([]);
           }
         }
       } catch (error) {
@@ -194,11 +215,14 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
       if (error) throw error;
       
-      // Update the user's association_id in the profiles table
+      // Add the user as a member in the association_members table
       await supabase
-        .from('users')
-        .update({ association_id: id })
-        .eq('id', profile.id);
+        .from('association_members')
+        .insert({
+          user_id: profile.id,
+          association_id: id,
+          role: 'admin', // Make the creator an admin
+        });
       
       // Format the association for our app
       const formattedAssociation: Association = {

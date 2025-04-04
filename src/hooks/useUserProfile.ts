@@ -76,7 +76,7 @@ export function useUserProfile() {
           console.warn(`No profile found for user ID: ${userId}, creating default profile`);
           
           if (user?.email) {
-            const defaultProfile = {
+            const defaultProfile: Profile = {
               id: userId,
               email: user.email,
               name: user.email.split('@')[0] || "User",
@@ -113,7 +113,12 @@ export function useUserProfile() {
           });
         }
       } else if (data) {
-        setProfile(data);
+        // Ensure role is treated as UserRole type
+        const profileData: Profile = {
+          ...data,
+          role: data.role as UserRole
+        };
+        setProfile(profileData);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
