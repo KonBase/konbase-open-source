@@ -35,14 +35,6 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           
-      # Create .nojekyll file to prevent Jekyll processing
-      - name: Add .nojekyll file
-        run: touch ./dist/.nojekyll
-
-      # Create a simple router configuration for GitHub Pages
-      - name: Create 404.html for SPA routing
-        run: cp ./dist/index.html ./dist/404.html
-          
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -61,17 +53,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: production-build
-          path: dist/
-      
-      # Deploy to GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
         id: deployment
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          cname: ${{ secrets.CNAME }}  # Optional: If you have a custom domain
+        uses: actions/deploy-pages@v4
