@@ -1,4 +1,3 @@
-
 name: Build and Deploy
 
 on:
@@ -36,6 +35,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           
+      # Create .nojekyll file to prevent Jekyll processing
+      - name: Add .nojekyll file
+        run: touch ./dist/.nojekyll
+
+      # Create a simple router configuration for GitHub Pages
+      - name: Create 404.html for SPA routing
+        run: cp ./dist/index.html ./dist/404.html
+          
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -49,6 +56,10 @@ jobs:
     # Only deploy when pushing to main branch, not on pull requests
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -56,9 +67,10 @@ jobs:
           name: production-build
           path: dist/
       
-      # Add GitHub Pages deployment with explicit token
+      # Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
+        id: deployment
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
