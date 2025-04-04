@@ -1,9 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Association } from '../types';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
+import { createAssociation as createAssociationHelper } from '@/lib/supabase-helpers';
 
 interface AssociationContextType {
   currentAssociation: Association | null;
@@ -39,9 +39,7 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       setIsLoading(true);
       try {
-        // Get user's association directly from the profile
         if (profile.association_id) {
-          // Get detailed information about the association
           const { data: association, error } = await supabase
             .from('associations')
             .select('*')
@@ -68,7 +66,6 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
             setCurrentAssociation(formattedAssociation);
           }
         } else {
-          // Check association_members table as an alternative
           const { data: memberships, error } = await supabase
             .from('association_members')
             .select('association_id')
@@ -79,7 +76,6 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           if (memberships && memberships.length > 0) {
             const associationIds = memberships.map(m => m.association_id);
             
-            // Get information about each association
             const { data: associations, error: associationsError } = await supabase
               .from('associations')
               .select('*')
@@ -103,7 +99,6 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
               
               setUserAssociations(formattedAssociations);
               
-              // Set the first association as current if none is selected
               if (!currentAssociation && formattedAssociations.length > 0) {
                 setCurrentAssociation(formattedAssociations[0]);
               }
@@ -132,7 +127,6 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       if (!currentAssociation) throw new Error("No association selected");
       
-      // Convert to snake_case for database
       const dbData = {
         name: data.name,
         description: data.description,
@@ -159,7 +153,6 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       setCurrentAssociation(updatedAssociation);
       
-      // Also update in the list of user associations
       setUserAssociations(prev => 
         prev.map(assoc => 
           assoc.id === currentAssociation.id 
@@ -190,10 +183,8 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       if (!profile) throw new Error("You must be logged in to create an association");
       
-      // Generate UUID for new association
       const id = crypto.randomUUID();
       
-      // Convert to snake_case for database
       const now = new Date().toISOString();
       const dbData = {
         id,
@@ -208,48 +199,37 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updated_at: now
       };
       
-      // Insert new association
-      const { error } = await supabase
-        .from('associations')
-        .insert(dbData);
+      const { data: association, error } = await createAssociationHelper(dbData);
         
       if (error) throw error;
       
-      // Add the user as a member in the association_members table
-      await supabase
-        .from('association_members')
-        .insert({
-          user_id: profile.id,
-          association_id: id,
-          role: 'admin', // Make the creator an admin
+      if (association) {
+        const formattedAssociation: Association = {
+          id: association.id,
+          name: association.name,
+          description: association.description || undefined,
+          logo: association.logo || undefined,
+          address: association.address || undefined,
+          contactEmail: association.contact_email,
+          contactPhone: association.contact_phone || undefined,
+          website: association.website || undefined,
+          createdAt: association.created_at,
+          updatedAt: association.updated_at
+        };
+        
+        setUserAssociations(prev => [...prev, formattedAssociation]);
+        
+        setCurrentAssociation(formattedAssociation);
+        
+        toast({
+          title: "Association created",
+          description: `${formattedAssociation.name} has been created successfully.`,
         });
+        
+        return formattedAssociation;
+      }
       
-      // Format the association for our app
-      const formattedAssociation: Association = {
-        id: dbData.id,
-        name: dbData.name,
-        description: dbData.description || undefined,
-        logo: dbData.logo || undefined,
-        address: dbData.address || undefined,
-        contactEmail: dbData.contact_email,
-        contactPhone: dbData.contact_phone || undefined,
-        website: dbData.website || undefined,
-        createdAt: dbData.created_at,
-        updatedAt: dbData.updated_at
-      };
-      
-      // Add to user associations
-      setUserAssociations(prev => [...prev, formattedAssociation]);
-      
-      // Set as current association
-      setCurrentAssociation(formattedAssociation);
-      
-      toast({
-        title: "Association created",
-        description: `${formattedAssociation.name} has been created successfully.`,
-      });
-      
-      return formattedAssociation;
+      return null;
     } catch (error: any) {
       console.error("Error creating association:", error);
       toast({
