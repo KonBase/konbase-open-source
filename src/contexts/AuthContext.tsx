@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Session, User, AuthError } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { UserRole } from '@/types';
 
 interface AuthContextType {
   session: Session | null;
@@ -13,6 +14,12 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   loading: boolean;
   error: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  hasPermission: (role: UserRole | string) => boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  userProfile: any | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,10 +27,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isAuthenticated = !!session;
+  const isLoading = loading;
 
   useEffect(() => {
     const setData = async () => {
@@ -32,6 +42,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user || null);
         setError(error?.message || null);
+        
+        // Fetch user profile if user is authenticated
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        }
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
@@ -42,14 +57,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user || null);
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        } else {
+          setUserProfile(null);
+        }
       }
     );
 
     return () => subscription.unsubscribe();
   }, []);
+  
+  // Fetch the user profile from the database
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (error) throw error;
+      
+      // Add profileImage and name properties to the user object for components that rely on them
+      if (user && data) {
+        const enhancedUser = {
+          ...user,
+          name: data.name || data.email || 'User',
+          profileImage: data.profile_image,
+          role: data.role || 'member'
+        };
+        setUser(enhancedUser as User);
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const hasPermission = (requiredRole: UserRole | string) => {
+    if (!userProfile) return false;
+    
+    const roleHierarchy: Record<string, number> = {
+      'super_admin': 100,
+      'admin': 80,
+      'manager': 60,
+      'member': 40,
+      'guest': 20
+    };
+    
+    const userRoleValue = roleHierarchy[userProfile.role] || 0;
+    const requiredRoleValue = roleHierarchy[requiredRole] || 0;
+    
+    return userRoleValue >= requiredRoleValue;
+  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -116,9 +181,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     }
   };
+  
+  // Alias methods for backward compatibility
+  const login = signIn;
+  const logout = signOut;
 
   return (
-    <AuthContext.Provider value={{ session, user, signIn, signUp, signOut, loading, error }}>
+    <AuthContext.Provider value={{ 
+      session, 
+      user, 
+      signIn, 
+      signUp, 
+      signOut, 
+      loading, 
+      error,
+      isAuthenticated,
+      isLoading,
+      hasPermission,
+      login,
+      logout,
+      userProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

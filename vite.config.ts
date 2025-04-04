@@ -20,4 +20,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    // Fix for relative paths in production build
+    assetsDir: 'assets'
+  }
 })

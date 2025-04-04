@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Spinner } from '@/components/ui/spinner';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -23,7 +24,7 @@ const LoginForm = () => {
     setIsLoading(true);
     
     try {
-      await login(email, password);
+      await signIn(email, password);
       toast({
         title: 'Login successful',
         description: 'Welcome back to EventNexus!',
@@ -91,7 +92,13 @@ const LoginForm = () => {
             </Label>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading ? (
+              <span className="flex items-center">
+                <Spinner className="mr-2" /> Signing in...
+              </span>
+            ) : (
+              "Sign In"
+            )}
           </Button>
         </form>
       </CardContent>

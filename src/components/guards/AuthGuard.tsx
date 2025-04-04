@@ -1,10 +1,12 @@
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Spinner } from '@/components/ui/spinner';
+import { UserRole } from '@/types';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRole?: 'member' | 'manager' | 'admin' | 'super_admin';
+  requiredRole?: UserRole | string;
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRole }) => {
@@ -12,7 +14,11 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRole }) => {
   const location = useLocation();
   
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="h-8 w-8" />
+      </div>
+    );
   }
   
   if (!isAuthenticated) {
