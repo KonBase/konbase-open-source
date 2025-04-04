@@ -846,7 +846,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: {
+          user_id: string
+        }
+        Returns: string
+      }
+      is_association_member: {
+        Args: {
+          user_id: string
+          association_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       convention_status: "planned" | "active" | "completed" | "archived"

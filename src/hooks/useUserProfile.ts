@@ -93,7 +93,7 @@ export function useUserProfile() {
           console.warn(`No profile found for user ID: ${userId}, creating default profile`);
           
           if (user?.email) {
-            const defaultProfile: Profile = {
+            const defaultProfile: Partial<Profile> = {
               id: userId,
               email: user.email,
               name: user.email.split('@')[0] || "User",
@@ -111,7 +111,7 @@ export function useUserProfile() {
               .insert(defaultProfile);
               
             if (!insertError) {
-              setProfile(defaultProfile);
+              setProfile(defaultProfile as Profile);
             } else {
               console.error('Error creating default profile:', insertError);
               toast({

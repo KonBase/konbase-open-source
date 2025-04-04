@@ -45,7 +45,7 @@ export async function initializeStorage() {
 // Add a public bucket policy to avoid RLS issues
 async function addPublicBucketPolicy() {
   try {
-    // Add policy for the profiles bucket that allows public read access
+    // Using direct SQL queries via RPC instead of unsupported TypeScript parameters
     const { error } = await supabase.rpc('create_storage_policy', { 
       bucket_name: 'profiles',
       policy_name: 'Public Read Access',
