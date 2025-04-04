@@ -7,7 +7,7 @@ const Register = () => {
     <div className="flex min-h-screen bg-muted/40">
       <div className="hidden lg:flex flex-1 bg-primary/10 items-center justify-center p-8">
         <div className="max-w-md">
-          <h1 className="text-4xl font-bold mb-6 text-primary">EventNexus Supply Chain</h1>
+          <h1 className="text-4xl font-bold mb-6 text-primary">KonBase Supply Chain</h1>
           <p className="text-lg text-muted-foreground mb-6">
             Join thousands of convention organizers and fantasy clubs managing their inventory efficiently.
           </p>
