@@ -4,6 +4,19 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  Building2, 
+  LayoutDashboard, 
+  Package, 
+  Users, 
+  FileBox, 
+  MapPin, 
+  Calendar, 
+  FileText, 
+  Settings,
+  ShieldAlert,
+  Home
+} from 'lucide-react';
 
 interface SidebarItem {
   title: string;
@@ -44,6 +57,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
       submenu: [
         { title: 'Profile', path: '/association/profile', icon: <Home className="w-4 h-4" /> },
         { title: 'Members', path: '/association/members', icon: <Users className="w-4 h-4" /> },
+        { title: 'List', path: '/association/list', icon: <FileText className="w-4 h-4" /> },
       ],
       requiredRole: 'member'
     },
@@ -56,6 +70,8 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
         { title: 'Categories', path: '/inventory/categories', icon: <FileBox className="w-4 h-4" /> },
         { title: 'Locations', path: '/inventory/locations', icon: <MapPin className="w-4 h-4" /> },
         { title: 'Equipment Sets', path: '/inventory/sets', icon: <FileBox className="w-4 h-4" /> },
+        { title: 'Warranties', path: '/inventory/warranties', icon: <FileText className="w-4 h-4" /> },
+        { title: 'Import/Export', path: '/inventory/import-export', icon: <FileText className="w-4 h-4" /> },
       ],
       requiredRole: 'member'
     },
@@ -66,7 +82,15 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
       submenu: [
         { title: 'All Conventions', path: '/conventions', icon: <Calendar className="w-4 h-4" /> },
         { title: 'Requirements', path: '/conventions/requirements', icon: <FileText className="w-4 h-4" /> },
+        { title: 'Logs', path: '/conventions/logs', icon: <FileText className="w-4 h-4" /> },
+        { title: 'Archive', path: '/conventions/archive', icon: <FileBox className="w-4 h-4" /> },
       ],
+      requiredRole: 'member'
+    },
+    {
+      title: 'Templates',
+      path: '/templates',
+      icon: <FileBox className="w-5 h-5" />,
       requiredRole: 'member'
     },
     {
@@ -74,6 +98,12 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
       path: '/reports',
       icon: <FileText className="w-5 h-5" />,
       requiredRole: 'manager'
+    },
+    {
+      title: 'Chat',
+      path: '/chat',
+      icon: <MessageCircle className="w-5 h-5" />,
+      requiredRole: 'member'
     },
     {
       title: 'Settings',
@@ -188,31 +218,10 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
           }
         })}
       </nav>
-
-      {/* Copyright notice */}
-      <div className={cn(
-        "text-xs text-muted-foreground mt-auto p-3 border-t border-border",
-        collapsed ? "text-center" : ""
-      )}>
-        <p className="mb-1">©{new Date().getFullYear()} EventNexus</p>
-        <p>All rights reserved</p>
-      </div>
     </div>
   );
 };
 
 export default SidebarNav;
 
-import { 
-  Building2, 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  FileBox, 
-  MapPin, 
-  Calendar, 
-  FileText, 
-  Settings,
-  ShieldAlert,
-  Home
-} from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
