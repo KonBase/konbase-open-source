@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Copy, Check, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import QRCode from 'qrcode';
 
 interface TwoFactorSetupProps {
   onVerified: (secret: string) => void;
@@ -37,14 +38,16 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       
       const { data, error } = await supabase.functions.invoke('generate-totp-secret', {});
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error generating TOTP secret:", error);
+        throw error;
+      }
       
       if (data && data.secret) {
         const { secret, keyUri } = data;
         setSecret(secret);
         
         try {
-          const QRCode = (await import('qrcode')).default;
           const qrCodeImage = await QRCode.toDataURL(keyUri);
           setQrCode(qrCodeImage);
         } catch (err) {
@@ -107,8 +110,6 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
         }
       });
       
-      console.log("Verification response:", data, error);
-      
       if (error) {
         console.error("Verification API error:", error);
         throw error;
@@ -141,6 +142,13 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
     }
   };
 
+  // Handle OTP input completion
+  useEffect(() => {
+    if (verificationCode.length === 6 && secret) {
+      verifyAndEnable();
+    }
+  }, [verificationCode]);
+
   return (
     <div className="space-y-4">
       {errorMessage && (
@@ -156,14 +164,14 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
               Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
             </p>
             <div className="flex justify-center mb-4">
-              <img src={qrCode} alt="QR Code for 2FA" className="border p-2 rounded-md" />
+              <img src={qrCode} alt="QR Code for 2FA" className="border p-2 rounded-md" width="200" height="200" />
             </div>
             <div className="flex flex-col space-y-2">
               <p className="text-sm text-muted-foreground">
                 Or enter this code manually in your authenticator app:
               </p>
               <div className="flex items-center space-x-2">
-                <code className="bg-muted px-2 py-1 rounded text-sm font-mono">{secret}</code>
+                <code className="bg-muted px-2 py-1 rounded text-sm font-mono break-all">{secret}</code>
                 <Button 
                   size="icon" 
                   variant="outline" 
@@ -192,7 +200,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
               />
             </div>
           </div>
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>

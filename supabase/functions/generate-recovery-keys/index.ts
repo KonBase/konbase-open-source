@@ -8,21 +8,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-function generateRandomString(length = 10) {
-  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+// Function to generate random recovery key
+function generateRecoveryKey() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ2345679";
   let result = "";
-  const randomValues = new Uint8Array(length);
-  crypto.getRandomValues(randomValues);
+  const keyLength = 12;
+  const segmentLength = 4;
   
-  for (let i = 0; i < length; i++) {
-    result += charset[randomValues[i] % charset.length];
+  // Generate random key with format XXXX-XXXX-XXXX
+  for (let i = 0; i < keyLength; i++) {
+    if (i > 0 && i % segmentLength === 0) {
+      result += "-";
+    }
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    result += chars[randomIndex];
   }
   
   return result;
-}
-
-function generateRecoveryKey() {
-  return `${generateRandomString(5)}-${generateRandomString(5)}-${generateRandomString(5)}-${generateRandomString(5)}`;
 }
 
 serve(async (req) => {
@@ -32,7 +34,7 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client
+    // Create a Supabase client with the Auth context of the logged-in user
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -56,9 +58,17 @@ serve(async (req) => {
       );
     }
 
-    // Parse the request to get the number of recovery keys to generate
-    const { count = 8 } = await req.json();
-    
+    // Get number of keys to generate (default to 8)
+    let count = 8;
+    try {
+      const { count: requestedCount } = await req.json();
+      if (requestedCount && typeof requestedCount === 'number' && requestedCount > 0) {
+        count = Math.min(requestedCount, 16); // Maximum 16 keys
+      }
+    } catch (e) {
+      // Use default if request body parsing fails
+    }
+
     // Generate recovery keys
     const keys = Array.from({ length: count }, () => generateRecoveryKey());
 
@@ -69,7 +79,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

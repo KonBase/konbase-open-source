@@ -36,8 +36,16 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
           return;
         }
         
-        if (data?.user?.email_confirmed_at) {
-          logDebug('Email verified', { email: user.email, confirmed_at: data.user.email_confirmed_at }, 'info');
+        // Check if email is verified from metadata
+        const isVerified = data?.user?.email_confirmed_at || 
+                          data?.user?.user_metadata?.email_verified || 
+                          false;
+        
+        if (isVerified) {
+          logDebug('Email verified', { 
+            email: user.email, 
+            confirmed_at: data.user.email_confirmed_at 
+          }, 'info');
           setIsEmailVerified(true);
         } else {
           logDebug('Email not verified', { email: user.email }, 'warn');
@@ -76,6 +84,8 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   }, [isLoading, isAuthenticated, user, toast]);
 
   // Check if user has "guest" role and redirect to setup page
+  // This is not in the check email verification flow because we want to redirect guests
+  // even if they are already email verified
   if (!isLoading && !isChecking && isAuthenticated && userProfile?.role === 'guest') {
     logDebug('Redirecting guest user to setup page', { userId: user?.id, role: userProfile?.role }, 'info');
     return <Navigate to="/setup" state={{ from: location }} replace />;

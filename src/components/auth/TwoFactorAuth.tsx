@@ -46,6 +46,7 @@ const TwoFactorAuth = () => {
     setSecret(null);
   };
 
+  // Show proper component based on state
   if (isEnabled && !isSettingUp) {
     return (
       <Card>

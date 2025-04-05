@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client
+    // Create a Supabase client with the Auth context of the logged-in user
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -40,9 +39,10 @@ serve(async (req) => {
       );
     }
 
-    // Get the secret and recovery keys from the request
+    // Get secret and recovery keys from request
     const { secret, recoveryKeys } = await req.json();
 
+    // Validate input
     if (!secret || !recoveryKeys || !Array.isArray(recoveryKeys) || recoveryKeys.length === 0) {
       return new Response(
         JSON.stringify({ error: "Invalid input" }),
@@ -50,26 +50,23 @@ serve(async (req) => {
       );
     }
 
-    // Encrypt the TOTP secret using bcrypt (not ideal but works for this demo)
-    const encryptedSecret = await bcrypt.hash(secret);
-    
-    // Hash each recovery key
-    const hashedRecoveryKeys = await Promise.all(
-      recoveryKeys.map(async (key) => await bcrypt.hash(key))
-    );
-
-    // Store 2FA details in a new table
+    // Store 2FA information
     const { error: insertError } = await supabaseClient
       .from('user_2fa')
       .upsert({
         user_id: user.id,
-        totp_secret: encryptedSecret,
-        recovery_keys: hashedRecoveryKeys,
-        created_at: new Date().toISOString()
+        totp_secret: secret,
+        recovery_keys: recoveryKeys,
+        used_recovery_keys: [],
+        last_used_at: new Date().toISOString()
       });
-
+      
     if (insertError) {
-      throw new Error(`Error storing 2FA details: ${insertError.message}`);
+      console.error("Error storing user 2FA data:", insertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to store 2FA data" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Update user profile to enable 2FA
@@ -77,10 +74,25 @@ serve(async (req) => {
       .from('profiles')
       .update({ two_factor_enabled: true })
       .eq('id', user.id);
-
+      
     if (updateError) {
-      throw new Error(`Error updating profile: ${updateError.message}`);
+      console.error("Error updating user profile:", updateError);
+      return new Response(
+        JSON.stringify({ error: "Failed to update profile" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Add an audit log
+    await supabaseClient
+      .from('audit_logs')
+      .insert({
+        user_id: user.id,
+        action: 'enable_2fa',
+        entity: 'user_2fa',
+        entity_id: user.id,
+        changes: { two_factor_enabled: true }
+      });
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -89,7 +101,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

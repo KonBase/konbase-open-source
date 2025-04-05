@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client
+    // Create a Supabase client with the Auth context of the logged-in user
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -39,31 +39,44 @@ serve(async (req) => {
       );
     }
 
-    try {
-      // Try to remove 2FA details from the database if the table exists
-      const { error: deleteError } = await supabaseClient
-        .from('user_2fa')
-        .delete()
-        .eq('user_id', user.id);
+    // Delete the user's 2FA data
+    const { error: deleteError } = await supabaseClient
+      .from('user_2fa')
+      .delete()
+      .eq('user_id', user.id);
 
-      // Only throw if it's not a "relation does not exist" error
-      if (deleteError && !deleteError.message.includes("relation") && !deleteError.message.includes("does not exist")) {
-        throw new Error(`Error removing 2FA details: ${deleteError.message}`);
-      }
-    } catch (error) {
-      // Log the error but continue since the profile update is the critical part
-      console.error("Error during 2FA record deletion:", error);
+    if (deleteError) {
+      console.error("Error deleting user 2FA data:", deleteError);
+      return new Response(
+        JSON.stringify({ error: "Failed to disable 2FA" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Update user profile to disable 2FA
+    // Update the user's profile to disable 2FA
     const { error: updateError } = await supabaseClient
       .from('profiles')
       .update({ two_factor_enabled: false })
       .eq('id', user.id);
 
     if (updateError) {
-      throw new Error(`Error updating profile: ${updateError.message}`);
+      console.error("Error updating user profile:", updateError);
+      return new Response(
+        JSON.stringify({ error: "Failed to update profile" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Add an audit log
+    await supabaseClient
+      .from('audit_logs')
+      .insert({
+        user_id: user.id,
+        action: 'disable_2fa',
+        entity: 'user_2fa',
+        entity_id: user.id,
+        changes: { two_factor_enabled: false }
+      });
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -72,7 +85,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
