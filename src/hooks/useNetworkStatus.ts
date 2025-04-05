@@ -40,7 +40,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
       toast({
         title: "Connection restored",
         description: "Network connection has been re-established",
-        variant: "success"
+        variant: "default"
       });
     }
     
@@ -70,26 +70,26 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
   }, [showToasts, onStatusChange]);
   
   // Test network connectivity to a specific endpoint with throttling
-  const testConnection = useCallback(async (url = testEndpoint) => {
+  const testConnection = useCallback(async (): Promise<boolean> => {
     if (!navigator.onLine) return false;
-    if (pendingTestRef.current) return null; // Already testing
+    if (pendingTestRef.current) return false; // Already testing
     
     // Throttle test requests to prevent resource exhaustion
     const now = Date.now();
     if (lastTestedAt && now - lastTestedAt < 5000) {
       logDebug('Connection test throttled - too frequent requests', null, 'warn');
-      return null; // Return null to indicate throttled request
+      return false; // Return false to indicate throttled request
     }
     
     pendingTestRef.current = true;
     setIsTestingConnection(true);
     
     try {
-      logDebug(`Testing connection to ${url}`, null, 'debug');
+      logDebug(`Testing connection to ${testEndpoint}`, null, 'debug');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch(url, { 
+      const response = await fetch(testEndpoint, { 
         method: 'HEAD',
         signal: controller.signal,
         cache: 'no-store'
@@ -125,15 +125,18 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
     }
   }, [testEndpoint, lastTestedAt]);
   
-  const throttledTestConnection = useCallback(() => {
+  const throttledTestConnection = useCallback(async (): Promise<boolean> => {
     if (throttleTimeoutRef.current) {
       clearTimeout(throttleTimeoutRef.current);
     }
     
-    throttleTimeoutRef.current = window.setTimeout(() => {
-      testConnection();
-      throttleTimeoutRef.current = null;
-    }, 1000) as unknown as number;
+    return new Promise<boolean>((resolve) => {
+      throttleTimeoutRef.current = window.setTimeout(async () => {
+        const result = await testConnection();
+        throttleTimeoutRef.current = null;
+        resolve(result);
+      }, 1000) as unknown as number;
+    });
   }, [testConnection]);
   
   useEffect(() => {

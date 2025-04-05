@@ -3,13 +3,12 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useLocation } from 'react-router-dom';
-import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { logDebug } from '@/utils/debug';
 
 // Dashboard Components
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import DashboardStats from '@/components/dashboard/DashboardStats';
+import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import NoAssociationView from '@/components/dashboard/NoAssociationView';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
@@ -27,28 +26,13 @@ const Dashboard = () => {
   const location = useLocation();
   const [showLocationManager, setShowLocationManager] = useState(false);
   
-  // Use our new network status hook
+  // Use our network status hook
   const { status: networkStatus, testConnection } = useNetworkStatus({
     onStatusChange: (status) => {
-      // Retry data loading when connection is restored
-      if (status === 'online' && error) {
-        logDebug('Auto-retrying after connection restored', null, 'info');
-        handleRetry();
-      }
+      // Network status change handling can go here if needed
+      logDebug(`Network status changed to: ${status}`, null, 'info');
     }
   });
-  
-  const {
-    stats,
-    isLoading,
-    error,
-    handleRetry,
-    unreadNotifications,
-    requestTimestamp,
-    responseTimestamp,
-    retryCount,
-    errorDetails
-  } = useDashboardStats(currentAssociation, user);
   
   // Handle redirects from query parameters
   <DashboardRedirectHandler />
@@ -100,33 +84,18 @@ const Dashboard = () => {
       {/* Debug Panel */}
       <DebugPanel 
         networkStatus={networkStatus}
-        requestInfo={{
-          requestTimestamp,
-          responseTimestamp,
-          retryCount
-        }}
         userData={{
           userId: user?.id,
           associationId: currentAssociation?.id
         }}
-        errorData={errorDetails}
-        onRetry={handleRetry}
-        testConnection={testConnection}
+        testConnection={async () => {
+          await testConnection();
+          return true;
+        }}
       />
 
       {/* Stats Cards */}
-      <DashboardStats 
-        stats={stats} 
-        isLoading={isLoading} 
-        error={error} 
-        onRetry={handleRetry}
-        debugInfo={{
-          requestTimestamp,
-          responseTimestamp,
-          networkStatus,
-          requestAttempts: retryCount + 1
-        }}
-      />
+      <DashboardStats />
 
       {/* Association Management Module */}
       <AssociationManagementSection onShowLocationManager={() => setShowLocationManager(true)} />
@@ -135,7 +104,7 @@ const Dashboard = () => {
       <ConventionManagementSection />
 
       {/* Communication Module */}
-      <CommunicationSection unreadNotifications={unreadNotifications} />
+      <CommunicationSection />
     </div>
   );
 };

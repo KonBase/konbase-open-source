@@ -49,6 +49,8 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
 
     try {
       const associationId = currentAssociation.id;
+      // Get the current user ID - using auth context or from the profile/user object
+      const userId = currentAssociation.profile?.id || null;
       
       // Using Promise.allSettled to handle partial failures gracefully
       const responses = await Promise.allSettled([
@@ -80,17 +82,17 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
           { column: 'association_id', value: associationId }
         ),
         
-        // Notifications
-        safeSelect(
+        // Notifications - only fetch if we have a userId
+        userId ? safeSelect(
           'notifications',
           '*',
           { 
             column: 'user_id', 
-            value: currentAssociation.userId,
+            value: userId,
             order: { column: 'created_at', ascending: false },
             limit: 5
           }
-        ),
+        ) : Promise.resolve({ data: [], error: null }),
       ]);
       
       console.debug('Dashboard stats fetch responses', {

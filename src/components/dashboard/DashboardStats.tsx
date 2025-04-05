@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
-import useNetworkStatus from '@/hooks/useNetworkStatus';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import DebugPanel from '@/utils/debug-panel';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +37,12 @@ export function DashboardStats() {
     
     setTimeout(() => {
       refetch();
-      testConnection();
+      // Wrap testConnection in a function that returns a Promise<boolean>
+      const runTest = async () => {
+        await testConnection();
+        return true;
+      };
+      runTest();
     }, backoffTime);
   };
 
@@ -66,7 +71,10 @@ export function DashboardStats() {
             networkStatus={networkStatus}
             errorData={error}
             onRetry={handleRetry}
-            testConnection={testConnection}
+            testConnection={async () => {
+              await testConnection();
+              return true;
+            }}
             isTestingConnection={isTestingConnection}
             lastTestedAt={lastTestedAt}
             testResults={testResults}
@@ -94,7 +102,12 @@ export function DashboardStats() {
             size="sm" 
             onClick={() => {
               refetch();
-              testConnection();
+              // Wrap testConnection in a function that returns a Promise<boolean>
+              const runTest = async () => {
+                await testConnection();
+                return true;
+              };
+              runTest();
             }}
             disabled={isTestingConnection}
           >
@@ -189,7 +202,10 @@ export function DashboardStats() {
           networkStatus={networkStatus}
           errorData={error}
           onRetry={handleRetry}
-          testConnection={testConnection}
+          testConnection={async () => {
+            await testConnection();
+            return true;
+          }}
           isTestingConnection={isTestingConnection}
           lastTestedAt={lastTestedAt}
           testResults={testResults}
@@ -206,3 +222,6 @@ export function DashboardStats() {
     </Card>
   );
 }
+
+// Make sure we export both as named and default export for backward compatibility
+export default DashboardStats;
