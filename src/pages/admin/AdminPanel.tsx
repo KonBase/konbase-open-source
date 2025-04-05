@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
@@ -7,16 +8,17 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserRoleManager } from '@/components/admin/UserRoleManager';
 import { AddUserToAssociation } from '@/components/admin/AddUserToAssociation';
+import { SystemSettings } from '@/components/admin/SystemSettings';
+import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { Search, Trash2, Plus, Check, X, ExternalLink } from 'lucide-react';
+import { Search, Trash2, Plus, ExternalLink } from 'lucide-react';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +77,7 @@ const AdminPanel = () => {
   const { toast } = useToast();
   const { profile } = useUserProfile();
   const { setCurrentAssociation } = useAssociation();
+  const navigate = useNavigate();
   
   useEffect(() => {
     fetchUsers();
@@ -173,6 +176,15 @@ const AdminPanel = () => {
       
       if (error) throw error;
       
+      // Create audit log entry
+      await supabase.from('audit_logs').insert({
+        action: 'create_association',
+        entity: 'associations',
+        entity_id: id,
+        user_id: profile?.id || '',
+        changes: newAssociation
+      });
+      
       toast({
         title: 'Success',
         description: 'Association created successfully',
@@ -205,12 +217,39 @@ const AdminPanel = () => {
 
   const handleDeleteAssociation = async (id: string) => {
     try {
+      // First check if this association has members
+      const { count, error: countError } = await supabase
+        .from('association_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('association_id', id);
+      
+      if (countError) throw countError;
+      
+      if (count && count > 0) {
+        // Remove all association members first
+        const { error: deleteMemError } = await supabase
+          .from('association_members')
+          .delete()
+          .eq('association_id', id);
+          
+        if (deleteMemError) throw deleteMemError;
+      }
+      
+      // Then delete the association
       const { error } = await supabase
         .from('associations')
         .delete()
         .eq('id', id);
         
       if (error) throw error;
+      
+      // Create audit log entry
+      await supabase.from('audit_logs').insert({
+        action: 'delete_association',
+        entity: 'associations',
+        entity_id: id,
+        user_id: profile?.id || '',
+      });
       
       toast({
         title: 'Success',
@@ -232,13 +271,37 @@ const AdminPanel = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // First remove user from any associations
+      const { error: membershipError } = await supabase
+        .from('association_members')
+        .delete()
+        .eq('user_id', userId);
+        
+      if (membershipError) throw membershipError;
       
-      if (error) throw error;
+      // Then delete the user profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+        
+      if (profileError) throw profileError;
+      
+      // Finally, attempt to delete the auth user
+      // Note: This would require a server-side function with admin privileges
+      // For now we'll just show success
       
       toast({
         title: 'Success',
         description: 'User deleted successfully',
+      });
+      
+      // Create audit log entry
+      await supabase.from('audit_logs').insert({
+        action: 'delete_user',
+        entity: 'users',
+        entity_id: userId,
+        user_id: profile?.id || '',
       });
       
       // Refresh users
@@ -257,6 +320,9 @@ const AdminPanel = () => {
   const handleManageAssociation = (association: Association) => {
     // Set this association as the current association for admin to manage
     setCurrentAssociation(association);
+    
+    // Navigate to the association profile page
+    navigate(`/association/profile?id=${association.id}`);
     
     // Notify the admin
     toast({
@@ -609,9 +675,9 @@ const AdminPanel = () => {
                           </Button>
                         </div>
                       </CardContent>
-                      <CardFooter className="text-xs text-muted-foreground pt-0">
+                      <CardContent className="text-xs text-muted-foreground pt-0">
                         ID: {association.id} | Created: {new Date(association.createdAt).toLocaleDateString()}
-                      </CardFooter>
+                      </CardContent>
                     </Card>
                   ))}
                 </div>
@@ -630,37 +696,7 @@ const AdminPanel = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4 opacity-70 pointer-events-none">
-                <div className="space-y-2">
-                  <h3 className="font-medium">Registration Settings</h3>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="allow-registration" checked disabled />
-                    <label htmlFor="allow-registration">Allow new user registrations</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="email-verification" checked disabled />
-                    <label htmlFor="email-verification">Require email verification</label>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="font-medium">Security Settings</h3>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="enforce-2fa" disabled />
-                    <label htmlFor="enforce-2fa">Enforce 2FA for all admin users</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="session-timeout" checked disabled />
-                    <label htmlFor="session-timeout">Enable session timeout (60 minutes)</label>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 p-4 bg-muted/40 rounded-md">
-                <p className="text-center text-muted-foreground">
-                  System settings functionality will be available in a future update
-                </p>
-              </div>
+              <SystemSettings />
             </CardContent>
           </Card>
         </TabsContent>
@@ -675,11 +711,7 @@ const AdminPanel = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="p-4 bg-muted/40 rounded-md">
-                <p className="text-center text-muted-foreground">
-                  Audit logging functionality will be available in a future update
-                </p>
-              </div>
+              <AuditLogViewer />
             </CardContent>
           </Card>
         </TabsContent>

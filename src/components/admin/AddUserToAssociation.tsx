@@ -24,6 +24,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { CheckCircle, UserPlus } from 'lucide-react';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface AddUserToAssociationProps {
   associationId: string;
@@ -36,6 +37,7 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const { toast } = useToast();
+  const { profile } = useUserProfile();
   
   const resetForm = () => {
     setEmail('');
@@ -57,7 +59,7 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
       // First check if user exists
       const { data: userData, error: userError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email, name')
         .eq('email', email.trim())
         .maybeSingle();
       
@@ -85,6 +87,13 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
         return;
       }
       
+      // Get association details to use in notification
+      const { data: associationData } = await supabase
+        .from('associations')
+        .select('name')
+        .eq('id', associationId)
+        .single();
+      
       // Add user to association with specified role
       const { error: addError } = await supabase
         .from('association_members')
@@ -96,19 +105,48 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
       
       if (addError) throw addError;
       
+      // Update the user's profile to set this association as their current association if they don't have one
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('association_id')
+        .eq('id', userData.id)
+        .single();
+        
+      if (!profileData.association_id) {
+        await supabase
+          .from('profiles')
+          .update({ association_id: associationId })
+          .eq('id', userData.id);
+      }
+      
       // Create notification for the user
       await supabase
         .from('notifications')
         .insert({
           user_id: userData.id,
           title: 'Association Membership',
-          message: `You have been added to an association with the role of ${role}`,
+          message: `You have been added to ${associationData?.name || 'an association'} with the role of ${role}`,
           read: false
+        });
+      
+      // Log this action
+      await supabase
+        .from('audit_logs')
+        .insert({
+          action: 'add_member',
+          entity: 'association_members',
+          entity_id: associationId,
+          user_id: profile?.id || '',
+          changes: {
+            user_id: userData.id,
+            association_id: associationId,
+            role: role
+          }
         });
       
       toast({
         title: 'User added to association',
-        description: `${email} has been added with the role of ${role}`,
+        description: `${userData.name || email} has been added with the role of ${role}`,
       });
       
       setStatus('success');

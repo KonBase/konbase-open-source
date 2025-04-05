@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Building2, 
   LayoutDashboard, 
@@ -22,7 +22,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 interface SidebarItem {
   title: string;
@@ -41,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
   const { user, hasPermission, logout } = useAuth();
   const { currentAssociation } = useAssociation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (title: string) => {
@@ -48,6 +50,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
       ...prev,
       [title]: !prev[title]
     }));
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   const navItems: SidebarItem[] = [
@@ -117,33 +124,33 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
   
   return (
-    <aside className="h-screen flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border relative">
+    <aside className="h-screen flex flex-col bg-background border-r border-border relative">
       {/* Toggle collapse button */}
       <Button 
-        variant="ghost" 
+        variant="outline" 
         size="icon" 
-        className="absolute -right-3 top-20 z-10 h-6 w-6 rounded-full bg-primary text-primary-foreground shadow-md border border-border"
+        className="absolute -right-3 top-20 z-10 h-6 w-6 rounded-full shadow-md border border-border"
         onClick={toggleCollapse}
       >
         {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
       </Button>
       
-      {/* Association header */}
-      <div className={`p-4 border-b border-sidebar-border flex items-center ${collapsed ? 'justify-center' : 'gap-2'}`}>
-        <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold flex-shrink-0">
+      {/* Application header */}
+      <div className={`p-4 border-b border-border flex items-center ${collapsed ? 'justify-center' : 'gap-2'}`}>
+        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold flex-shrink-0">
           EN
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h2 className="font-semibold text-sidebar-foreground truncate">EventNexus</h2>
-            <p className="text-xs text-sidebar-foreground/70 truncate">Supply Chain Management</p>
+            <h2 className="font-semibold truncate">EventNexus</h2>
+            <p className="text-xs text-muted-foreground truncate">Supply Chain Management</p>
           </div>
         )}
       </div>
       
       {/* Association info */}
       {currentAssociation && (
-        <div className={`p-4 border-b border-sidebar-border ${collapsed ? 'items-center justify-center' : ''} flex flex-col`}>
+        <div className={`p-4 border-b border-border ${collapsed ? 'items-center justify-center' : ''} flex flex-col`}>
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2 flex-shrink-0">
             {currentAssociation.logo ? (
               <img src={currentAssociation.logo} alt={currentAssociation.name} className="w-12 h-12 rounded-full" />
@@ -155,9 +162,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
           </div>
           {!collapsed && (
             <div className="text-center">
-              <h3 className="font-medium text-sidebar-foreground truncate">{currentAssociation.name}</h3>
+              <h3 className="font-medium truncate">{currentAssociation.name}</h3>
               {currentAssociation.contactEmail && (
-                <p className="text-xs text-sidebar-foreground/70 truncate">{currentAssociation.contactEmail}</p>
+                <p className="text-xs text-muted-foreground truncate">{currentAssociation.contactEmail}</p>
               )}
             </div>
           )}
@@ -184,8 +191,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
                     className={cn(
                       "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md",
                       isItemActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground hover:bg-accent/50"
                     )}
                   >
                     <div className="flex items-center">
@@ -206,8 +213,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
                           className={cn(
                             "flex items-center px-3 py-2 text-sm rounded-md",
                             isActive(subItem.path)
-                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-foreground hover:bg-accent/50"
                           )}
                         >
                           {subItem.icon}
@@ -227,8 +234,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
                     className={cn(
                       "flex items-center justify-center p-2 rounded-md",
                       isItemActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground hover:bg-accent/50"
                     )}
                     title={item.title}
                   >
@@ -247,8 +254,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
                       ? "flex items-center justify-center p-2 my-2 rounded-md"
                       : "flex items-center px-3 py-2 text-sm rounded-md",
                     isItemActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground hover:bg-accent/50"
                   )}
                   title={collapsed ? item.title : undefined}
                 >
@@ -261,16 +268,33 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
         </nav>
       </div>
       
+      {/* User profile (mini) */}
+      {!collapsed && user && (
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{user.name?.[0] || "U"}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <Separator className="my-2" />
+      
       {/* Logout button */}
-      <div className={`p-4 border-t border-sidebar-border ${collapsed ? 'flex justify-center' : ''}`}>
+      <div className={`p-4 ${collapsed ? 'flex justify-center' : ''}`}>
         <Button 
           variant="outline" 
           size="sm" 
           className={cn(
-            "justify-start text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent/50",
+            "justify-start border-border hover:bg-accent/50",
             collapsed && "w-10 h-10 p-0 flex items-center justify-center"
           )}
-          onClick={() => logout()}
+          onClick={handleLogout}
           title={collapsed ? "Logout" : undefined}
         >
           <LogOut className={collapsed ? "w-4 h-4" : "mr-2 w-4 h-4"} />

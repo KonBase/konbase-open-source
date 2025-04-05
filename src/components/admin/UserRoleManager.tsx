@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useUserProfile, UserRole } from '@/hooks/useUserProfile';
 import { supabase } from '@/lib/supabase';
@@ -42,12 +43,38 @@ export function UserRoleManager({
     try {
       setIsUpdating(true);
       
+      // Update the user's role in the profiles table
       const { error } = await supabase
         .from('profiles')
         .update({ role })
         .eq('id', userId);
       
       if (error) throw error;
+      
+      // Also update any association_members entries if they exist
+      await supabase
+        .from('association_members')
+        .update({ role })
+        .eq('user_id', userId);
+      
+      // Create an audit log entry
+      await supabase.from('audit_logs').insert({
+        action: 'update_role',
+        entity: 'profiles',
+        entity_id: userId,
+        user_id: profile?.id,
+        changes: { old_role: currentRole, new_role: role }
+      });
+      
+      // Create notification for the user
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          title: 'Role Updated',
+          message: `Your role has been updated to ${role}`,
+          read: false
+        });
       
       toast({
         title: "Role updated",
