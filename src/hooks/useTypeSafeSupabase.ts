@@ -19,14 +19,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
 // Type for our Supabase client
 export type TypeSafeSupabaseClient = typeof supabase;
 
-// Define table names as a union type to ensure type safety
-type TableNames = keyof Database['public']['Tables'];
+// Define a simple type for table names to avoid excessive type instantiation depth
+type TableName = string;
 
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
   // Helper function for safe SELECT operations
   const safeSelect = async <T>(
-    table: TableNames,
+    table: TableName,
     columns: string = '*',
     queryOptions?: { 
       column?: string; 
@@ -65,7 +65,7 @@ export const useTypeSafeSupabase = () => {
 
   // Helper function for safe UPDATE operations  
   const safeUpdate = async (
-    table: TableNames,
+    table: TableName,
     updateData: Record<string, any>,
     condition: { column: string; value: any }
   ) => {
@@ -82,7 +82,7 @@ export const useTypeSafeSupabase = () => {
   
   // Helper function for safe DELETE operations
   const safeDelete = async (
-    table: TableNames,
+    table: TableName,
     condition: { column: string; value: any }
   ) => {
     try {
@@ -97,12 +97,12 @@ export const useTypeSafeSupabase = () => {
   };
   
   // Helper function for safe INSERT operations
-  const safeInsert = async <T>(
-    table: TableNames,
+  const safeInsert = async (
+    table: TableName,
     data: Record<string, any> | Record<string, any>[]
   ) => {
     try {
-      const result = await supabase.from(table).insert(data as any);
+      const result = await supabase.from(table).insert(data);
       if (result.error) {
         throw result.error;
       }

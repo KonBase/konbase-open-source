@@ -29,7 +29,7 @@ export function RoleGuard({
   fallbackPath = '/unauthorized',
   enforceTwoFactor = false
 }: RoleGuardProps) {
-  const { userProfile, hasRole, loading } = useAuth();
+  const { userProfile, hasRole, loading, isAuthenticated } = useAuth();
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
@@ -47,8 +47,24 @@ export function RoleGuard({
         userProfile,
         userRole: userProfile?.role,
         allowedRoles,
+        isAuthenticated,
         hasAllowedRole: allowedRoles.some(role => hasRole(role))
       });
+      
+      // Check if user is authenticated first
+      if (!isAuthenticated || !userProfile) {
+        console.error("Access denied: User is not authenticated or profile not loaded");
+        setHasAccess(false);
+        setChecking(false);
+        
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to access this area.",
+          variant: "destructive"
+        });
+        
+        return;
+      }
       
       // First check if user has any of the allowed roles
       const hasAllowedRole = allowedRoles.some(role => hasRole(role));
@@ -91,7 +107,7 @@ export function RoleGuard({
     };
     
     checkAccess();
-  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast]);
+  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, isAuthenticated]);
   
   if (loading || checking) {
     return (
