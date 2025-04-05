@@ -104,7 +104,8 @@ export const useTypeSafeSupabase = () => {
     }
   };
   
-  // Helper function for safe INSERT operations with proper type handling
+  // Helper function for safe INSERT operations with simplified type handling
+  // Using 'any' for data parameter to avoid deep type instantiation issues
   const safeInsert = async (
     table: TableNames,
     data: any
