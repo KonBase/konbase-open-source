@@ -63,30 +63,14 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Custom theme colors
-				brand: {
-					50: '#e6f5ff',
-					100: '#cce9ff',
-					200: '#99d3ff',
-					300: '#66bdff',
-					400: '#33a7ff',
-					500: '#0091ff',
-					600: '#0074cc',
-					700: '#005799',
-					800: '#003a66',
-					900: '#001d33',
-				},
-				teal: {
-					50: '#e6fffe',
-					100: '#ccfffd',
-					200: '#99fffb',
-					300: '#66fff9',
-					400: '#33fff7',
-					500: '#00fff5',
-					600: '#00ccc4',
-					700: '#009993',
-					800: '#006662',
-					900: '#003331',
+				// Custom theme colors based on provided palette
+				konbase: {
+					blue: '#0c2e62',
+					cherry: '#d84165',
+					'light-blue': '#0fb4ea',
+					yellow: '#fce771',
+					black: '#171716',
+					white: '#e6e6dc',
 				},
 			},
 			borderRadius: {

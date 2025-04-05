@@ -63,33 +63,38 @@ const HomeHeader = () => {
   };
 
   return (
-    <header className="w-full border-b bg-background">
+    <header className="w-full border-b bg-konbase-blue text-konbase-white">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center">
-            <h1 className="text-2xl font-bold text-primary">KonBase</h1>
+          <Link to="/" className="flex items-center space-x-2">
+            <img 
+              src="/lovable-uploads/6f523cb7-5ab8-45c3-970e-916108513515.png" 
+              alt="KonBase Logo" 
+              className="h-10 w-10" 
+            />
+            <h1 className="text-2xl font-bold text-konbase-yellow">KonBase</h1>
           </Link>
           
           <NavigationMenu className="hidden md:flex">
             <NavigationMenuList>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link to="/#features" className={navigationMenuTriggerStyle()}>
+                  <Link to="/#features" className="text-konbase-white hover:text-konbase-yellow px-4 py-2 transition-colors">
                     Features
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link to="/#about" className={navigationMenuTriggerStyle()}>
+                  <Link to="/#about" className="text-konbase-white hover:text-konbase-yellow px-4 py-2 transition-colors">
                     About
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuTrigger>Community</NavigationMenuTrigger>
+                <NavigationMenuTrigger className="text-konbase-white bg-transparent hover:bg-konbase-blue-800/40 hover:text-konbase-yellow">Community</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid gap-3 p-4 w-[400px]">
+                  <div className="grid gap-3 p-4 w-[400px] bg-white text-foreground">
                     <a 
                       href="https://github.com/ShiroLuxferre/KonBase" 
                       target="_blank" 
@@ -124,7 +129,12 @@ const HomeHeader = () => {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleDashboard}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDashboard}
+                className="text-konbase-white bg-transparent border-konbase-white/30 hover:bg-konbase-blue-800/40 hover:text-konbase-yellow"
+              >
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Dashboard
               </Button>
@@ -132,7 +142,7 @@ const HomeHeader = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-konbase-light-blue/20 flex items-center justify-center">
                       {user?.profileImage ? (
                         <img 
                           src={user.profileImage} 
@@ -140,14 +150,14 @@ const HomeHeader = () => {
                           className="w-8 h-8 rounded-full" 
                         />
                       ) : (
-                        <span className="font-medium text-primary">{userInitial}</span>
+                        <span className="font-medium text-konbase-white">{userInitial}</span>
                       )}
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="flex flex-col items-center p-4 border-b">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                    <div className="w-12 h-12 rounded-full bg-konbase-light-blue/20 flex items-center justify-center mb-2">
                       {user?.profileImage ? (
                         <img 
                           src={user.profileImage} 
@@ -155,7 +165,7 @@ const HomeHeader = () => {
                           className="w-12 h-12 rounded-full" 
                         />
                       ) : (
-                        <span className="text-lg font-medium text-primary">{userInitial}</span>
+                        <span className="text-lg font-medium text-konbase-blue">{userInitial}</span>
                       )}
                     </div>
                     <div className="text-center">
@@ -180,10 +190,17 @@ const HomeHeader = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={handleLogin}>
+              <Button 
+                variant="ghost" 
+                onClick={handleLogin}
+                className="text-konbase-white hover:text-konbase-yellow hover:bg-konbase-blue-800/40"
+              >
                 Login
               </Button>
-              <Button onClick={handleRegister}>
+              <Button 
+                onClick={handleRegister}
+                className="bg-konbase-yellow text-konbase-blue hover:bg-konbase-yellow/90"
+              >
                 Register
               </Button>
             </div>

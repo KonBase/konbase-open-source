@@ -7,12 +7,19 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="bg-muted/40 border-t py-12 mt-auto">
+    <footer className="bg-konbase-blue text-konbase-white py-12 mt-auto">
       <div className="container px-4 mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
-            <h3 className="font-bold text-xl text-primary mb-4">KonBase</h3>
-            <p className="text-muted-foreground mb-4 max-w-md">
+            <div className="flex items-center space-x-2 mb-4">
+              <img 
+                src="/lovable-uploads/6f523cb7-5ab8-45c3-970e-916108513515.png" 
+                alt="KonBase Logo" 
+                className="h-10 w-10" 
+              />
+              <h3 className="font-bold text-xl text-konbase-yellow">KonBase</h3>
+            </div>
+            <p className="text-konbase-white/80 mb-4 max-w-md">
               Supply Chain Management for Conventions. An open-source platform helping convention organizers manage their inventory and equipment.
             </p>
             <div className="flex space-x-4">
@@ -20,7 +27,7 @@ const Footer = () => {
                 href="https://github.com/ShiroLuxferre/KonBase" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-konbase-white/80 hover:text-konbase-yellow transition-colors"
               >
                 <Github className="h-5 w-5" />
                 <span className="sr-only">GitHub</span>
@@ -29,7 +36,7 @@ const Footer = () => {
                 href="https://discord.gg/konbase" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-konbase-white/80 hover:text-konbase-yellow transition-colors"
               >
                 <MessageCircle className="h-5 w-5" />
                 <span className="sr-only">Discord</span>
@@ -38,7 +45,7 @@ const Footer = () => {
                 href="https://www.buymeacoffee.com/konbase" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-konbase-white/80 hover:text-konbase-yellow transition-colors"
               >
                 <Coffee className="h-5 w-5" />
                 <span className="sr-only">Buy Me a Coffee</span>
@@ -47,20 +54,20 @@ const Footer = () => {
           </div>
           
           <div>
-            <h4 className="font-medium mb-4">Quick Links</h4>
+            <h4 className="font-medium mb-4 text-konbase-yellow">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/#features" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/#features" className="text-konbase-white/80 hover:text-konbase-yellow transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link to="/#about" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/#about" className="text-konbase-white/80 hover:text-konbase-yellow transition-colors">
                   About
                 </Link>
               </li>
               <li>
-                <Link to="/register" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/register" className="text-konbase-white/80 hover:text-konbase-yellow transition-colors">
                   Get Started
                 </Link>
               </li>
@@ -68,14 +75,14 @@ const Footer = () => {
           </div>
           
           <div>
-            <h4 className="font-medium mb-4">Community</h4>
+            <h4 className="font-medium mb-4 text-konbase-yellow">Community</h4>
             <ul className="space-y-2">
               <li>
                 <a 
                   href="https://github.com/ShiroLuxferre/KonBase" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-konbase-white/80 hover:text-konbase-yellow transition-colors"
                 >
                   GitHub
                 </a>
@@ -85,7 +92,7 @@ const Footer = () => {
                   href="https://discord.gg/konbase" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-konbase-white/80 hover:text-konbase-yellow transition-colors"
                 >
                   Discord
                 </a>
@@ -95,7 +102,7 @@ const Footer = () => {
                   href="https://www.buymeacoffee.com/konbase" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-konbase-white/80 hover:text-konbase-yellow transition-colors"
                 >
                   Sponsor
                 </a>
@@ -104,12 +111,12 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="border-t mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-muted-foreground mb-4 md:mb-0">
+        <div className="border-t border-konbase-blue-800/40 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-konbase-white/70 mb-4 md:mb-0">
             &copy; {currentYear} KonBase. All rights reserved.
           </p>
-          <p className="text-sm text-muted-foreground">
-            Built with <Heart className="inline h-4 w-4 text-red-500" /> by the KonBase Community
+          <p className="text-sm text-konbase-white/70">
+            Built with <Heart className="inline h-4 w-4 text-konbase-cherry" /> by the KonBase Community
           </p>
         </div>
       </div>
