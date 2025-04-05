@@ -16,7 +16,96 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   },
 });
 
-const typeSafeSupabase = supabase;
-export type TypeSafeSupabaseClient = typeof typeSafeSupabase;
+// Type for our Supabase client
+export type TypeSafeSupabaseClient = typeof supabase;
 
-export default typeSafeSupabase;
+// Create a hook for safe Supabase operations
+export const useTypeSafeSupabase = () => {
+  // Helper function for safe SELECT operations
+  const safeSelect = async <T>(
+    table: string,
+    columns: string = '*',
+    queryOptions?: { column?: string; value?: any; limit?: number; order?: { column: string; ascending?: boolean } }
+  ) => {
+    try {
+      let query = supabase.from(table).select(columns);
+      
+      if (queryOptions?.column && queryOptions?.value !== undefined) {
+        query = query.eq(queryOptions.column, queryOptions.value);
+      }
+      
+      if (queryOptions?.limit) {
+        query = query.limit(queryOptions.limit);
+      }
+      
+      if (queryOptions?.order) {
+        query = query.order(
+          queryOptions.order.column, 
+          { ascending: queryOptions.order.ascending ?? true }
+        );
+      }
+      
+      return await query;
+    } catch (error) {
+      console.error(`Error in safeSelect for ${table}:`, error);
+      return { data: null, error };
+    }
+  };
+
+  // Helper function for safe UPDATE operations  
+  const safeUpdate = async (
+    table: string,
+    updateData: Record<string, any>,
+    condition: { column: string; value: any }
+  ) => {
+    try {
+      return await supabase
+        .from(table)
+        .update(updateData)
+        .eq(condition.column, condition.value);
+    } catch (error) {
+      console.error(`Error in safeUpdate for ${table}:`, error);
+      return { data: null, error };
+    }
+  };
+  
+  // Helper function for safe DELETE operations
+  const safeDelete = async (
+    table: string,
+    condition: { column: string; value: any }
+  ) => {
+    try {
+      return await supabase
+        .from(table)
+        .delete()
+        .eq(condition.column, condition.value);
+    } catch (error) {
+      console.error(`Error in safeDelete for ${table}:`, error);
+      return { data: null, error };
+    }
+  };
+  
+  // Helper function for safe INSERT operations
+  const safeInsert = async <T>(
+    table: string,
+    data: Record<string, any> | Record<string, any>[]
+  ) => {
+    try {
+      return await supabase.from(table).insert(data).select();
+    } catch (error) {
+      console.error(`Error in safeInsert for ${table}:`, error);
+      return { data: null, error };
+    }
+  };
+
+  return {
+    supabase,
+    safeSelect,
+    safeUpdate,
+    safeDelete,
+    safeInsert
+  };
+};
+
+// For backward compatibility
+export default supabase;
