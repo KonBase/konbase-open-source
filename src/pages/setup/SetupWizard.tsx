@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
@@ -23,38 +23,12 @@ const SetupWizard = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    contactEmail: '',
+    contactEmail: user?.email || '',
     contactPhone: '',
     website: '',
     address: ''
   });
   const [invitationCode, setInvitationCode] = useState('');
-  const [userAssociations, setUserAssociations] = useState<any[]>([]);
-  
-  useEffect(() => {
-    const fetchUserAssociations = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('associations')
-          .select('*')
-          .order('name');
-          
-        if (error) throw error;
-        setUserAssociations(data || []);
-      } catch (error) {
-        console.error('Error fetching associations:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load associations',
-          variant: 'destructive'
-        });
-      }
-    };
-    
-    fetchUserAssociations();
-  }, [user, toast]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -74,6 +48,7 @@ const SetupWizard = () => {
     setIsCreating(true);
     
     try {
+      // Create the association
       const { data, error } = await supabase
         .from('associations')
         .insert({
@@ -90,7 +65,7 @@ const SetupWizard = () => {
       if (error) throw error;
       
       // Add the current user as an admin for this association
-      await supabase
+      const memberResult = await supabase
         .from('association_members')
         .insert({
           user_id: user?.id,
@@ -98,23 +73,36 @@ const SetupWizard = () => {
           role: 'admin'
         });
       
+      if (memberResult.error) throw memberResult.error;
+      
+      // Update user profile with the association ID and promote from guest to admin
+      const profileResult = await supabase
+        .from('profiles')
+        .update({ 
+          association_id: data.id,
+          role: 'admin'
+        })
+        .eq('id', user?.id);
+      
+      if (profileResult.error) throw profileResult.error;
+      
+      // Create audit log entry
+      await supabase.from('audit_logs').insert({
+        user_id: user?.id,
+        entity: 'associations',
+        entity_id: data.id,
+        action: 'create',
+        changes: `Created association "${data.name}"`
+      });
+      
       toast({
         title: 'Association Created',
         description: `${data.name} has been created successfully`
       });
       
-      // Update user profile with the association ID and role
-      await supabase
-        .from('profiles')
-        .update({ 
-          association_id: data.id,
-          role: 'admin' // Promote from guest to admin
-        })
-        .eq('id', user?.id);
-      
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Error creating association:', error);
+      handleError(error, 'SetupWizard.handleCreateAssociation');
       toast({
         title: 'Failed to Create Association',
         description: error.message || 'An error occurred',
@@ -122,42 +110,6 @@ const SetupWizard = () => {
       });
     } finally {
       setIsCreating(false);
-    }
-  };
-  
-  const handleJoinAssociation = async (associationId: string) => {
-    try {
-      // Update user profile with the association ID and role
-      await supabase
-        .from('profiles')
-        .update({ 
-          association_id: associationId,
-          role: 'member' // Promote from guest to member
-        })
-        .eq('id', user?.id);
-      
-      // Add user as member to association
-      await supabase
-        .from('association_members')
-        .insert({
-          user_id: user?.id,
-          association_id: associationId,
-          role: 'member'
-        });
-      
-      toast({
-        title: 'Association Joined',
-        description: 'You have successfully joined the association'
-      });
-      
-      navigate('/dashboard');
-    } catch (error: any) {
-      console.error('Error joining association:', error);
-      toast({
-        title: 'Failed to Join Association',
-        description: error.message || 'An error occurred',
-        variant: 'destructive'
-      });
     }
   };
   
@@ -206,7 +158,7 @@ const SetupWizard = () => {
       const memberRole = invitation.role || 'member';
       
       // Add user to association with the role from the invitation
-      await supabase
+      const memberResult = await supabase
         .from('association_members')
         .insert({
           user_id: user?.id,
@@ -214,14 +166,27 @@ const SetupWizard = () => {
           role: memberRole
         });
       
+      if (memberResult.error) throw memberResult.error;
+      
       // Update user profile with the association ID and role
-      await supabase
+      const profileResult = await supabase
         .from('profiles')
         .update({ 
           association_id: invitation.association_id,
-          role: memberRole // Set role from invitation
+          role: memberRole
         })
         .eq('id', user?.id);
+      
+      if (profileResult.error) throw profileResult.error;
+      
+      // Create audit log entry
+      await supabase.from('audit_logs').insert({
+        user_id: user?.id,
+        entity: 'association_members',
+        entity_id: user?.id,
+        action: 'join',
+        changes: `Joined association via invitation code with role "${memberRole}"`
+      });
       
       // Get association name for the success message
       const { data: association } = await supabase
@@ -253,21 +218,15 @@ const SetupWizard = () => {
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold">Welcome to KonBase</h1>
         <p className="text-muted-foreground">
-          {userProfile?.role === 'guest' 
-            ? "You need to join or create an association to continue" 
-            : "Let's set up your association to get started"}
+          Get started by creating a new association or joining with an invitation code
         </p>
       </div>
       
       <Tabs defaultValue="invitation" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="invitation" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             Use Invitation Code
-          </TabsTrigger>
-          <TabsTrigger value="join" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Join Existing Association
           </TabsTrigger>
           <TabsTrigger value="create" className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
@@ -278,7 +237,10 @@ const SetupWizard = () => {
         {/* Invitation Code Tab */}
         <TabsContent value="invitation" className="mt-6">
           <Card>
-            <CardContent className="pt-6">
+            <CardHeader>
+              <CardTitle>Join with Invitation Code</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground mb-4">
                   Enter the invitation code you received to join an association.
@@ -317,52 +279,13 @@ const SetupWizard = () => {
           </Card>
         </TabsContent>
         
-        {/* Join Existing Tab */}
-        <TabsContent value="join" className="mt-6">
-          <Card>
-            <CardContent className="pt-6">
-              {userAssociations && userAssociations.length > 0 ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Select an association to join:
-                  </p>
-                  {userAssociations.map(association => (
-                    <Card key={association.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleJoinAssociation(association.id)}>
-                      <CardContent className="flex items-center gap-4 py-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Building className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{association.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {association.description || 'No description provided'}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No Associations Found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    You haven't been invited to any existing associations yet.
-                  </p>
-                  <p className="text-sm">
-                    You can create your own association using the "Create New Association" tab
-                    or use an invitation code if you have one.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
         {/* Create New Tab */}
         <TabsContent value="create" className="mt-6">
           <Card>
-            <CardContent className="pt-6">
+            <CardHeader>
+              <CardTitle>Create New Association</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
               <form className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Association Name*</Label>

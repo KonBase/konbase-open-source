@@ -64,3 +64,14 @@ export interface User extends SupabaseUser {
   role?: UserRoleType;
   email?: string;
 }
+
+// Invitation type for association invitations
+export interface AssociationInvitation {
+  id: string;
+  code: string;
+  association_id: string;
+  role: UserRoleType;
+  email?: string;
+  expires_at?: string;
+  created_at: string;
+}
