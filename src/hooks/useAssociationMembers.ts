@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTypeSafeSupabase } from './useTypeSafeSupabase';
 
 export interface AssociationMember {
   id: string;
@@ -20,6 +21,7 @@ export function useAssociationMembers() {
   const { currentAssociation } = useAssociation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { safeSelect, safeDelete } = useTypeSafeSupabase();
 
   useEffect(() => {
     if (currentAssociation) {
@@ -163,32 +165,34 @@ export function useAssociationMembers() {
     }
     
     try {
-      const { data, error } = await supabase
-        .from('association_invitations')
-        .select('*')
-        .eq('code', code)
-        .eq('association_id', currentAssociation.id)
-        .single();
+      // Using type-safe select to avoid type issues
+      const { data, error } = await safeSelect('association_invitations', '*', {
+        column: 'code',
+        value: code
+      });
 
-      if (error) {
-        console.error('Error checking invitation code:', error);
+      if (error || !data || data.length === 0) {
+        console.error('Error checking invitation code:', error || 'No data returned');
         return { valid: false };
       }
 
-      if (data) {
-        // Check if invitation is expired
-        if (data.expires_at && new Date(data.expires_at) < new Date()) {
-          return { valid: false };
-        }
-        
-        return { 
-          valid: true, 
-          role: data.role,
-          email: data.email
-        };
+      // Filter for current association
+      const invitation = data.find(inv => inv.association_id === currentAssociation.id);
+      
+      if (!invitation) {
+        return { valid: false };
       }
-
-      return { valid: false };
+      
+      // Check if invitation is expired
+      if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
+        return { valid: false };
+      }
+      
+      return { 
+        valid: true, 
+        role: invitation.role as string,
+        email: invitation.email as string | undefined
+      };
     } catch (error) {
       console.error('Error checking invitation code:', error);
       return { valid: false };
@@ -240,12 +244,11 @@ export function useAssociationMembers() {
 
       if (addError) throw addError;
 
-      // Delete the used invitation
-      await supabase
-        .from('association_invitations')
-        .delete()
-        .eq('code', code)
-        .eq('association_id', currentAssociation.id);
+      // Delete the used invitation using type-safe delete
+      await safeDelete('association_invitations', {
+        column: 'code',
+        value: code
+      });
 
       toast({
         title: 'Success',

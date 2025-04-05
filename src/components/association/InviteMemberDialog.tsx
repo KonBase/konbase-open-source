@@ -116,7 +116,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         
         // Use the type-safe insert method
-        const { error } = await supabase.from('association_invitations').insert({
+        const { error } = await safeInsert('association_invitations', {
           code,
           association_id: currentAssociation.id,
           email: values.email,
