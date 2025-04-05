@@ -102,26 +102,25 @@ const LoginForm = () => {
     }
   };
   
-  const handleDiscordSignIn = async () => {
+  const handleDiscordLogin = async () => {
     try {
       setIsDiscordLoading(true);
-      logDebug('Discord sign in attempt', null, 'info');
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}`,
           scopes: 'identify email',
         }
       });
       
       if (error) throw error;
     } catch (error: any) {
-      handleError(error, 'LoginForm.handleDiscordSignIn');
+      console.error('Discord login error:', error);
       toast({
-        title: 'Discord login failed',
-        description: error.message || 'Could not sign in with Discord.',
-        variant: 'destructive',
+        variant: "destructive",
+        title: "Login failed",
+        description: error.message || "Failed to login with Discord.",
       });
       setIsDiscordLoading(false);
     }
@@ -249,7 +248,7 @@ const LoginForm = () => {
             variant="outline" 
             type="button" 
             className="w-full" 
-            onClick={handleDiscordSignIn}
+            onClick={handleDiscordLogin}
             disabled={isDiscordLoading}
           >
             {isDiscordLoading ? (

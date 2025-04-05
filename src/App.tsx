@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
@@ -5,9 +6,8 @@ import { AssociationProvider } from './contexts/AssociationContext';
 import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useEffect } from 'react';
-import { processOAuthRedirect } from './utils/oauth-utils';
+import { handleOAuthRedirect } from './utils/oauth-handler';
 import { useToast } from './hooks/use-toast';
-import { supabase } from './lib/supabase';
 
 // Pages
 import Index from './pages/Index';
@@ -65,10 +65,10 @@ const OAuthRedirectHandler = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const handleOAuthRedirect = async () => {
+    const processOAuthRedirect = async () => {
       // Only process OAuth redirects if we have a hash in the URL
       if (window.location.hash && window.location.hash.includes('access_token')) {
-        const { success, error } = await processOAuthRedirect();
+        const { success, error } = await handleOAuthRedirect();
         
         if (success) {
           toast({
@@ -90,7 +90,7 @@ const OAuthRedirectHandler = () => {
       }
     };
 
-    handleOAuthRedirect();
+    processOAuthRedirect();
   }, [navigate, toast, location]);
 
   return null;

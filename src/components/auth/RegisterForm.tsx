@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,12 +53,10 @@ const RegisterForm = () => {
     try {
       logDebug('Register attempt', { email: values.email, name: values.name }, 'info');
       
-      // Register the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
-          // Store the user's name in the user metadata
           data: {
             name: values.name,
           },
@@ -75,12 +72,10 @@ const RegisterForm = () => {
         description: "Please check your email to verify your account.",
       });
       
-      // If email confirmation is disabled, navigate to dashboard
       if (data.session) {
         logDebug('User registered with session', { userId: data.user?.id }, 'info');
         navigate('/dashboard');
       } else {
-        // If email confirmation is enabled, navigate to login
         logDebug('User registered, email confirmation required', null, 'info');
         navigate('/login');
       }
@@ -128,7 +123,7 @@ const RegisterForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}`,
           scopes: 'identify email',
         }
       });
