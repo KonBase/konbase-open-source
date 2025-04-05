@@ -106,12 +106,12 @@ export const useTypeSafeSupabase = () => {
   // Helper function for safe INSERT operations - simplified to avoid type issues
   const safeInsert = async (
     table: TableNames,
-    data: Record<string, unknown>  // Simpler type definition
+    data: Record<string, any>  // Using a simple type to avoid deep type inference
   ) => {
     try {
       const result = await supabase
         .from(table)
-        .insert(data as any);  // Use type assertion to avoid compile issues
+        .insert(data);
         
       if (result.error) {
         throw result.error;
