@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +15,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
 
 const accountFormSchema = z.object({
   name: z.string().min(2, {
@@ -198,35 +198,25 @@ const Settings = () => {
           
           {/* Security Settings */}
           <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security</CardTitle>
-                <CardDescription>Manage your account security settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="2fa">Two-Factor Authentication</Label>
-                    <Switch id="2fa" checked={isTwoFactorEnabled} onCheckedChange={handleTwoFactorChange} />
-                  </div>
-                  {isTwoFactorEnabled ? (
-                    <Alert>
-                      <AlertTitle>Two-Factor Authentication Enabled</AlertTitle>
-                      <AlertDescription>
-                        Ensure you have set up your 2FA method.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <Alert>
-                      <AlertTitle>Two-Factor Authentication Disabled</AlertTitle>
-                      <AlertDescription>
-                        Enable 2FA for enhanced security.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6">
+              <TwoFactorAuth />
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change Password</CardTitle>
+                  <CardDescription>Update your account password</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Alert className="mb-4">
+                    <AlertTitle>Password Security</AlertTitle>
+                    <AlertDescription>
+                      Use a strong, unique password that you don't use elsewhere.
+                    </AlertDescription>
+                  </Alert>
+                  <Button>Change Password</Button>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
           
           {/* Notifications Settings */}
