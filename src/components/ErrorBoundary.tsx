@@ -38,12 +38,17 @@ class ErrorBoundary extends Component<Props, State> {
     // Update state with error info
     this.setState({ errorInfo });
     
-    // Log the error
+    // Log the error for debugging
     console.error('Error caught by ErrorBoundary:', error, errorInfo);
     
     // Call onError callback if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
+    }
+
+    // Log additional context if available
+    if (error.stack) {
+      console.error('Error stack:', error.stack);
     }
   }
 
@@ -71,7 +76,7 @@ class ErrorBoundary extends Component<Props, State> {
               </p>
               {this.state.error && (
                 <div className="bg-muted p-3 rounded mb-4 overflow-auto max-h-40">
-                  <p className="text-sm font-mono">{this.state.error.toString()}</p>
+                  <p className="text-sm font-mono break-words">{this.state.error.toString()}</p>
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
@@ -83,9 +88,6 @@ class ErrorBoundary extends Component<Props, State> {
                 </Button>
                 <Button variant="outline" asChild>
                   <Link to="/">Go to Home</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link to="/login">Go to Login</Link>
                 </Button>
               </div>
             </CardContent>

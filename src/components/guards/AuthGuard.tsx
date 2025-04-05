@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 
 interface AuthGuardProps {
@@ -15,10 +15,9 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [shouldSignOut, setShouldSignOut] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check if email is verified
     const checkEmailVerification = async () => {
       if (!user) {
         setIsChecking(false);
@@ -38,15 +37,20 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
         if (data?.user?.email_confirmed_at) {
           setIsEmailVerified(true);
         } else {
-          // Email not verified - mark for sign out without causing render loop
           setIsEmailVerified(false);
-          setShouldSignOut(true);
           
           toast({
             title: "Email Verification Required",
             description: "Please check your inbox and verify your email before continuing.",
             variant: "destructive"
           });
+          
+          // Sign out user with unverified email
+          try {
+            await supabase.auth.signOut();
+          } catch (error) {
+            console.error("Error signing out:", error);
+          }
         }
       } catch (error) {
         console.error("Error checking email verification:", error);
@@ -55,6 +59,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       }
     };
     
+    // Only check email verification if the user is logged in
     if (!isLoading) {
       if (isAuthenticated && user) {
         checkEmailVerification();
@@ -62,24 +67,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
         setIsChecking(false);
       }
     }
-  }, [isLoading, isAuthenticated, user]);
-
-  // Handle logout separately
-  useEffect(() => {
-    if (shouldSignOut) {
-      // Use setTimeout to avoid immediate auth state change
-      const timer = setTimeout(async () => {
-        try {
-          await supabase.auth.signOut();
-          setShouldSignOut(false);
-        } catch (error) {
-          console.error("Error signing out:", error);
-        }
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [shouldSignOut]);
+  }, [isLoading, isAuthenticated, user, toast]);
 
   if (isLoading || isChecking) {
     return (
