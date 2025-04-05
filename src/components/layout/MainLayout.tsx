@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
-import { Header } from './Header.tsx.custom';
+import { Header } from './Header';
 
 const MainLayout: React.FC = () => {
   const { isAuthenticated } = useAuth();

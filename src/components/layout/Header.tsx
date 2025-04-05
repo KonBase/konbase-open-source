@@ -1,169 +1,108 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Menu, MessageSquare, Search, LogOut, Settings, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { LogoutButton } from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MessageCircle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NotificationsDropdown } from '@/components/notification/NotificationsDropdown';
+import { AssociationSelector } from '@/components/admin/AssociationSelector';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { ChatModule } from '@/components/chat/ChatModule';
 
-interface HeaderProps {
-  toggleSidebar: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const { toast } = useToast();
-  const [notifications] = useState<{ id: string; title: string; read: boolean }[]>([
-    { id: '1', title: 'New equipment request', read: false },
-    { id: '2', title: 'Equipment return due', read: false },
-    { id: '3', title: 'Upcoming convention', read: true },
-  ]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+export function Header() {
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
   
-  // Extract user display values with fallbacks
-  const userName = user?.name || 'User';
-  const userEmail = user?.email || '';
-  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account."
-      });
-      navigate('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      toast({
-        title: "Logout failed",
-        description: "An error occurred during logout. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
   return (
-    <header className="h-16 border-b bg-background flex items-center justify-between px-4">
-      <div className="flex items-center">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden mr-2">
-          <Menu className="h-5 w-5" />
-        </Button>
-        
-        <Link to="/" className="font-bold text-lg text-primary mr-6">KonBase</Link>
-        
-        <div className="relative hidden md:flex items-center">
-          <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="w-[200px] lg:w-[300px] pl-8"
-          />
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+      <div className="container flex h-14 items-center px-4">
+        <div className="mr-4 md:flex">
+          <Link to="/" className="mr-6 flex items-center space-x-2">
+            <span className="hidden font-bold sm:inline-block">EventNexus</span>
+          </Link>
         </div>
-      </div>
-      
-      <div className="flex items-center space-x-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <div className="flex justify-between items-center p-2 border-b">
-              <h4 className="font-medium">Notifications</h4>
-              <Button variant="ghost" size="sm">Mark all as read</Button>
-            </div>
-            {notifications.length > 0 ? (
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.map((notification) => (
-                  <DropdownMenuItem key={notification.id} className="p-3 cursor-pointer">
-                    <div className="flex items-start gap-2">
-                      {!notification.read && (
-                        <div className="mt-1.5 w-2 h-2 bg-primary rounded-full"></div>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground">2 hours ago</p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 text-center text-muted-foreground">
-                No notifications
-              </div>
-            )}
-            <div className="p-2 border-t text-center">
-              <Button variant="ghost" size="sm" className="w-full">View all</Button>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Button variant="ghost" size="icon">
-          <MessageSquare className="h-5 w-5" />
-        </Button>
-
-        {user && (
-          <div className="flex items-center gap-2">
+        
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <AssociationSelector />
+          
+          <div className="flex items-center space-x-1">
+            {/* Chat Button */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MessageCircle className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[500px] p-0">
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle>Association Chat</SheetTitle>
+                </SheetHeader>
+                <div className="h-[calc(100vh-80px)]">
+                  <ChatModule />
+                </div>
+              </SheetContent>
+            </Sheet>
+            
+            {/* Notifications */}
+            <NotificationsDropdown />
+            
+            {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    {user.profileImage ? (
-                      <img src={user.profileImage} alt={userName} className="w-8 h-8 rounded-full" />
-                    ) : (
-                      <span className="font-medium text-primary">{userInitial}</span>
-                    )}
-                  </div>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    {profile?.profile_image && <AvatarImage src={profile.profile_image} alt={user?.name || "User avatar"} />}
+                    <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="flex flex-col items-center p-4 border-b">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                    {user.profileImage ? (
-                      <img src={user.profileImage} alt={userName} className="w-12 h-12 rounded-full" />
-                    ) : (
-                      <span className="text-lg font-medium text-primary">{userInitial}</span>
-                    )}
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.name || "User"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="font-medium">{userName}</p>
-                    <p className="text-xs text-muted-foreground">{userEmail}</p>
-                  </div>
-                </div>
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/profile">Profile</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/settings">Settings</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <LogoutButton />
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            <ThemeToggle />
           </div>
-        )}
+        </div>
       </div>
     </header>
   );
-};
-
-export default Header;
+}
