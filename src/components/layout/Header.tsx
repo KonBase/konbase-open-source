@@ -46,7 +46,7 @@ export function Header() {
       <div className="container flex h-14 items-center px-4">
         <div className="mr-4 hidden md:flex">
           <Link to="/dashboard" className="mr-6 flex items-center space-x-2">
-            <span className="font-bold text-lg">EventNexus</span>
+            {/* Removed "EventNexus" text */}
           </Link>
         </div>
         

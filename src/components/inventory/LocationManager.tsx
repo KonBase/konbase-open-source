@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocations, Location } from '@/hooks/useLocations';
 import { Button } from '@/components/ui/button';
@@ -47,29 +46,23 @@ import {
 import { PlusCircle, Pencil, Trash, FolderTree, MapPin, Building } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
-// Helper function to build a tree structure from flat locations
 const buildLocationTree = (locations: Location[]): (Location & { children: Location[] })[] => {
   const locationsMap: Record<string, Location & { children: Location[] }> = {};
   
-  // Initialize map with all locations
   locations.forEach(location => {
     locationsMap[location.id] = { ...location, children: [] };
   });
   
-  // Build the tree structure
   const rootLocations: (Location & { children: Location[] })[] = [];
   
   locations.forEach(location => {
     if (location.parentId) {
-      // Add to parent's children if parent exists
       if (locationsMap[location.parentId]) {
         locationsMap[location.parentId].children.push(locationsMap[location.id]);
       } else {
-        // If parent doesn't exist (data inconsistency), add to root
         rootLocations.push(locationsMap[location.id]);
       }
     } else {
-      // Add to root locations if no parent
       rootLocations.push(locationsMap[location.id]);
     }
   });
@@ -90,18 +83,17 @@ const LocationManager = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: 'none', // Changed from empty string to 'none' to fix the Select.Item error
+    parentId: 'none',
     type: 'room',
   });
   
-  // Prepare the tree view data when in tree mode
   const locationTree = buildLocationTree(locations);
   
   const resetForm = () => {
     setFormData({
       name: '',
       description: '',
-      parentId: 'none', // Changed from empty string to 'none'
+      parentId: 'none',
       type: 'room',
     });
   };
@@ -116,7 +108,7 @@ const LocationManager = () => {
     setFormData({
       name: location.name,
       description: location.description || '',
-      parentId: location.parentId || 'none', // Changed from empty string to 'none'
+      parentId: location.parentId || 'none',
       type: location.type || 'room',
     });
     setIsEditDialogOpen(true);
@@ -370,7 +362,6 @@ const LocationManager = () => {
         </CardContent>
       </Card>
       
-      {/* Add Location Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -450,7 +441,6 @@ const LocationManager = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Edit Location Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -531,7 +521,6 @@ const LocationManager = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Location Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

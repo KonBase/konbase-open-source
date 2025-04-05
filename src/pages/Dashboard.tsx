@@ -11,7 +11,6 @@ import {
   BarChart3,
   ArrowUpDown,
   FileWarning,
-  ArchiveIcon,
   BoxIcon,
   FileUp,
   MessageCircle,
@@ -342,18 +341,6 @@ const Dashboard = () => {
                 <div>
                   <h3 className="font-semibold">Import/Export</h3>
                   <p className="text-sm text-muted-foreground">Data import and export</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/settings/backup" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <ArchiveIcon className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Backups</h3>
-                  <p className="text-sm text-muted-foreground">Manage local backups</p>
                 </div>
               </div>
             </Link>
