@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import LogoutButton from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageCircle, User, Settings, Shield } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,7 +33,7 @@ export function Header() {
   // Extract user display values with fallbacks
   const userName = user?.name || profile?.name || 'User';
   const userEmail = user?.email || profile?.email || '';
-  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
+  const userInitial = userName && userName.length > 0 ? userName.charAt(0).toUpperCase() : 'U';
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -78,11 +78,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    {profile?.profile_image ? (
-                      <AvatarImage src={profile.profile_image} alt={userName} />
-                    ) : (
-                      <AvatarFallback>{userInitial}</AvatarFallback>
-                    )}
+                    <AvatarFallback className="bg-primary text-primary-foreground">{userInitial}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -100,7 +96,7 @@ export function Header() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                {(profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'system_admin') && (
+                {(profile?.role === 'system_admin' || profile?.role === 'super_admin') && (
                   <DropdownMenuItem asChild>
                     <Link to="/admin">
                       <Shield className="mr-2 h-4 w-4" />

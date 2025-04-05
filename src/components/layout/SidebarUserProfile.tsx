@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
@@ -17,18 +17,14 @@ const SidebarUserProfile: React.FC<SidebarUserProfileProps> = ({ collapsed }) =>
   // Extract user display values with fallbacks
   const userName = user?.name || profile?.name || 'User';
   const userEmail = user?.email || profile?.email || '';
-  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
+  const userInitial = userName && userName.length > 0 ? userName.charAt(0).toUpperCase() : 'U';
 
   // In collapsed mode, just show the avatar
   if (collapsed) {
     return (
       <div className="p-4 border-t border-border flex justify-center">
         <Avatar className="h-8 w-8">
-          {profile?.profile_image ? (
-            <AvatarImage src={profile.profile_image} alt={userName} />
-          ) : (
-            <AvatarFallback>{userInitial}</AvatarFallback>
-          )}
+          <AvatarFallback className="bg-primary text-primary-foreground">{userInitial}</AvatarFallback>
         </Avatar>
       </div>
     );
@@ -38,11 +34,7 @@ const SidebarUserProfile: React.FC<SidebarUserProfileProps> = ({ collapsed }) =>
     <div className="p-4 border-t border-border">
       <div className="flex items-center gap-2">
         <Avatar className="h-8 w-8">
-          {profile?.profile_image ? (
-            <AvatarImage src={profile.profile_image} alt={userName} />
-          ) : (
-            <AvatarFallback>{userInitial}</AvatarFallback>
-          )}
+          <AvatarFallback className="bg-primary text-primary-foreground">{userInitial}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{userName}</p>

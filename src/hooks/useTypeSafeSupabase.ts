@@ -1,6 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
-import { handleError, logDebug } from '@/utils/debug';
+import { handleError } from '@/utils/debug';
 
 // Define available table names
 type TableName = 'profiles' | 'associations' | 'audit_logs' | 'categories' 

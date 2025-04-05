@@ -20,7 +20,7 @@ export default function AdminPanel() {
   const isSystemAdmin = hasRole('system_admin') && !hasRole('super_admin');
   
   return (
-    <RoleGuard allowedRoles={['admin', 'system_admin', 'super_admin']}>
+    <RoleGuard allowedRoles={['system_admin', 'super_admin']}>
       <div className="container mx-auto py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
