@@ -1,33 +1,24 @@
+
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Building2, 
-  Package, 
-  Users, 
-  FileBox, 
-  MapPin, 
-  Calendar, 
-  FileText,
-  BarChart3,
-  ArrowUpDown,
-  FileWarning,
-  BoxIcon,
-  FileUp,
-  MessageCircle,
-  Bell,
-  ArrowLeft,
-  Archive
-} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
-import LocationManager from '@/components/inventory/LocationManager';
+import { useLocation } from 'react-router-dom';
+
+// Dashboard Components
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import DashboardStats from '@/components/dashboard/DashboardStats';
+import NoAssociationView from '@/components/dashboard/NoAssociationView';
+import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
+import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
+import CommunicationSection from '@/components/dashboard/CommunicationSection';
+import LocationManagerView from '@/components/dashboard/LocationManagerView';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
+  const location = useLocation();
+  
   const [stats, setStats] = useState({
     itemsCount: 0,
     categoriesCount: 0,
@@ -140,365 +131,39 @@ const Dashboard = () => {
   }
 
   if (!currentAssociation) {
+    return <NoAssociationView />;
+  }
+
+  if (showLocationManager && currentAssociation) {
     return (
-      <div className="space-y-4 p-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Welcome to EventNexus</CardTitle>
-            <CardDescription>You need to set up your association first</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">To get started with EventNexus, you need to create or join an association.</p>
-            <Button asChild>
-              <Link to="/setup">Set Up Association</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <LocationManagerView 
+        onBack={() => setShowLocationManager(false)} 
+        currentAssociation={currentAssociation} 
+      />
     );
   }
 
-  if (showLocationManager) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="icon" onClick={() => setShowLocationManager(false)}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Storage Locations</h1>
-              <p className="text-muted-foreground">
-                {currentAssociation.name} - Managing your storage locations
-              </p>
-            </div>
-          </div>
-        </div>
-        <LocationManager />
-      </div>
-    );
-  }
+  const isHome = location.pathname === "/dashboard";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-2">
-        <div className="flex items-center gap-3">
-          {location.pathname !== "/dashboard" && (
-            <Button variant="outline" size="icon" asChild>
-              <Link to="/dashboard">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground flex items-center">
-              <Building2 className="h-4 w-4 mr-1 inline-block" />
-              {currentAssociation.name} - Welcome back, {user?.name || 'User'}!
-            </p>
-          </div>
-        </div>
-      </div>
+      <DashboardHeader 
+        currentAssociation={currentAssociation} 
+        user={user} 
+        isHome={isHome} 
+      />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.itemsCount}</div>
-            <p className="text-xs text-muted-foreground">Items in inventory</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            <FileBox className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.categoriesCount}</div>
-            <p className="text-xs text-muted-foreground">Item categories</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Locations</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.locationsCount}</div>
-            <p className="text-xs text-muted-foreground">Storage locations</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conventions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.conventionsCount}</div>
-            <p className="text-xs text-muted-foreground">Total conventions</p>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardStats stats={stats} isLoading={isLoading} />
 
       {/* Association Management Module */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Association Management</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/association/profile" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Building2 className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Association Profile</h3>
-                  <p className="text-sm text-muted-foreground">Manage association details</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/inventory/items" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Package className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Inventory</h3>
-                  <p className="text-sm text-muted-foreground">Manage your equipment</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/association/members" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Users className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">User Management</h3>
-                  <p className="text-sm text-muted-foreground">Manage members and permissions</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/inventory/categories" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <FileBox className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Categories</h3>
-                  <p className="text-sm text-muted-foreground">Manage item categories</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card 
-            className="hover:bg-accent/50 cursor-pointer transition-colors"
-            onClick={() => setShowLocationManager(true)}
-          >
-            <div className="block p-6">
-              <div className="flex items-center space-x-4">
-                <MapPin className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Locations</h3>
-                  <p className="text-sm text-muted-foreground">Manage storage locations</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/inventory/sets" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <BoxIcon className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Equipment Sets</h3>
-                  <p className="text-sm text-muted-foreground">Manage predefined sets</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/inventory/warranties" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <FileWarning className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Warranties</h3>
-                  <p className="text-sm text-muted-foreground">Track warranties and docs</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/inventory/import-export" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <ArrowUpDown className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Import/Export</h3>
-                  <p className="text-sm text-muted-foreground">Data import and export</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-        </div>
-      </div>
+      <AssociationManagementSection onShowLocationManager={() => setShowLocationManager(true)} />
 
       {/* Convention Management Module */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Convention Management</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Calendar className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Conventions</h3>
-                  <p className="text-sm text-muted-foreground">Manage conventions</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions/equipment" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <ArrowUpDown className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Equipment Tracking</h3>
-                  <p className="text-sm text-muted-foreground">Issue and return equipment</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions/consumables" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Package className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Consumables</h3>
-                  <p className="text-sm text-muted-foreground">Track consumable items</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions/locations" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <MapPin className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Room Mapping</h3>
-                  <p className="text-sm text-muted-foreground">Manage convention locations</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions/requirements" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <FileText className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Requirements</h3>
-                  <p className="text-sm text-muted-foreground">Manage equipment needs</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions/logs" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <FileText className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Activity Logs</h3>
-                  <p className="text-sm text-muted-foreground">View all convention activities</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/reports" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <BarChart3 className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Reports</h3>
-                  <p className="text-sm text-muted-foreground">Generate reports</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/conventions/archive" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Archive className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Archiving</h3>
-                  <p className="text-sm text-muted-foreground">Archive past conventions</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/templates" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <FileUp className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Templates</h3>
-                  <p className="text-sm text-muted-foreground">Create convention templates</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-        </div>
-      </div>
+      <ConventionManagementSection />
 
       {/* Communication Module */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Communication</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/chat" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <MessageCircle className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Association Chat</h3>
-                  <p className="text-sm text-muted-foreground">Chat with association members</p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-          
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/notifications" className="block p-6">
-              <div className="flex items-center space-x-4">
-                <Bell className="h-10 w-10 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Notifications</h3>
-                  <p className="text-sm text-muted-foreground">
-                    View all notifications 
-                    {unreadNotifications > 0 && (
-                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
-                        {unreadNotifications}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          </Card>
-        </div>
-      </div>
+      <CommunicationSection unreadNotifications={unreadNotifications} />
     </div>
   );
 };
