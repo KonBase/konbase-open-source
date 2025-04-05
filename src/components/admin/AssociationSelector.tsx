@@ -12,6 +12,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -138,12 +139,13 @@ export function AssociationSelector() {
         <PopoverContent className="w-[220px] p-0">
           <Command>
             <CommandInput placeholder="Search association..." />
-            <CommandEmpty>No association found.</CommandEmpty>
-            <ScrollArea className="h-[300px]">
+            <CommandList>
+              <CommandEmpty>No association found.</CommandEmpty>
               <CommandGroup>
                 {displayedAssociations.map((association) => (
                   <CommandItem
                     key={association.id}
+                    value={association.id}
                     onSelect={() => handleSelectAssociation(association)}
                     className="flex items-center justify-between"
                   >
@@ -159,7 +161,7 @@ export function AssociationSelector() {
                   </CommandItem>
                 ))}
               </CommandGroup>
-            </ScrollArea>
+            </CommandList>
           </Command>
         </PopoverContent>
       </Popover>
