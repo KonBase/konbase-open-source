@@ -8,7 +8,6 @@ import { logDebug } from '@/utils/debug';
 
 // Dashboard Components
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import NoAssociationView from '@/components/dashboard/NoAssociationView';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
@@ -94,9 +93,6 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Stats Cards */}
-      <DashboardStats />
-
       {/* Association Management Module */}
       <AssociationManagementSection onShowLocationManager={() => setShowLocationManager(true)} />
 
@@ -104,7 +100,7 @@ const Dashboard = () => {
       <ConventionManagementSection />
 
       {/* Communication Module */}
-      <CommunicationSection />
+      <CommunicationSection unreadNotifications={0} />
     </div>
   );
 };

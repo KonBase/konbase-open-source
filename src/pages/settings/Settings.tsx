@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +17,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
+import { enableDebugMode, logDebug } from '@/utils/debug';
+import { Bug } from 'lucide-react';
 
 const accountFormSchema = z.object({
   name: z.string().min(2, {
@@ -35,6 +38,9 @@ const Settings = () => {
   const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [debugModeEnabled, setDebugModeEnabled] = useState(
+    localStorage.getItem('konbase-debug') === 'true'
+  );
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -124,6 +130,18 @@ const Settings = () => {
     });
   };
 
+  const handleDebugModeChange = (enabled: boolean) => {
+    setDebugModeEnabled(enabled);
+    enableDebugMode(enabled);
+    
+    toast({
+      title: "Debug mode updated",
+      description: `Debug tools have been ${enabled ? 'enabled' : 'disabled'}.`,
+    });
+    
+    logDebug(`Debug mode ${enabled ? 'enabled' : 'disabled'} via settings`, null, 'info');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -192,6 +210,23 @@ const Settings = () => {
                     </div>
                   </form>
                 </Form>
+                
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="debug-tools" className="flex items-center space-x-2">
+                      <Bug className="h-4 w-4" />
+                      <span>Debug Tools</span>
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable developer debugging tools and panels
+                    </p>
+                  </div>
+                  <Switch 
+                    id="debug-tools" 
+                    checked={debugModeEnabled} 
+                    onCheckedChange={handleDebugModeChange} 
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
