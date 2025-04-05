@@ -9,6 +9,7 @@ export interface Association {
   contactEmail: string;
   contactPhone?: string;
   website?: string;
+  type?: string;
   createdAt: string;
   updatedAt: string;
 }
