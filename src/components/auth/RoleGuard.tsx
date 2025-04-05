@@ -33,6 +33,7 @@ export function RoleGuard({
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -47,6 +48,7 @@ export function RoleGuard({
       
       if (!hasAllowedRole) {
         setHasAccess(false);
+        setAccessDenied(true);
         setChecking(false);
         
         // Display error message in console for debugging
@@ -76,6 +78,18 @@ export function RoleGuard({
     
     checkAccess();
   }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor]);
+  
+  // Show toast only once when access is denied
+  useEffect(() => {
+    if (accessDenied) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have sufficient permissions to access this area.",
+        variant: "destructive"
+      });
+      setAccessDenied(false); // Reset flag after showing toast
+    }
+  }, [accessDenied, toast]);
   
   if (loading || checking) {
     return (
@@ -110,11 +124,6 @@ export function RoleGuard({
   }
   
   if (!hasAccess) {
-    toast({
-      title: "Access Denied",
-      description: "You don't have sufficient permissions to access this area.",
-      variant: "destructive"
-    });
     return <Navigate to={fallbackPath} replace />;
   }
   
