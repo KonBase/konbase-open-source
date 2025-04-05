@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const TwoFactorAuth = () => {
   const [recoveryKeys, setRecoveryKeys] = useState<string[]>([]);
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
   const [hasConfirmedBackup, setHasConfirmedBackup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const { toast } = useToast();
   const { profile, updateProfile, refreshProfile } = useUserProfile();
@@ -37,6 +39,7 @@ const TwoFactorAuth = () => {
   const startSetup = async () => {
     try {
       setIsSettingUp(true);
+      setErrorMessage(null);
       
       const { data, error } = await supabase.functions.invoke('generate-totp-secret', {});
       
@@ -60,6 +63,7 @@ const TwoFactorAuth = () => {
       }
     } catch (error) {
       console.error('Error setting up 2FA:', error);
+      setErrorMessage('Failed to set up 2FA. Please try again.');
       toast({
         variant: "destructive",
         title: "Error setting up 2FA",
@@ -95,6 +99,7 @@ const TwoFactorAuth = () => {
     
     try {
       setIsVerifying(true);
+      setErrorMessage(null);
       
       const { data, error } = await supabase.functions.invoke('verify-totp', {
         body: { 
@@ -102,6 +107,8 @@ const TwoFactorAuth = () => {
           token: verificationCode 
         }
       });
+      
+      console.log("Verification response:", data, error);
       
       if (error) throw error;
       
@@ -123,6 +130,7 @@ const TwoFactorAuth = () => {
       }
     } catch (error) {
       console.error('Error verifying 2FA code:', error);
+      setErrorMessage('Failed to verify code. Please try again with a new code.');
       toast({
         variant: "destructive",
         title: "Error verifying code",
@@ -136,6 +144,7 @@ const TwoFactorAuth = () => {
   const generateRecoveryKeys = async () => {
     try {
       setIsGeneratingKeys(true);
+      setErrorMessage(null);
       
       const { data, error } = await supabase.functions.invoke('generate-recovery-keys', {
         body: { count: 8 }
@@ -149,6 +158,7 @@ const TwoFactorAuth = () => {
       }
     } catch (error) {
       console.error('Error generating recovery keys:', error);
+      setErrorMessage('Failed to generate recovery keys. Please try again.');
       toast({
         variant: "destructive",
         title: "Error generating recovery keys",
@@ -180,6 +190,8 @@ const TwoFactorAuth = () => {
     }
     
     try {
+      setErrorMessage(null);
+      
       const { data, error } = await supabase.functions.invoke('complete-2fa-setup', {
         body: { 
           secret,
@@ -208,6 +220,7 @@ const TwoFactorAuth = () => {
       });
     } catch (error) {
       console.error('Error completing 2FA setup:', error);
+      setErrorMessage('Failed to enable 2FA. Please try again.');
       toast({
         variant: "destructive",
         title: "Error enabling 2FA",
@@ -218,6 +231,8 @@ const TwoFactorAuth = () => {
 
   const disable2FA = async () => {
     try {
+      setErrorMessage(null);
+      
       const { data, error } = await supabase.functions.invoke('disable-2fa', {});
       
       if (error) {
@@ -236,6 +251,7 @@ const TwoFactorAuth = () => {
       });
     } catch (error) {
       console.error('Error disabling 2FA:', error);
+      setErrorMessage('Failed to disable 2FA. Please try again.');
       toast({
         variant: "destructive",
         title: "Error disabling 2FA",
@@ -258,6 +274,12 @@ const TwoFactorAuth = () => {
               Your account has an extra layer of security. You'll need to enter a verification code when you log in.
             </AlertDescription>
           </Alert>
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
           <Button variant="destructive" onClick={disable2FA}>Disable 2FA</Button>
         </CardContent>
       </Card>
@@ -272,6 +294,12 @@ const TwoFactorAuth = () => {
           <CardDescription>Secure your account with an authenticator app</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
           {qrCode ? (
             <>
               <div className="mb-4">
@@ -356,6 +384,12 @@ const TwoFactorAuth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
           <Alert variant="destructive" className="mb-4">
             <AlertTitle>Important</AlertTitle>
             <AlertDescription>
@@ -415,6 +449,12 @@ const TwoFactorAuth = () => {
         <CardDescription>Add an extra layer of security to your account</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
         <Alert className="mb-4">
           <AlertTitle>Enhance your account security</AlertTitle>
           <AlertDescription>

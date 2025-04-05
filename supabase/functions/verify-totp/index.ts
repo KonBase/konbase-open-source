@@ -51,20 +51,31 @@ serve(async (req) => {
       );
     }
 
-    // Create TOTP instance
+    // Create TOTP instance with the provided secret
     const totp = new TOTP(secret);
     
-    // Verify token
-    const verified = totp.verify(token);
-
-    return new Response(
-      JSON.stringify({ verified }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    try {
+      // Verify token
+      const verified = totp.verify(token);
+      
+      console.log("TOTP verification result:", verified);
+      
+      return new Response(
+        JSON.stringify({ verified }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (verifyError) {
+      console.error("TOTP verification error:", verifyError);
+      
+      return new Response(
+        JSON.stringify({ verified: false, error: "Verification failed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
