@@ -15,7 +15,8 @@ import {
   FileUp,
   MessageCircle,
   Bell,
-  ArrowLeft
+  ArrowLeft,
+  Archive
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
@@ -439,7 +440,7 @@ const Dashboard = () => {
           <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
             <Link to="/conventions/archive" className="block p-6">
               <div className="flex items-center space-x-4">
-                <ArchiveIcon className="h-10 w-10 text-primary" />
+                <Archive className="h-10 w-10 text-primary" />
                 <div>
                   <h3 className="font-semibold">Archiving</h3>
                   <p className="text-sm text-muted-foreground">Archive past conventions</p>

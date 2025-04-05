@@ -46,9 +46,6 @@ import ReportsList from './pages/reports/ReportsList';
 // Communication Pages
 import ChatPage from './pages/chat/ChatPage';
 
-// Settings-related Pages
-import BackupManagement from './pages/settings/BackupManagement';
-
 // Layouts
 import MainLayout from './components/layout/MainLayout';
 import MainLayoutWrapper from './components/layout/MainLayoutWrapper';
@@ -89,7 +86,6 @@ const App = () => {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/settings/backup" element={<BackupManagement />} />
                   
                   {/* Association routes */}
                   <Route path="/association">

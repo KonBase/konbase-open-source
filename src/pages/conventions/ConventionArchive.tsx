@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArchiveIcon } from 'lucide-react';
+import { Archive } from 'lucide-react';
 
 const ConventionArchive = () => {
   return (
@@ -21,7 +21,7 @@ const ConventionArchive = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-10">
-            <ArchiveIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+            <Archive className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-2 text-lg font-semibold">No Archived Conventions</h3>
             <p className="mt-1 text-muted-foreground">
               Completed conventions will appear here after they are archived.

@@ -2,7 +2,7 @@
 import React from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { ArchiveIcon, DownloadIcon } from 'lucide-react';
+import { Archive, Download } from 'lucide-react';
 import { Convention } from '@/types/convention';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
@@ -88,7 +88,7 @@ Last Updated: ${new Date(convention.updated_at).toLocaleDateString()}
           onClick={() => setIsOpen(true)}
           disabled={convention.status === 'archived'}
         >
-          <ArchiveIcon className="mr-2 h-4 w-4" />
+          <Archive className="mr-2 h-4 w-4" />
           {convention.status === 'archived' ? 'Archived' : 'Archive'}
         </Button>
       )}
