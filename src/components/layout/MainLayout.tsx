@@ -13,6 +13,10 @@ const MainLayout: React.FC = () => {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   
+  // Check if current path is profile or settings, which don't need sidebar
+  const isSidebarDisabledPage = location.pathname.startsWith('/profile') || 
+                                location.pathname.startsWith('/settings');
+  
   useEffect(() => {
     // Check if user is authenticated and redirect if needed
     if (!isLoading && !isAuthenticated && !location.pathname.startsWith('/login')) {
@@ -27,6 +31,11 @@ const MainLayout: React.FC = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  // For profile and settings pages, just render the Outlet without sidebar
+  if (isSidebarDisabledPage) {
+    return <Outlet />;
   }
 
   return (

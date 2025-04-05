@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Link } from 'react-router-dom';
 
 interface SidebarHeaderProps {
   collapsed: boolean;
@@ -8,16 +8,20 @@ interface SidebarHeaderProps {
 
 const SidebarHeader: React.FC<SidebarHeaderProps> = ({ collapsed }) => {
   return (
-    <div className={`p-4 border-b border-border ${collapsed ? 'justify-center' : 'gap-2'} flex items-center`}>
-      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold flex-shrink-0">
-        EN
-      </div>
-      {!collapsed && (
-        <div className="overflow-hidden">
-          <h2 className="font-semibold truncate">EventNexus</h2>
-          <p className="text-xs text-muted-foreground truncate">Supply Chain Management</p>
-        </div>
-      )}
+    <div className="flex items-center p-4">
+      <Link to="/" className="flex items-center space-x-2">
+        <img 
+          src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+          alt="KonBase Logo" 
+          className="h-8 w-8" 
+        />
+        {!collapsed && (
+          <div className="flex flex-col">
+            <span className="font-bold text-xl">KonBase</span>
+            <span className="text-xs text-muted-foreground">Supply Chain Management for Conventions</span>
+          </div>
+        )}
+      </Link>
     </div>
   );
 };

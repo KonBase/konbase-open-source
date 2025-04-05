@@ -982,6 +982,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_elevated_admin_role: {
+        Args: {
+          user_id: string
+        }
+        Returns: boolean
+      }
       is_association_member: {
         Args: {
           user_id: string
@@ -1003,7 +1009,13 @@ export type Database = {
       movement_type: "checkout" | "return" | "transfer"
       report_type: "inventory" | "movement" | "convention" | "audit"
       requirement_status: "requested" | "approved" | "fulfilled" | "denied"
-      user_role: "super_admin" | "admin" | "manager" | "member" | "guest"
+      user_role:
+        | "super_admin"
+        | "admin"
+        | "manager"
+        | "member"
+        | "guest"
+        | "system_admin"
     }
     CompositeTypes: {
       [_ in never]: never

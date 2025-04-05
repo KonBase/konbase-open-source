@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
 import { UserRoleType } from '@/types/user';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +29,12 @@ export function RoleGuard({
   fallbackPath = '/unauthorized',
   enforceTwoFactor = false
 }: RoleGuardProps) {
-  const { userProfile, hasRole, loading, checkRoleAccess } = useAuth();
+  const { userProfile, hasRole, loading } = useAuth();
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -50,11 +51,13 @@ export function RoleGuard({
         return;
       }
       
-      // For super_admin, system_admin, or when explicit 2FA enforcement is needed,
+      // For high-privilege roles or when explicit 2FA enforcement is needed,
       // check if the user has 2FA enabled
-      const needsTwoFactor = (hasRole('super_admin') || 
-                              hasRole('system_admin') || 
-                              (enforceTwoFactor));
+      const needsTwoFactor = (
+        hasRole('super_admin') || 
+        hasRole('system_admin') || 
+        enforceTwoFactor
+      );
       
       if (needsTwoFactor && userProfile && !userProfile.two_factor_enabled) {
         setShowTwoFactorDialog(true);
@@ -63,41 +66,13 @@ export function RoleGuard({
         return;
       }
       
-      // For the highest required role in the list, perform a detailed access check
-      let highestRequiredRole: UserRoleType = 'guest';
-      for (const role of allowedRoles) {
-        if (hasRole(role)) {
-          if (role === 'super_admin') {
-            highestRequiredRole = 'super_admin';
-            break;
-          } else if (role === 'system_admin' && highestRequiredRole !== 'super_admin') {
-            highestRequiredRole = 'system_admin';
-          } else if (role === 'admin' && 
-                    highestRequiredRole !== 'super_admin' && 
-                    highestRequiredRole !== 'system_admin') {
-            highestRequiredRole = 'admin';
-          } else if (role === 'manager' && 
-                    highestRequiredRole !== 'super_admin' && 
-                    highestRequiredRole !== 'system_admin' && 
-                    highestRequiredRole !== 'admin') {
-            highestRequiredRole = 'manager';
-          }
-        }
-      }
-      
-      if (highestRequiredRole !== 'guest') {
-        const access = await checkRoleAccess(highestRequiredRole);
-        setHasAccess(access);
-      } else {
-        // Default check for 'member' and 'guest'
-        setHasAccess(true);
-      }
-      
+      // All checks passed
+      setHasAccess(true);
       setChecking(false);
     };
     
     checkAccess();
-  }, [loading, userProfile, allowedRoles, hasRole, checkRoleAccess, enforceTwoFactor]);
+  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor]);
   
   if (loading || checking) {
     return (

@@ -1,7 +1,7 @@
 
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import LogoutButton from '@/components/auth/LogoutButton';  // Changed from named to default import
+import LogoutButton from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle } from 'lucide-react';
@@ -35,7 +35,7 @@ export function Header() {
       <div className="container flex h-14 items-center px-4">
         <div className="mr-4 md:flex">
           <Link to="/" className="mr-6 flex items-center space-x-2">
-            <span className="hidden font-bold sm:inline-block">EventNexus</span>
+            <span className="hidden font-bold sm:inline-block">KonBase</span>
           </Link>
         </div>
         
@@ -84,7 +84,7 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link to="/profile">Profile</Link>
                 </DropdownMenuItem>
-                {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
+                {(profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'system_admin') && (
                   <DropdownMenuItem asChild>
                     <Link to="/admin">Admin Panel</Link>
                   </DropdownMenuItem>

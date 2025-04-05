@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
-import { RoleBasedRedirect } from './RoleBasedRedirect';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 
 interface AuthGuardProps {
@@ -16,51 +15,59 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check if email is verified
     const checkEmailVerification = async () => {
       if (!user) {
         setIsChecking(false);
+        setIsEmailVerified(false);
         return;
       }
 
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data, error } = await supabase.auth.getUser();
         
-        if (currentUser?.email_confirmed_at) {
+        if (error) {
+          console.error("Error checking email verification:", error);
+          setIsChecking(false);
+          return;
+        }
+        
+        if (data?.user?.email_confirmed_at) {
           setIsEmailVerified(true);
         } else {
-          // Email not verified
+          setIsEmailVerified(false);
+          
           toast({
             title: "Email Verification Required",
             description: "Please check your inbox and verify your email before continuing.",
             variant: "destructive"
           });
           
-          // Sign out the user
-          await supabase.auth.signOut();
-          
-          setIsEmailVerified(false);
+          // Sign out user with unverified email
+          try {
+            await supabase.auth.signOut();
+          } catch (error) {
+            console.error("Error signing out:", error);
+          }
         }
       } catch (error) {
         console.error("Error checking email verification:", error);
+      } finally {
+        setIsChecking(false);
       }
-      
-      setIsChecking(false);
     };
     
-    // Small delay to ensure auth state is properly loaded
-    const timer = setTimeout(() => {
+    // Only check email verification if the user is logged in
+    if (!isLoading) {
       if (isAuthenticated && user) {
         checkEmailVerification();
       } else {
         setIsChecking(false);
       }
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [isLoading, isAuthenticated, user]);
+    }
+  }, [isLoading, isAuthenticated, user, toast]);
 
   if (isLoading || isChecking) {
     return (
@@ -79,13 +86,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Navigate to="/login" state={{ emailVerification: true }} replace />;
   }
 
-  // Add the role-based redirect component
-  return (
-    <>
-      <RoleBasedRedirect />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 };
 
 export default AuthGuard;

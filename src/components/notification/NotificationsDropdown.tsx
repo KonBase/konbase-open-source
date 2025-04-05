@@ -25,60 +25,72 @@ export function NotificationsDropdown() {
   const { toast } = useToast();
   
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
+    const fetchNotifications = async () => {
+      if (!user) {
+        setNotifications([]);
+        setLoading(false);
+        return;
+      }
       
-      // Set up real-time subscription for new notifications
-      const channel = supabase
-        .channel('notifications-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT', 
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            setNotifications(prev => [newNotification, ...prev]);
-            
-            toast({
-              title: newNotification.title,
-              description: newNotification.message,
-            });
-          }
-        )
-        .subscribe();
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user]);
-  
-  const fetchNotifications = async () => {
-    if (!user) return;
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (error) throw error;
+        setNotifications(data || []);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      setNotifications(data || []);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setLoading(false);
+    fetchNotifications();
+    
+    // Set up real-time subscription for new notifications only if user is authenticated
+    let channel;
+    if (user) {
+      // Use setTimeout to prevent potential auth state issues
+      setTimeout(() => {
+        channel = supabase
+          .channel('notifications-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT', 
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${user.id}`
+            },
+            (payload) => {
+              const newNotification = payload.new as Notification;
+              setNotifications(prev => [newNotification, ...prev]);
+              
+              toast({
+                title: newNotification.title,
+                description: newNotification.message,
+              });
+            }
+          )
+          .subscribe();
+      }, 0);
     }
-  };
+    
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [user, toast]);
   
   const markAsRead = async (id: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('notifications')
