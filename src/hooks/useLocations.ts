@@ -1,23 +1,27 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { useAssociation } from '@/contexts/AssociationContext';
 
 export interface Location {
   id: string;
   name: string;
   description: string | null;
-  associationId: string;
   parentId: string | null;
+  associationId: string;
   isRoom: boolean;
+  type: string; // Added type property to match what's being used in LocationManager
   createdAt: string;
   updatedAt: string;
 }
 
+export type NewLocation = Omit<Location, 'id' | 'createdAt' | 'updatedAt'>;
+
 export function useLocations() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   const { currentAssociation } = useAssociation();
 
   useEffect(() => {
@@ -42,15 +46,16 @@ export function useLocations() {
 
       if (error) throw error;
 
-      const formattedLocations = data.map(loc => ({
-        id: loc.id,
-        name: loc.name,
-        description: loc.description,
-        associationId: loc.association_id,
-        parentId: loc.parent_id,
-        isRoom: loc.is_room,
-        createdAt: loc.created_at,
-        updatedAt: loc.updated_at
+      const formattedLocations = data.map(location => ({
+        id: location.id,
+        name: location.name,
+        description: location.description,
+        parentId: location.parent_id,
+        associationId: location.association_id,
+        isRoom: location.is_room,
+        type: location.is_room ? 'room' : 'container', // Map is_room to a type for compatibility
+        createdAt: location.created_at,
+        updatedAt: location.updated_at
       }));
 
       setLocations(formattedLocations);
@@ -66,7 +71,7 @@ export function useLocations() {
     }
   };
 
-  const createLocation = async (name: string, description?: string, parentId?: string, isRoom: boolean = false) => {
+  const createLocation = async (newLocation: { name: string; description: string; parentId: string | null; type: 'room' | 'building' | 'container' }) => {
     if (!currentAssociation) {
       toast({
         title: 'Error',
@@ -80,14 +85,17 @@ export function useLocations() {
       const now = new Date().toISOString();
       const id = crypto.randomUUID();
       
+      // Convert type to is_room flag
+      const isRoom = newLocation.type === 'room';
+      
       const { error } = await supabase
         .from('locations')
         .insert({
           id,
-          name,
-          description: description || null,
+          name: newLocation.name,
+          description: newLocation.description,
+          parent_id: newLocation.parentId === 'none' ? null : newLocation.parentId,
           association_id: currentAssociation.id,
-          parent_id: parentId || null,
           is_room: isRoom,
           created_at: now,
           updated_at: now
@@ -95,28 +103,8 @@ export function useLocations() {
 
       if (error) throw error;
       
-      // Fetch the newly created location
-      const { data: newLocationData, error: fetchError } = await supabase
-        .from('locations')
-        .select('*')
-        .eq('id', id)
-        .single();
-        
-      if (fetchError) throw fetchError;
-
-      const newLocation: Location = {
-        id: newLocationData.id,
-        name: newLocationData.name,
-        description: newLocationData.description,
-        associationId: newLocationData.association_id,
-        parentId: newLocationData.parent_id,
-        isRoom: newLocationData.is_room,
-        createdAt: newLocationData.created_at,
-        updatedAt: newLocationData.updated_at
-      };
-
-      setLocations(prev => [...prev, newLocation]);
-      return newLocation;
+      await fetchLocations();
+      return true;
     } catch (error: any) {
       console.error('Error creating location:', error);
       toast({
@@ -124,40 +112,29 @@ export function useLocations() {
         description: error.message,
         variant: 'destructive'
       });
-      return null;
+      return false;
     }
   };
 
-  const updateLocation = async (id: string, updates: { name?: string; description?: string; parentId?: string | null; isRoom?: boolean }) => {
+  const updateLocation = async (id: string, updates: { name?: string; description?: string; parentId?: string | null; type?: 'room' | 'building' | 'container' }) => {
     try {
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.parentId !== undefined) updateData.parent_id = updates.parentId === 'none' ? null : updates.parentId;
+      if (updates.type !== undefined) updateData.is_room = updates.type === 'room';
+      
       const { error } = await supabase
         .from('locations')
-        .update({
-          name: updates.name,
-          description: updates.description,
-          parent_id: updates.parentId,
-          is_room: updates.isRoom,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
 
-      setLocations(prev =>
-        prev.map(loc =>
-          loc.id === id
-            ? { 
-                ...loc, 
-                name: updates.name || loc.name, 
-                description: updates.description !== undefined ? updates.description : loc.description,
-                parentId: updates.parentId !== undefined ? updates.parentId : loc.parentId,
-                isRoom: updates.isRoom !== undefined ? updates.isRoom : loc.isRoom,
-                updatedAt: new Date().toISOString()
-              }
-            : loc
-        )
-      );
-      
+      await fetchLocations();
       return true;
     } catch (error: any) {
       console.error('Error updating location:', error);
@@ -172,41 +149,6 @@ export function useLocations() {
 
   const deleteLocation = async (id: string) => {
     try {
-      // Check if location has items
-      const { count, error: countError } = await supabase
-        .from('items')
-        .select('id', { count: 'exact', head: true })
-        .eq('location_id', id);
-
-      if (countError) throw countError;
-      
-      if (count && count > 0) {
-        toast({
-          title: 'Cannot Delete',
-          description: `This location has ${count} items assigned to it. Please reassign or delete these items first.`,
-          variant: 'destructive'
-        });
-        return false;
-      }
-
-      // Check if location has children
-      const { count: childCount, error: childCountError } = await supabase
-        .from('locations')
-        .select('id', { count: 'exact', head: true })
-        .eq('parent_id', id);
-
-      if (childCountError) throw childCountError;
-      
-      if (childCount && childCount > 0) {
-        toast({
-          title: 'Cannot Delete',
-          description: `This location has ${childCount} sub-locations. Please delete or reassign these sub-locations first.`,
-          variant: 'destructive'
-        });
-        return false;
-      }
-
-      // Proceed with deletion
       const { error } = await supabase
         .from('locations')
         .delete()
@@ -214,7 +156,7 @@ export function useLocations() {
 
       if (error) throw error;
 
-      setLocations(prev => prev.filter(loc => loc.id !== id));
+      setLocations(prev => prev.filter(location => location.id !== id));
       return true;
     } catch (error: any) {
       console.error('Error deleting location:', error);
@@ -230,7 +172,7 @@ export function useLocations() {
   return {
     locations,
     loading,
-    refreshLocations: fetchLocations,
+    fetchLocations,
     createLocation,
     updateLocation,
     deleteLocation

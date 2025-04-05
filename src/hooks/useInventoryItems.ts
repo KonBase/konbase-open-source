@@ -73,7 +73,7 @@ export function useInventoryItems() {
         isConsumable: item.is_consumable,
         quantity: item.quantity,
         minimumQuantity: item.minimum_quantity,
-        unitPrice: item.unit_price,
+        unitPrice: item.purchase_price, // Changed from unit_price to purchase_price to match DB schema
         purchaseDate: item.purchase_date,
         warrantyExpiration: item.warranty_expiration,
         image: item.image,
@@ -125,7 +125,7 @@ export function useInventoryItems() {
           is_consumable: newItem.isConsumable,
           quantity: newItem.quantity,
           minimum_quantity: newItem.minimumQuantity,
-          unit_price: newItem.unitPrice,
+          purchase_price: newItem.unitPrice, // Changed to purchase_price to match DB schema
           purchase_date: newItem.purchaseDate,
           warranty_expiration: newItem.warrantyExpiration,
           image: newItem.image,

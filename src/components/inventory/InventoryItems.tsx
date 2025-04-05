@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { useInventoryItems } from '@/hooks/useInventoryItems'; 
+import { useInventoryItems, NewInventoryItem } from '@/hooks/useInventoryItems'; 
 import { useCategories } from '@/hooks/useCategories';
 import { useLocations } from '@/hooks/useLocations';
 import { 
@@ -37,7 +36,6 @@ import {
   FormMessage 
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Package2, Pencil, Search, Trash } from 'lucide-react';
@@ -48,6 +46,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { useAssociation } from '@/contexts/AssociationContext';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
@@ -58,31 +57,13 @@ const formSchema = z.object({
   categoryId: z.string().min(1, { message: "Category is required" }),
   locationId: z.string().min(1, { message: "Location is required" }),
   isConsumable: z.boolean().default(false),
-  quantity: z.union([
-    z.number().positive().optional(),
-    z.null()
-  ]),
-  minimumQuantity: z.union([
-    z.number().positive().optional(),
-    z.null()
-  ]),
-  purchaseDate: z.union([
-    z.string().optional(),
-    z.null()
-  ]),
-  purchasePrice: z.union([
-    z.number().min(0).optional(),
-    z.null()
-  ]),
-  warrantyExpiration: z.union([
-    z.string().optional(),
-    z.null()
-  ]),
+  quantity: z.number().positive().optional().nullable(),
+  minimumQuantity: z.number().positive().optional().nullable(),
+  purchaseDate: z.string().optional().nullable(),
+  unitPrice: z.number().min(0).optional().nullable(),
+  warrantyExpiration: z.string().optional().nullable(),
   notes: z.string().optional(),
-  image: z.union([
-    z.string().optional(),
-    z.null()
-  ])
+  image: z.string().optional().nullable()
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -92,6 +73,7 @@ const InventoryItems = () => {
   const { categories } = useCategories();
   const { locations } = useLocations();
   const { toast } = useToast();
+  const { currentAssociation } = useAssociation();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -113,7 +95,7 @@ const InventoryItems = () => {
       quantity: null,
       minimumQuantity: null,
       purchaseDate: null,
-      purchasePrice: null,
+      unitPrice: null,
       warrantyExpiration: null,
       notes: '',
       image: null
@@ -134,7 +116,7 @@ const InventoryItems = () => {
       quantity: null,
       minimumQuantity: null,
       purchaseDate: null,
-      purchasePrice: null,
+      unitPrice: null,
       warrantyExpiration: null,
       notes: '',
       image: null
@@ -161,7 +143,7 @@ const InventoryItems = () => {
       quantity: item.quantity,
       minimumQuantity: item.minimumQuantity,
       purchaseDate: item.purchaseDate,
-      purchasePrice: item.purchasePrice,
+      unitPrice: item.unitPrice,
       warrantyExpiration: item.warrantyExpiration,
       notes: item.notes || '',
       image: item.image
@@ -177,7 +159,34 @@ const InventoryItems = () => {
   
   const handleCreateItem = async (values: FormValues) => {
     try {
-      await createItem(values);
+      if (!currentAssociation) {
+        toast({
+          title: "Error",
+          description: "No association selected",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const newItem: NewInventoryItem = {
+        name: values.name,
+        description: values.description || null,
+        serialNumber: values.serialNumber || null,
+        barcode: values.barcode || null,
+        condition: values.condition,
+        categoryId: values.categoryId,
+        locationId: values.locationId,
+        isConsumable: values.isConsumable,
+        quantity: values.quantity || 1,
+        minimumQuantity: values.minimumQuantity || null,
+        unitPrice: values.unitPrice || null,
+        purchaseDate: values.purchaseDate || null,
+        warrantyExpiration: values.warrantyExpiration || null,
+        image: values.image || null,
+        associationId: currentAssociation.id
+      };
+
+      await createItem(newItem);
       setIsAddDialogOpen(false);
       toast({
         title: "Success",
@@ -197,7 +206,24 @@ const InventoryItems = () => {
     if (!currentItem) return;
     
     try {
-      await updateItem(currentItem.id, values);
+      const updates: Partial<NewInventoryItem> = {
+        name: values.name,
+        description: values.description || null,
+        serialNumber: values.serialNumber || null,
+        barcode: values.barcode || null,
+        condition: values.condition,
+        categoryId: values.categoryId,
+        locationId: values.locationId,
+        isConsumable: values.isConsumable,
+        quantity: values.quantity || 1,
+        minimumQuantity: values.minimumQuantity || null,
+        unitPrice: values.unitPrice || null,
+        purchaseDate: values.purchaseDate || null,
+        warrantyExpiration: values.warrantyExpiration || null,
+        image: values.image || null
+      };
+
+      await updateItem(currentItem.id, updates);
       setIsEditDialogOpen(false);
       toast({
         title: "Success",
@@ -552,10 +578,10 @@ const InventoryItems = () => {
                   
                   <FormField
                     control={form.control}
-                    name="purchasePrice"
+                    name="unitPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Purchase Price</FormLabel>
+                        <FormLabel>Unit Price</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -876,10 +902,10 @@ const InventoryItems = () => {
                   
                   <FormField
                     control={editForm.control}
-                    name="purchasePrice"
+                    name="unitPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Purchase Price</FormLabel>
+                        <FormLabel>Unit Price</FormLabel>
                         <FormControl>
                           <Input
                             type="number"

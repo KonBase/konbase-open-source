@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocations, Location } from '@/hooks/useLocations';
 import { Button } from '@/components/ui/button';
