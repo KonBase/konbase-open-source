@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +38,6 @@ const TwoFactorAuth = () => {
     try {
       setIsSettingUp(true);
       
-      // Generate the secret key through Supabase function
       const { data, error } = await supabase.functions.invoke('generate-totp-secret', {});
       
       if (error) throw error;
@@ -48,7 +46,6 @@ const TwoFactorAuth = () => {
         const { secret, keyUri } = data;
         setSecret(secret);
         
-        // Generate QR code
         try {
           const qrCodeImage = await QRCode.toDataURL(keyUri);
           setQrCode(qrCodeImage);
@@ -99,7 +96,6 @@ const TwoFactorAuth = () => {
     try {
       setIsVerifying(true);
       
-      // Verify the code through Supabase function
       const { data, error } = await supabase.functions.invoke('verify-totp', {
         body: { 
           secret, 
@@ -112,7 +108,6 @@ const TwoFactorAuth = () => {
       if (data && data.verified) {
         setIsConfirmed(true);
         
-        // Generate recovery keys
         await generateRecoveryKeys();
         
         toast({
@@ -142,7 +137,6 @@ const TwoFactorAuth = () => {
     try {
       setIsGeneratingKeys(true);
       
-      // Generate recovery keys through Supabase function
       const { data, error } = await supabase.functions.invoke('generate-recovery-keys', {
         body: { count: 8 }
       });
@@ -186,7 +180,6 @@ const TwoFactorAuth = () => {
     }
     
     try {
-      // Store the 2FA secret and recovery keys in the database
       const { data, error } = await supabase.functions.invoke('complete-2fa-setup', {
         body: { 
           secret,
@@ -196,7 +189,6 @@ const TwoFactorAuth = () => {
       
       if (error) throw error;
       
-      // Update the profile
       await updateProfile({ two_factor_enabled: true });
       await refreshProfile();
       
@@ -226,7 +218,6 @@ const TwoFactorAuth = () => {
 
   const disable2FA = async () => {
     try {
-      // Call Supabase function to disable 2FA
       const { data, error } = await supabase.functions.invoke('disable-2fa', {});
       
       if (error) {
@@ -234,7 +225,6 @@ const TwoFactorAuth = () => {
         throw error;
       }
       
-      // Update the profile
       await updateProfile({ two_factor_enabled: false });
       await refreshProfile();
       
@@ -254,7 +244,6 @@ const TwoFactorAuth = () => {
     }
   };
 
-  // Display different content based on the current state
   if (isEnabled && !isSettingUp) {
     return (
       <Card>
