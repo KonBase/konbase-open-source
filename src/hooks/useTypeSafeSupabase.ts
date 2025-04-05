@@ -1,26 +1,8 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase, TypeSafeSupabaseClient } from '@/lib/supabase';
 import type { Database } from '@/lib/database.types';
 
-// Use direct values from the Supabase project
-const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
-
-// Simplified version to avoid deep type instantiation issues
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: localStorage,
-  },
-});
-
-// Type for our Supabase client
-export type TypeSafeSupabaseClient = typeof supabase;
-
 // Define the table names explicitly as a union type
-// Use a string literal union to avoid deep type instantiation issues
 type TableNames = 
   | 'association_members'
   | 'associations'
