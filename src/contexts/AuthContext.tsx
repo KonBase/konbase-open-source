@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, AuthError } from '@supabase/supabase-js';
@@ -39,15 +38,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const setData = async () => {
       try {
+        const savedSession = localStorage.getItem('supabase.auth.token');
+        if (savedSession) {
+          try {
+            const parsed = JSON.parse(savedSession);
+            if (parsed.currentSession && parsed.expiresAt > Math.floor(Date.now() / 1000)) {
+              setSession(parsed.currentSession);
+              
+              if (parsed.currentSession.user) {
+                const userData = parsed.currentSession.user as unknown as User;
+                setUser(userData);
+                await fetchUserProfile(parsed.currentSession.user.id);
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing saved session:', e);
+          }
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
-        setSession(session);
         
-        if (session?.user) {
-          const userData = session.user as unknown as User;
-          setUser(userData);
-          await fetchUserProfile(session.user.id);
-        } else {
-          setUser(null);
+        if (session) {
+          setSession(session);
+          
+          if (session.user) {
+            const userData = session.user as unknown as User;
+            setUser(userData);
+            await fetchUserProfile(session.user.id);
+          }
         }
         
         setError(error?.message || null);
@@ -61,20 +79,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         
         if (session?.user) {
           const userData = session.user as unknown as User;
           setUser(userData);
           
-          // Use setTimeout to prevent auth deadlock
           setTimeout(() => {
             fetchUserProfile(session.user.id);
           }, 0);
+          
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            currentSession: session,
+            expiresAt: Math.floor(Date.now() / 1000) + (session.expires_in || 3600)
+          }));
+          
+          localStorage.setItem('supabase.auth.access_token', session.access_token);
         } else {
           setUser(null);
           setUserProfile(null);
+          
+          localStorage.removeItem('supabase.auth.token');
+          localStorage.removeItem('supabase.auth.access_token');
         }
       }
     );
@@ -84,7 +111,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const fetchUserProfile = async (userId: string) => {
     try {
-      // Use maybeSingle instead of single to handle the case where no profile exists
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -94,7 +120,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       if (user) {
-        // Create a default profile if none exists
         const profileData = data || {
           id: userId,
           name: user.email?.split('@')[0] || 'User',
@@ -133,22 +158,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const rolePermissions = USER_ROLES[userProfile.role as UserRoleType]?.permissions || [];
     
-    // Check if the user has the specific permission or admin:all
     return rolePermissions.includes(requiredPermission) || rolePermissions.includes('admin:all');
   };
 
   const checkRoleAccess = async (role: UserRoleType): Promise<boolean> => {
-    // If not even authenticated, no access
     if (!isAuthenticated || !userProfile) {
       return false;
     }
     
-    // If current role doesn't have necessary level, no access
     if (!hasRole(role)) {
       return false;
     }
     
-    // If role requires 2FA but user doesn't have it enabled, no access
     if (USER_ROLES[role].requires2FA && !userProfile.two_factor_enabled) {
       toast({
         title: "Two-Factor Authentication Required",
@@ -161,7 +182,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
-  // Function to elevate to super_admin after verifying 2FA
   const elevateToSuperAdmin = async (): Promise<{success: boolean, message: string}> => {
     if (!isAuthenticated || !userProfile) {
       return { 
@@ -170,7 +190,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
     }
     
-    // Check if user's role in database is actually system_admin or super_admin
     if (userProfile.role !== 'system_admin' && userProfile.role !== 'super_admin') {
       return { 
         success: false, 
@@ -178,7 +197,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
     }
     
-    // Check if 2FA is enabled
     if (!userProfile.two_factor_enabled) {
       return { 
         success: false, 
@@ -187,7 +205,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      // For system_admin, update their role to super_admin
       if (userProfile.role === 'system_admin') {
         const { error } = await supabase
           .from('profiles')
@@ -196,17 +213,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
         if (error) throw error;
         
-        // Update local user state
         if (user) {
           const updatedUser = { ...user, role: 'super_admin' as UserRoleType };
           setUser(updatedUser);
         }
         
-        // Update local profile state
         setUserProfile({ ...userProfile, role: 'super_admin' });
       }
       
-      // Create a record of this elevation attempt for audit purposes
       await supabase.from('audit_logs').insert({
         action: 'super_admin_elevation',
         entity: 'users',
@@ -290,7 +304,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         setError(error.message);
       } else {
-        // Reset user state and session
         setUser(null);
         setSession(null);
         setUserProfile(null);

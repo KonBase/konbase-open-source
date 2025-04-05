@@ -50,11 +50,11 @@ export function RoleGuard({
         return;
       }
       
-      // For super_admin, or when explicit 2FA enforcement is needed,
+      // For super_admin, system_admin, or when explicit 2FA enforcement is needed,
       // check if the user has 2FA enabled
       const needsTwoFactor = (hasRole('super_admin') || 
-                              (hasRole('system_admin') && allowedRoles.includes('super_admin')) || 
-                              enforceTwoFactor);
+                              hasRole('system_admin') || 
+                              (enforceTwoFactor));
       
       if (needsTwoFactor && userProfile && !userProfile.two_factor_enabled) {
         setShowTwoFactorDialog(true);

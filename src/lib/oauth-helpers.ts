@@ -27,6 +27,7 @@ export const extractOAuthParams = (hash: string): OAuthParams => {
 
 /**
  * Processes OAuth redirect and exchanges token for session
+ * Stores the session details in localStorage to prevent 404 errors on refresh
  */
 export const processOAuthRedirect = async (hash: string) => {
   try {
@@ -46,6 +47,9 @@ export const processOAuthRedirect = async (hash: string) => {
           currentSession: data.session,
           expiresAt: Math.floor(Date.now() / 1000) + (data.session.expires_in || 3600)
         }));
+        
+        // Also save just the access token in a separate key for cases where only the token is needed
+        localStorage.setItem('supabase.auth.access_token', data.session.access_token);
       }
       
       return { success: true, session: data.session };

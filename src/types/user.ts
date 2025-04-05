@@ -24,7 +24,7 @@ export const USER_ROLES: Record<UserRoleType, RoleDefinition> = {
     level: 90,
     name: 'System Admin',
     description: 'Administrative access with limited access to system settings',
-    requires2FA: false,
+    requires2FA: true, // Changed from false to true to enforce 2FA for system_admin
     permissions: ['manage:users', 'manage:associations', 'manage:billing']
   },
   'admin': {

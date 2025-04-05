@@ -77,10 +77,10 @@ export const useUserProfile = () => {
       }
 
       setProfile((prev) => prev ? { ...prev, ...data } : data);
-      return data;
+      return { ...data, success: true, error: null };
     } catch (err) {
       console.error('Error updating profile:', err);
-      throw err;
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     } finally {
       setLoading(false);
     }
@@ -102,6 +102,7 @@ export const useUserProfile = () => {
     error,
     updateProfile,
     updateProfileImage,
-    refreshProfile: fetchProfile
+    refreshProfile: fetchProfile,
+    user // Add user to the return value to fix TypeScript errors
   };
 };
