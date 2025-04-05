@@ -21,45 +21,63 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     const checkEmailVerification = async () => {
       if (!user) {
         setIsChecking(false);
+        setIsEmailVerified(false);
         return;
       }
 
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data, error } = await supabase.auth.getUser();
         
-        if (currentUser?.email_confirmed_at) {
+        if (error) {
+          console.error("Error checking email verification:", error);
+          setIsChecking(false);
+          return;
+        }
+        
+        if (data?.user?.email_confirmed_at) {
           setIsEmailVerified(true);
         } else {
-          // Email not verified
+          // Email not verified - don't call signOut inside this auth check
+          // to prevent potential recursion
+          setIsEmailVerified(false);
+          
           toast({
             title: "Email Verification Required",
             description: "Please check your inbox and verify your email before continuing.",
             variant: "destructive"
           });
-          
-          // Sign out the user
-          await supabase.auth.signOut();
-          
-          setIsEmailVerified(false);
         }
       } catch (error) {
         console.error("Error checking email verification:", error);
+      } finally {
+        setIsChecking(false);
       }
-      
-      setIsChecking(false);
     };
     
-    // Small delay to ensure auth state is properly loaded
-    const timer = setTimeout(() => {
+    if (!isLoading) {
       if (isAuthenticated && user) {
         checkEmailVerification();
       } else {
         setIsChecking(false);
       }
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    }
   }, [isLoading, isAuthenticated, user]);
+
+  // Handle logout separately to avoid recursive rendering
+  useEffect(() => {
+    if (!isLoading && !isChecking && isAuthenticated && !isEmailVerified) {
+      // Use setTimeout to avoid immediate auth state change
+      const timer = setTimeout(async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error("Error signing out:", error);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, isChecking, isAuthenticated, isEmailVerified]);
 
   if (isLoading || isChecking) {
     return (
@@ -78,7 +96,6 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Navigate to="/login" state={{ emailVerification: true }} replace />;
   }
 
-  // Return children without RoleBasedRedirect as it will be used explicitly where needed
   return <>{children}</>;
 };
 
