@@ -2,9 +2,16 @@
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
 
+// Define available table names
 type TableName = 'profiles' | 'associations' | 'audit_logs' | 'categories' 
   | 'items' | 'locations' | 'chat_messages' | 'notifications' 
   | 'conventions' | 'convention_invitations' | 'association_members';
+
+// Simplified condition type
+interface QueryCondition {
+  column: string;
+  value: any;
+}
 
 /**
  * A type-safe Supabase hook for database operations
@@ -16,7 +23,7 @@ export function useTypeSafeSupabase() {
   const safeSelect = async <T>(
     table: TableName,
     columns: string = '*',
-    condition?: { column: string; value: any }
+    condition?: QueryCondition
   ): Promise<{ data: T[] | null; error: any }> => {
     try {
       let query = supabase.from(table).select(columns);
@@ -56,7 +63,7 @@ export function useTypeSafeSupabase() {
         throw error;
       }
       
-      return { data: result as unknown as T, error: null };
+      return { data: result as T, error: null };
     } catch (error) {
       handleError(error, `safeInsert.${table}`);
       return { data: null, error };
@@ -69,7 +76,7 @@ export function useTypeSafeSupabase() {
   const safeUpdate = async <T>(
     table: TableName,
     updates: any,
-    condition: { column: string; value: any }
+    condition: QueryCondition
   ): Promise<{ data: T | null; error: any }> => {
     try {
       const { data: result, error } = await supabase
@@ -83,7 +90,7 @@ export function useTypeSafeSupabase() {
         throw error;
       }
       
-      return { data: result as unknown as T, error: null };
+      return { data: result as T, error: null };
     } catch (error) {
       handleError(error, `safeUpdate.${table}`);
       return { data: null, error };
@@ -95,7 +102,7 @@ export function useTypeSafeSupabase() {
    */
   const safeDelete = async (
     table: TableName,
-    condition: { column: string; value: any }
+    condition: QueryCondition
   ): Promise<{ success: boolean; error: any }> => {
     try {
       const { error } = await supabase
