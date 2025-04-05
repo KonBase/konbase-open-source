@@ -105,10 +105,10 @@ export const useTypeSafeSupabase = () => {
   };
   
   // Helper function for safe INSERT operations
-  // Uses a simple Record type instead of complex table-specific types to avoid deep type instantiation
-  const safeInsert = async <T = any>(
+  // Simplified to avoid deep type instantiation issues
+  const safeInsert = async (
     table: TableNames,
-    data: Record<string, any>
+    data: any // Using 'any' to avoid complex type inference
   ) => {
     try {
       const result = await supabase.from(table).insert(data);
