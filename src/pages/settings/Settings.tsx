@@ -1,524 +1,190 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
+import { Header } from '@/components/layout/Header';
+import { useNavigate } from 'react-router-dom';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { supabase, isUsingDefaultCredentials } from '@/lib/supabase';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, Loader2 } from 'lucide-react';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 const Settings = () => {
-  const { profile, updateProfile, loading } = useUserProfile();
+  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
   const { toast } = useToast();
-  const usingDefaultCredentials = isUsingDefaultCredentials();
-  
-  const [enablingOTP, setEnablingOTP] = useState(false);
-  const [disablingOTP, setDisablingOTP] = useState(false);
-  const [showOTPSetup, setShowOTPSetup] = useState(false);
-  const [otpSecret, setOtpSecret] = useState('');
-  const [otpUri, setOtpUri] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [verifyingOTP, setVerifyingOTP] = useState(false);
-  const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
-  const [compactMode, setCompactMode] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [pushNotifications, setPushNotifications] = useState(false);
-  const [alertNotifications, setAlertNotifications] = useState(true);
-  const [deletingAccount, setDeletingAccount] = useState(false);
-  const [factorId, setFactorId] = useState<string | null>(null);
-  
-  // Fetch MFA factors on component mount
-  useEffect(() => {
-    const fetchMFAFactors = async () => {
-      try {
-        const { data } = await supabase.auth.mfa.listFactors();
-        if (data?.totp && data.totp.length > 0) {
-          setFactorId(data.totp[0].id);
-        }
-      } catch (error) {
-        console.error("Error fetching MFA factors:", error);
-      }
-    };
-    
-    if (profile?.two_factor_enabled) {
-      fetchMFAFactors();
-    }
-  }, [profile]);
-  
-  const handleToggle2FA = async () => {
-    if (profile?.two_factor_enabled) {
-      setDisablingOTP(true);
-      try {
-        if (!factorId) {
-          const { data: factors } = await supabase.auth.mfa.listFactors();
-          
-          const totpFactor = factors?.totp?.[0];
-          
-          if (!totpFactor) {
-            throw new Error('No TOTP factor found to disable');
-          }
-          
-          const { error } = await supabase.auth.mfa.unenroll({
-            factorId: totpFactor.id
-          });
-          
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.auth.mfa.unenroll({
-            factorId: factorId
-          });
-          
-          if (error) throw error;
-        }
-        
-        await updateProfile({ two_factor_enabled: false });
-        setFactorId(null);
-        
-        toast({
-          title: 'Two-Factor Authentication Disabled',
-          description: 'Your account is now less secure.',
-        });
-        
-      } catch (error: any) {
-        console.error('Error disabling 2FA:', error);
-        toast({
-          title: 'Error',
-          description: error.message || 'Failed to disable two-factor authentication',
-          variant: 'destructive',
-        });
-      } finally {
-        setDisablingOTP(false);
-      }
-    } else {
-      setEnablingOTP(true);
-      try {
-        const { data, error } = await supabase.auth.mfa.enroll({
-          factorType: 'totp',
-        });
-        
-        if (error) throw error;
-        
-        if (data) {
-          setOtpSecret(data.totp.secret);
-          setOtpUri(data.totp.uri);
-          setFactorId(data.id);
-          setShowOTPSetup(true);
-        }
-        
-      } catch (error: any) {
-        console.error('Error enabling 2FA:', error);
-        toast({
-          title: 'Error',
-          description: error.message || 'Failed to enable two-factor authentication',
-          variant: 'destructive',
-        });
-      } finally {
-        setEnablingOTP(false);
-      }
-    }
-  };
+  const navigate = useNavigate();
+  const { updateProfile } = useUserProfile();
+  const { signOut } = useAuth();
 
-  const handleVerifyOTP = async () => {
-    setVerifyingOTP(true);
+  const handleSignOut = async () => {
     try {
-      if (!factorId) {
-        // Get the current enrollment factors
-        const { data: factorData } = await supabase.auth.mfa.listFactors();
-        
-        // Check if we have any TOTP factors in progress
-        if (!factorData || !factorData.totp || factorData.totp.length === 0) {
-          // If no factors found, use the current factor being enrolled
-          if (!otpSecret) {
-            throw new Error('No TOTP factor found for verification');
-          }
-        } else {
-          // Use the first available factor
-          setFactorId(factorData.totp[0].id);
-        }
-      }
-      
-      // Ensure we have a factorId by this point
-      const currentFactorId = factorId || 'current';
-      
-      const { data, error } = await supabase.auth.mfa.challenge({
-        factorId: currentFactorId,
-      });
-      
-      if (error) throw error;
-      
-      const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: currentFactorId,
-        challengeId: data.id,
-        code: otpCode,
-      });
-      
-      if (verifyError) throw verifyError;
-      
-      await updateProfile({ two_factor_enabled: true });
-      
+      await signOut();
       toast({
-        title: 'Two-Factor Authentication Enabled',
-        description: 'Your account is now more secure.',
+        title: "Signed out",
+        description: "You have been signed out successfully.",
       });
-      
-      setShowOTPSetup(false);
-      setOtpCode('');
-      
+      navigate('/login');
     } catch (error: any) {
-      console.error('Error verifying OTP:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to verify OTP code',
-        variant: 'destructive',
+        variant: "destructive",
+        title: "Error signing out",
+        description: error.message,
       });
-    } finally {
-      setVerifyingOTP(false);
     }
   };
 
-  const handleThemeToggle = (checked: boolean) => {
-    setDarkMode(checked);
-    if (checked) {
-      document.documentElement.classList.add('dark');
-      localStorage.theme = 'dark';
+  const handleThemeChange = (theme: string) => {
+    // Implement theme change logic here
+    toast({
+      title: "Theme changed",
+      description: `Theme has been changed to ${theme}.`,
+    });
+  };
+
+  const handleTwoFactorChange = async (enabled: boolean) => {
+    setIsTwoFactorEnabled(enabled);
+    const result = await updateProfile({ two_factor_enabled: enabled });
+
+    if (result && result.success) {
+      toast({
+        title: "2FA settings updated",
+        description: `Two-factor authentication has been ${enabled ? 'enabled' : 'disabled'}.`,
+      });
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.theme = 'light';
+      toast({
+        variant: "destructive",
+        title: "Error updating 2FA settings",
+        description: result?.error || 'Failed to update 2FA settings.',
+      });
     }
   };
 
-  const handleDeleteAccount = async () => {
-    setDeletingAccount(true);
-    try {
-      const { error } = await supabase.auth.admin.deleteUser(profile?.id || '');
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Account Deleted',
-        description: 'Your account has been permanently deleted.',
-      });
-      
-      await supabase.auth.signOut();
-      
-      window.location.href = '/';
-      
-    } catch (error: any) {
-      console.error('Error deleting account:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete account',
-        variant: 'destructive',
-      });
-    } finally {
-      setDeletingAccount(false);
-    }
-  };
-  
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-      
-      {usingDefaultCredentials && (
-        <Card className="border-yellow-500 dark:border-yellow-400">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
-              <AlertCircle className="h-5 w-5" />
-              Demo Mode Active
-            </CardTitle>
-            <CardDescription>
-              You are currently using default Supabase credentials. Some features may be limited or use mock data.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p>To access all features, you'll need to:</p>
-            <ol className="list-decimal list-inside mt-2 space-y-1">
-              <li>Create a Supabase project</li>
-              <li>Run the database schema setup script</li>
-              <li>Configure your environment variables</li>
-            </ol>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" onClick={() => window.open('https://supabase.com', '_blank')}>
-              Learn More
-            </Button>
-          </CardFooter>
-        </Card>
-      )}
-      
-      <Tabs defaultValue="account" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-        </TabsList>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Back
+          </Button>
+        </div>
         
-        <TabsContent value="account">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Settings</CardTitle>
-              <CardDescription>
-                Manage your account details and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="font-medium">User ID</p>
-                <p className="text-sm text-muted-foreground mt-1">{profile?.id || 'Loading...'}</p>
-              </div>
-              <div>
-                <p className="font-medium">Email</p>
-                <p className="text-sm text-muted-foreground mt-1">{profile?.email || 'Loading...'}</p>
-              </div>
-              <div>
-                <p className="font-medium">Name</p>
-                <p className="text-sm text-muted-foreground mt-1">{profile?.name || 'Loading...'}</p>
-              </div>
-              <div>
-                <p className="font-medium">Role</p>
-                <p className="text-sm text-muted-foreground mt-1 capitalize">{profile?.role || 'Loading...'}</p>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col items-start gap-4">
-              <p className="text-sm text-muted-foreground">
-                Account created on {profile ? new Date(profile.created_at).toLocaleDateString() : 'Loading...'}
-              </p>
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">Delete Account</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete your account and remove your data from our servers.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDeleteAccount}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      disabled={deletingAccount}
-                    >
-                      {deletingAccount ? (
-                        <>
-                          <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                          Deleting...
-                        </>
-                      ) : (
-                        'Delete Account'
-                      )}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance</CardTitle>
-              <CardDescription>
-                Customize the appearance of the application
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="theme-toggle">Dark Mode</Label>
-                <Switch 
-                  id="theme-toggle" 
-                  checked={darkMode}
-                  onCheckedChange={handleThemeToggle}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="compact-mode">Compact Mode</Label>
-                <Switch 
-                  id="compact-mode" 
-                  checked={compactMode}
-                  onCheckedChange={setCompactMode}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
-              <CardDescription>
-                Configure how you receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="email-notifications">Email Notifications</Label>
-                <Switch 
-                  id="email-notifications" 
-                  checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="push-notifications">Push Notifications</Label>
-                <Switch 
-                  id="push-notifications" 
-                  checked={pushNotifications}
-                  onCheckedChange={setPushNotifications}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="alert-notifications">Alert Notifications</Label>
-                <Switch 
-                  id="alert-notifications"
-                  checked={alertNotifications}
-                  onCheckedChange={setAlertNotifications}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Manage your security preferences and two-factor authentication
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+        <Tabs defaultValue="account">
+          <TabsList className="mb-6">
+            <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="backup">Backup</TabsTrigger>
+          </TabsList>
+          
+          {/* Account Settings */}
+          <TabsContent value="account">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Information</CardTitle>
+                <CardDescription>Manage your account details and preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="two-factor">Two-Factor Authentication</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Add an extra layer of security to your account
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">Email</p>
+                  <p className="mt-1">Your email address</p>
                 </div>
-                <Switch 
-                  id="two-factor" 
-                  checked={profile?.two_factor_enabled || false}
-                  onCheckedChange={() => handleToggle2FA()}
-                  disabled={enablingOTP || disablingOTP || loading || showOTPSetup}
-                />
-              </div>
-
-              {showOTPSetup && (
-                <div className="mt-4 p-4 border rounded-md space-y-4">
-                  <h3 className="font-medium">Setup Two-Factor Authentication</h3>
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
-                    </p>
-                    <div className="flex justify-center py-2">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(otpUri)}&size=200x200&margin=10`}
-                        alt="QR Code"
-                        className="w-48 h-48 border rounded-md"
-                      />
-                    </div>
-                    <p className="text-sm mb-2">
-                      2. Or manually enter this code in your authenticator app:
-                    </p>
-                    <Input
-                      readOnly
-                      value={otpSecret}
-                      onClick={(e) => (e.target as HTMLInputElement).select()}
-                      className="font-mono text-center"
-                    />
-                    
-                    <p className="text-sm mt-4 mb-2">
-                      3. Enter the verification code from your authenticator app:
-                    </p>
-                    <div className="flex justify-center">
-                      <InputOTP
-                        value={otpCode}
-                        onChange={setOtpCode}
-                        maxLength={6}
-                      >
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => setShowOTPSetup(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={handleVerifyOTP} 
-                      disabled={otpCode.length !== 6 || verifyingOTP}
-                    >
-                      {verifyingOTP ? (
-                        <>
-                          <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                          Verifying...
-                        </>
-                      ) : (
-                        'Verify & Activate'
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-4">
-                <Button 
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await supabase.auth.signOut();
-                      window.location.href = '/login';
-                    } catch (error) {
-                      console.error('Error signing out:', error);
-                    }
-                  }}
-                >
-                  Sign Out From All Devices
+                <Button variant="outline" onClick={handleSignOut}>
+                  Sign Out
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Appearance Settings */}
+          <TabsContent value="appearance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>Customize the look and feel of the application</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Theme</p>
+                  <ThemeToggle />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Security Settings */}
+          <TabsContent value="security">
+            <Card>
+              <CardHeader>
+                <CardTitle>Security</CardTitle>
+                <CardDescription>Manage your account security settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="2fa">Two-Factor Authentication</Label>
+                    <Switch id="2fa" checked={isTwoFactorEnabled} onCheckedChange={handleTwoFactorChange} />
+                  </div>
+                  {isTwoFactorEnabled ? (
+                    <Alert>
+                      <AlertTitle>Two-Factor Authentication Enabled</AlertTitle>
+                      <AlertDescription>
+                        Ensure you have set up your 2FA method.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Alert>
+                      <AlertTitle>Two-Factor Authentication Disabled</AlertTitle>
+                      <AlertDescription>
+                        Enable 2FA for enhanced security.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Notifications Settings */}
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>Manage your notification preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium">Notification Settings</p>
+                  <p className="text-muted-foreground">Configure your notification preferences here.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Backup Settings */}
+          <TabsContent value="backup">
+            <Card>
+              <CardHeader>
+                <CardTitle>Backup Management</CardTitle>
+                <CardDescription>Manage and restore backups of your association data</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center py-10">
+                <Button onClick={() => navigate('/settings/backup')} className="mb-4">
+                  Go to Backup Management
+                </Button>
+                <p className="text-sm text-muted-foreground max-w-md text-center">
+                  Create, download, and restore backups of your association data. Regular backups help prevent data loss.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

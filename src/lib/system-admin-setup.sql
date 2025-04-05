@@ -3,14 +3,38 @@
 -- Execute these queries in your Supabase SQL editor
 
 -- 1. First, ensure the profiles table has the correct role enum type
--- Note: If executed multiple times, this might show an error but it's safe to ignore
+-- Check if the enum type exists and alter it to include system_admin
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
-    CREATE TYPE user_role_enum AS ENUM ('super_admin', 'system_admin', 'admin', 'manager', 'member', 'guest');
+  -- Check if the enum type exists
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
+    -- Check if system_admin is already a value in the enum
+    IF NOT EXISTS (
+      SELECT 1 
+      FROM pg_enum 
+      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'user_role_enum')
+      AND enumlabel = 'system_admin'
+    ) THEN
+      -- Add system_admin to the enum
+      ALTER TYPE user_role_enum ADD VALUE IF NOT EXISTS 'system_admin';
+    END IF;
   ELSE
-    -- If the type exists but 'system_admin' is not in it, add it
-    ALTER TYPE user_role_enum ADD VALUE IF NOT EXISTS 'system_admin';
+    -- Create the enum type if it doesn't exist
+    CREATE TYPE user_role_enum AS ENUM ('super_admin', 'system_admin', 'admin', 'manager', 'member', 'guest');
+  END IF;
+  
+  -- Check if there's a check constraint on the profiles table for roles
+  IF EXISTS (
+    SELECT 1 
+    FROM pg_constraint 
+    WHERE conname = 'valid_profile_role' AND conrelid = 'profiles'::regclass
+  ) THEN
+    -- Drop the existing constraint
+    ALTER TABLE profiles DROP CONSTRAINT IF EXISTS valid_profile_role;
+    
+    -- Recreate the constraint with the updated values
+    ALTER TABLE profiles ADD CONSTRAINT valid_profile_role 
+      CHECK (role IN ('super_admin', 'system_admin', 'admin', 'manager', 'member', 'guest'));
   END IF;
 END $$;
 
