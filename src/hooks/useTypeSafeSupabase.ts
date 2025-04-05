@@ -1,130 +1,22 @@
 
-import { supabase } from '@/lib/supabase';
-import { handleError } from '@/utils/debug';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
-// Define available table names
-type TableName = 'profiles' | 'associations' | 'audit_logs' | 'categories' 
-  | 'items' | 'locations' | 'chat_messages' | 'notifications' 
-  | 'conventions' | 'convention_invitations' | 'association_members';
+// Use direct values from the Supabase project
+const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
 
-// Simplified condition type
-interface QueryCondition {
-  column: string;
-  value: any;
-}
+// Simplified version to avoid deep type instantiation issues
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: localStorage,
+  },
+});
 
-/**
- * A type-safe Supabase hook for database operations
- */
-export function useTypeSafeSupabase() {
-  /**
-   * Safely select data from a table with proper error handling
-   */
-  const safeSelect = async <T>(
-    table: TableName,
-    columns: string = '*',
-    condition?: QueryCondition
-  ): Promise<{ data: T[] | null; error: any }> => {
-    try {
-      let query = supabase.from(table).select(columns);
-      
-      if (condition) {
-        query = query.eq(condition.column, condition.value);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        throw error;
-      }
-      
-      return { data: data as T[], error: null };
-    } catch (error) {
-      handleError(error, `safeSelect.${table}`);
-      return { data: null, error };
-    }
-  };
+const typeSafeSupabase = supabase;
+export type TypeSafeSupabaseClient = typeof typeSafeSupabase;
 
-  /**
-   * Safely insert data into a table with proper error handling
-   */
-  const safeInsert = async <T>(
-    table: TableName,
-    data: any
-  ): Promise<{ data: T | null; error: any }> => {
-    try {
-      const { data: result, error } = await supabase
-        .from(table)
-        .insert(data)
-        .select()
-        .single();
-      
-      if (error) {
-        throw error;
-      }
-      
-      return { data: result as T, error: null };
-    } catch (error) {
-      handleError(error, `safeInsert.${table}`);
-      return { data: null, error };
-    }
-  };
-
-  /**
-   * Safely update data in a table with proper error handling
-   */
-  const safeUpdate = async <T>(
-    table: TableName,
-    updates: any,
-    condition: QueryCondition
-  ): Promise<{ data: T | null; error: any }> => {
-    try {
-      const { data: result, error } = await supabase
-        .from(table)
-        .update(updates)
-        .eq(condition.column, condition.value)
-        .select()
-        .single();
-      
-      if (error) {
-        throw error;
-      }
-      
-      return { data: result as T, error: null };
-    } catch (error) {
-      handleError(error, `safeUpdate.${table}`);
-      return { data: null, error };
-    }
-  };
-
-  /**
-   * Safely delete data from a table with proper error handling
-   */
-  const safeDelete = async (
-    table: TableName,
-    condition: QueryCondition
-  ): Promise<{ success: boolean; error: any }> => {
-    try {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq(condition.column, condition.value);
-      
-      if (error) {
-        throw error;
-      }
-      
-      return { success: true, error: null };
-    } catch (error) {
-      handleError(error, `safeDelete.${table}`);
-      return { success: false, error };
-    }
-  };
-
-  return {
-    safeSelect,
-    safeInsert,
-    safeUpdate,
-    safeDelete
-  };
-}
+export default typeSafeSupabase;

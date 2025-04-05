@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { UserCircle2 } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 export const ProfileImageUpload: React.FC = () => {

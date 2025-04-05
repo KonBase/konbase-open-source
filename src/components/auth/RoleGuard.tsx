@@ -33,7 +33,6 @@ export function RoleGuard({
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
-  const [shouldShowAccessDeniedToast, setShouldShowAccessDeniedToast] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -42,17 +41,32 @@ export function RoleGuard({
       setChecking(true);
       
       if (loading) return;
+
+      // Debug output to verify role checking
+      console.log('Checking role access:', {
+        userProfile,
+        userRole: userProfile?.role,
+        allowedRoles,
+        hasAllowedRole: allowedRoles.some(role => hasRole(role))
+      });
       
       // First check if user has any of the allowed roles
       const hasAllowedRole = allowedRoles.some(role => hasRole(role));
       
       if (!hasAllowedRole) {
         setHasAccess(false);
-        setShouldShowAccessDeniedToast(true);
         setChecking(false);
         
         // Display error message in console for debugging
         console.error(`Access denied: User with role ${userProfile?.role} attempted to access a resource requiring one of these roles: ${allowedRoles.join(', ')}`);
+        
+        // Show toast here instead of in a separate useEffect
+        toast({
+          title: "Access Denied",
+          description: "You don't have sufficient permissions to access this area.",
+          variant: "destructive"
+        });
+        
         return;
       }
       
@@ -77,19 +91,7 @@ export function RoleGuard({
     };
     
     checkAccess();
-  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor]);
-  
-  // Show toast only once when access is denied - in a separate useEffect to avoid infinite loops
-  useEffect(() => {
-    if (shouldShowAccessDeniedToast) {
-      toast({
-        title: "Access Denied",
-        description: "You don't have sufficient permissions to access this area.",
-        variant: "destructive"
-      });
-      setShouldShowAccessDeniedToast(false); // Reset flag after showing toast
-    }
-  }, [shouldShowAccessDeniedToast, toast]);
+  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast]);
   
   if (loading || checking) {
     return (

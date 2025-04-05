@@ -60,7 +60,7 @@ const App = () => {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/settings" element={<Settings />} />
                   
-                  {/* Admin routes - Removed 'admin' from allowed roles */}
+                  {/* Admin routes - Restricted to system_admin and super_admin only */}
                   <Route element={
                     <RoleGuard allowedRoles={['system_admin', 'super_admin']} fallbackPath="/unauthorized">
                       <Outlet />

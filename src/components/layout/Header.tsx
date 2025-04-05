@@ -1,10 +1,9 @@
 
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import LogoutButton from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageCircle, User, Settings, Shield } from 'lucide-react';
+import { MessageCircle, User, Settings, Shield, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,13 +26,17 @@ import {
 import { ChatModule } from '@/components/chat/ChatModule';
 
 export function Header() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { profile } = useUserProfile();
   
   // Extract user display values with fallbacks
   const userName = user?.name || profile?.name || 'User';
   const userEmail = user?.email || profile?.email || '';
   const userInitial = userName && userName.length > 0 ? userName.charAt(0).toUpperCase() : 'U';
+  
+  const handleSignOut = async () => {
+    await signOut();
+  };
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -96,6 +99,12 @@ export function Header() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">
+                    <User className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
                 {(profile?.role === 'system_admin' || profile?.role === 'super_admin') && (
                   <DropdownMenuItem asChild>
                     <Link to="/admin">
@@ -111,8 +120,9 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <LogoutButton />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
