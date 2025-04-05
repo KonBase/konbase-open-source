@@ -20,7 +20,29 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
 export type TypeSafeSupabaseClient = typeof supabase;
 
 // Define the table names explicitly as a union type
-type TableNames = keyof Database['public']['Tables'];
+// Use a string literal union to avoid deep type instantiation issues
+type TableNames = 
+  | 'association_members'
+  | 'associations'
+  | 'profiles'
+  | 'audit_logs'
+  | 'backups'
+  | 'categories'
+  | 'chat_messages'
+  | 'convention_access'
+  | 'convention_invitations'
+  | 'convention_locations'
+  | 'conventions'
+  | 'documents'
+  | 'equipment_set_items'
+  | 'equipment_sets'
+  | 'item_tags'
+  | 'items'
+  | 'locations'
+  | 'movements'
+  | 'notifications'
+  | 'requirement_items'
+  | 'requirements';
 
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
