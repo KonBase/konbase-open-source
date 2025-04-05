@@ -22,7 +22,7 @@ const SubMenu: React.FC<SubMenuProps> = ({ submenu, isActive, collapsed }) => {
           className={cn(
             "flex items-center px-3 py-2 text-sm rounded-md",
             isActive(subItem.path)
-              ? "bg-primary text-primary-foreground"
+              ? "bg-accent text-accent-foreground"
               : "text-foreground hover:bg-accent/50"
           )}
         >
