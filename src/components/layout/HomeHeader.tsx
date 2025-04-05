@@ -97,7 +97,7 @@ const HomeHeader = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 hover:bg-accent rounded-md"
                     >
-                      <Github className="h-5 w-5" />
+                      <Github className="h-5 w-5 dark:text-konbase-yellow" />
                       <div>
                         <div className="font-medium">GitHub</div>
                         <div className="text-sm text-muted-foreground">Contribute to the code</div>
@@ -109,7 +109,7 @@ const HomeHeader = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 hover:bg-accent rounded-md"
                     >
-                      <MessageCircle className="h-5 w-5" />
+                      <MessageCircle className="h-5 w-5 dark:text-konbase-yellow" />
                       <div>
                         <div className="font-medium">Discord</div>
                         <div className="text-sm text-muted-foreground">Join the community</div>

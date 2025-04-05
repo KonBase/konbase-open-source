@@ -1,89 +1,70 @@
-
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { useAssociation } from '@/contexts/AssociationContext';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { processOAuthRedirect } from '@/lib/oauth-helpers';
+import { Card, CardContent } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Users, Building } from 'lucide-react';
-
-interface AssociationFormData {
-  name: string;
-  description: string;
-  contactEmail: string;
-  contactPhone: string;
-  website: string;
-  address: string;
-}
 
 const SetupWizard = () => {
-  const { profile } = useUserProfile();
-  const { createAssociation, userAssociations } = useAssociation();
-  const { toast } = useToast();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState<AssociationFormData>({
-    name: '',
-    description: '',
-    contactEmail: profile?.email || '',
-    contactPhone: '',
-    website: '',
-    address: ''
-  });
+  const location = useLocation();
+  const { toast } = useToast();
+  const [processingOAuth, setProcessingOAuth] = useState(false);
   
-  const [isCreating, setIsCreating] = useState(false);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleCreateAssociation = async () => {
-    if (!formData.name || !formData.contactEmail) {
-      toast({
-        title: 'Required Fields',
-        description: 'Please provide a name and contact email for the association',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsCreating(true);
-
-    try {
-      const newAssociation = await createAssociation(formData);
-      
-      if (newAssociation) {
-        toast({
-          title: 'Association Created',
-          description: `${newAssociation.name} has been created successfully.`,
-        });
-        
-        navigate('/dashboard');
+  useEffect(() => {
+    const handleOAuthRedirect = async () => {
+      if (location.hash && location.hash.includes('access_token')) {
+        setProcessingOAuth(true);
+        try {
+          const result = await processOAuthRedirect(location.hash);
+          
+          if (result.success) {
+            window.history.replaceState(null, document.title, window.location.pathname);
+            await refreshUser();
+            
+            toast({
+              title: 'Authentication Successful',
+              description: 'You have successfully signed in with your provider.'
+            });
+          } else {
+            toast({
+              title: 'Authentication Error',
+              description: 'There was a problem with your authentication. Please try again.',
+              variant: 'destructive'
+            });
+          }
+        } catch (error) {
+          console.error('Error handling OAuth redirect:', error);
+          toast({
+            title: 'Authentication Error',
+            description: 'Failed to complete the authentication process.',
+            variant: 'destructive'
+          });
+        } finally {
+          setProcessingOAuth(false);
+        }
       }
-    } catch (error: any) {
-      console.error('Error creating association:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create the association',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleJoinAssociation = async (associationId: string) => {
-    // This functionality would typically require an invitation system
-    // For now, we'll just redirect to the dashboard
-    navigate('/dashboard');
-  };
-
+    };
+    
+    handleOAuthRedirect();
+  }, [location.hash, refreshUser, toast]);
+  
+  if (processingOAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md p-6">
+          <CardContent className="flex flex-col items-center justify-center pt-6">
+            <Spinner size="lg" />
+            <p className="mt-4 text-lg font-medium">Processing your sign-in...</p>
+            <p className="text-sm text-muted-foreground mt-2">Please wait while we complete your authentication.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <div className="mb-8 text-center">

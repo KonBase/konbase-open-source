@@ -29,3 +29,13 @@ export interface UserRole {
   permissions: Permission[];
   roleType: UserRoleType;
 }
+
+// OAuth redirect handling types
+export interface OAuthParams {
+  access_token?: string;
+  expires_at?: string;
+  expires_in?: string;
+  provider_token?: string;
+  refresh_token?: string;
+  token_type?: string;
+}

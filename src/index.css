@@ -55,8 +55,8 @@
     --popover: 214 30% 15%;
     --popover-foreground: 60 15% 95%;
 
-    --primary: 214 77% 22%;
-    --primary-foreground: 60 15% 95%;
+    --primary: 60 85% 72%; /* Changed to konbase-yellow for dark mode */
+    --primary-foreground: 0 0% 9%;
 
     --secondary: 191 93% 49%;
     --secondary-foreground: 0 0% 9%;

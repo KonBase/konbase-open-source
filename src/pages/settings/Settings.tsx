@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
@@ -47,26 +48,54 @@ const Settings = () => {
   const [pushNotifications, setPushNotifications] = useState(false);
   const [alertNotifications, setAlertNotifications] = useState(true);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [factorId, setFactorId] = useState<string | null>(null);
+  
+  // Fetch MFA factors on component mount
+  useEffect(() => {
+    const fetchMFAFactors = async () => {
+      try {
+        const { data } = await supabase.auth.mfa.listFactors();
+        if (data?.totp && data.totp.length > 0) {
+          setFactorId(data.totp[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching MFA factors:", error);
+      }
+    };
+    
+    if (profile?.two_factor_enabled) {
+      fetchMFAFactors();
+    }
+  }, [profile]);
   
   const handleToggle2FA = async () => {
     if (profile?.two_factor_enabled) {
       setDisablingOTP(true);
       try {
-        const { data: factors } = await supabase.auth.mfa.listFactors();
-        
-        const totpFactor = factors?.totp?.[0];
-        
-        if (!totpFactor) {
-          throw new Error('No TOTP factor found to disable');
+        if (!factorId) {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          
+          const totpFactor = factors?.totp?.[0];
+          
+          if (!totpFactor) {
+            throw new Error('No TOTP factor found to disable');
+          }
+          
+          const { error } = await supabase.auth.mfa.unenroll({
+            factorId: totpFactor.id
+          });
+          
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.auth.mfa.unenroll({
+            factorId: factorId
+          });
+          
+          if (error) throw error;
         }
         
-        const { error } = await supabase.auth.mfa.unenroll({
-          factorId: totpFactor.id
-        });
-        
-        if (error) throw error;
-        
         await updateProfile({ two_factor_enabled: false });
+        setFactorId(null);
         
         toast({
           title: 'Two-Factor Authentication Disabled',
@@ -95,6 +124,7 @@ const Settings = () => {
         if (data) {
           setOtpSecret(data.totp.secret);
           setOtpUri(data.totp.uri);
+          setFactorId(data.id);
           setShowOTPSetup(true);
         }
         
@@ -114,13 +144,19 @@ const Settings = () => {
   const handleVerifyOTP = async () => {
     setVerifyingOTP(true);
     try {
-      const { data: factorData } = await supabase.auth.mfa.listFactors();
-      
-      if (!factorData || !factorData.totp || factorData.totp.length === 0) {
-        throw new Error('No TOTP factor found for verification');
+      if (!factorId) {
+        const { data: factorData } = await supabase.auth.mfa.listFactors();
+        
+        if (!factorData || !factorData.totp || factorData.totp.length === 0) {
+          throw new Error('No TOTP factor found for verification');
+        }
+        
+        setFactorId(factorData.totp[0].id);
       }
       
-      const factorId = factorData.totp[0].id;
+      if (!factorId) {
+        throw new Error('Unable to retrieve factor ID');
+      }
       
       const { data, error } = await supabase.auth.mfa.challenge({
         factorId: factorId,
