@@ -4,6 +4,7 @@ import { useAssociation } from '@/contexts/AssociationContext';
 import { handleError } from '@/utils/debug';
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardData {
   itemCount: number;
@@ -29,6 +30,7 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<any>(null);
   const { currentAssociation } = useAssociation();
+  const { user } = useAuth();
   const { safeSelect } = useTypeSafeSupabase();
   const { isOnline } = useNetworkStatus();
   const [loadAttempted, setLoadAttempted] = useState(false);
@@ -49,8 +51,8 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
 
     try {
       const associationId = currentAssociation.id;
-      // Get the current user ID - using auth context or from the profile/user object
-      const userId = currentAssociation.profile?.id || null;
+      // Get the current user ID from the auth context instead of the association profile
+      const userId = user?.id || null;
       
       // Using Promise.allSettled to handle partial failures gracefully
       const responses = await Promise.allSettled([
@@ -153,7 +155,7 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
       // Signal request end
       if (onRequestEnd) onRequestEnd();
     }
-  }, [currentAssociation, safeSelect, onRequestStart, onRequestEnd]);
+  }, [currentAssociation, safeSelect, onRequestStart, onRequestEnd, user]);
 
   useEffect(() => {
     // Only fetch if online and we have an association

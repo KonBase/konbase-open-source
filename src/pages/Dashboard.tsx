@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useLocation } from 'react-router-dom';
@@ -24,6 +24,7 @@ const Dashboard = () => {
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const location = useLocation();
   const [showLocationManager, setShowLocationManager] = useState(false);
+  const [isDebugEnabled, setIsDebugEnabled] = useState(false);
   
   // Use our network status hook
   const { status: networkStatus, testConnection } = useNetworkStatus({
@@ -32,6 +33,31 @@ const Dashboard = () => {
       logDebug(`Network status changed to: ${status}`, null, 'info');
     }
   });
+  
+  // Check for debug mode on component mount and when it changes in localStorage
+  useEffect(() => {
+    const checkDebugMode = () => {
+      const debugMode = localStorage.getItem('konbase-debug') === 'true';
+      setIsDebugEnabled(debugMode);
+    };
+    
+    // Initial check
+    checkDebugMode();
+    
+    // Set up event listener for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'konbase-debug') {
+        checkDebugMode();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   
   // Handle redirects from query parameters
   <DashboardRedirectHandler />
@@ -80,18 +106,20 @@ const Dashboard = () => {
         isHome={isHome} 
       />
 
-      {/* Debug Panel */}
-      <DebugPanel 
-        networkStatus={networkStatus}
-        userData={{
-          userId: user?.id,
-          associationId: currentAssociation?.id
-        }}
-        testConnection={async () => {
-          await testConnection();
-          return true;
-        }}
-      />
+      {/* Conditionally render Debug Panel based on debug mode setting */}
+      {isDebugEnabled && (
+        <DebugPanel 
+          networkStatus={networkStatus}
+          userData={{
+            userId: user?.id,
+            associationId: currentAssociation?.id
+          }}
+          testConnection={async () => {
+            await testConnection();
+            return true;
+          }}
+        />
+      )}
 
       {/* Association Management Module */}
       <AssociationManagementSection onShowLocationManager={() => setShowLocationManager(true)} />
