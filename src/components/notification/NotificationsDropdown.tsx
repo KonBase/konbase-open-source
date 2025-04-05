@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Bell, Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notification } from '@/types/notification';
 import { Button } from '@/components/ui/button';
@@ -15,89 +15,143 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
+import { logDebug } from '@/utils/debug';
 
 export function NotificationsDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { safeSelect, safeUpdate } = useTypeSafeSupabase();
+  
+  // Function to fetch notifications with error handling and retry logic
+  const fetchNotifications = async () => {
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await safeSelect(
+        'notifications',
+        '*',
+        {
+          column: 'user_id',
+          value: user.id,
+          order: {
+            column: 'created_at',
+            ascending: false
+          },
+          limit: 10
+        }
+      );
+      
+      if (error) {
+        logDebug('Error fetching notifications:', error, 'error');
+        setError('Unable to load notifications. Please try again later.');
+        
+        // Only retry a few times to avoid infinite loops
+        if (retryCount < 3) {
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, 3000); // Wait 3 seconds before retrying
+        }
+      } else {
+        setNotifications(data || []);
+        setError(null);
+      }
+    } catch (err) {
+      logDebug('Error fetching notifications:', err, 'error');
+      setError('Unable to load notifications. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!user) {
-        setNotifications([]);
-        setLoading(false);
-        return;
-      }
-      
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        
-        if (error) throw error;
-        setNotifications(data || []);
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchNotifications();
     
-    // Set up real-time subscription for new notifications only if user is authenticated
+    // Set up real-time subscription for new notifications
     let channel;
     if (user) {
-      // Use setTimeout to prevent potential auth state issues
-      setTimeout(() => {
-        channel = supabase
-          .channel('notifications-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT', 
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${user.id}`
-            },
-            (payload) => {
-              const newNotification = payload.new as Notification;
-              setNotifications(prev => [newNotification, ...prev]);
-              
-              toast({
-                title: newNotification.title,
-                description: newNotification.message,
-              });
-            }
-          )
-          .subscribe();
-      }, 0);
+      try {
+        // Use setTimeout to prevent potential auth state issues
+        setTimeout(() => {
+          channel = useTypeSafeSupabase().supabase
+            .channel('notifications-changes')
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT', 
+                schema: 'public',
+                table: 'notifications',
+                filter: `user_id=eq.${user.id}`
+              },
+              (payload) => {
+                try {
+                  const newNotification = payload.new as Notification;
+                  setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
+                  
+                  toast({
+                    title: newNotification.title,
+                    description: newNotification.message,
+                  });
+                } catch (error) {
+                  logDebug('Error processing notification update:', error, 'error');
+                }
+              }
+            )
+            .subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                logDebug('Successfully subscribed to notifications', null, 'info');
+              } else if (status === 'CHANNEL_ERROR') {
+                logDebug('Error subscribing to notifications', null, 'error');
+              }
+            });
+        }, 0);
+      } catch (error) {
+        logDebug('Error setting up notification subscription:', error, 'error');
+      }
     }
     
     return () => {
       if (channel) {
-        supabase.removeChannel(channel);
+        try {
+          useTypeSafeSupabase().supabase.removeChannel(channel);
+        } catch (error) {
+          logDebug('Error removing notification channel:', error, 'error');
+        }
       }
     };
-  }, [user, toast]);
+  }, [user, toast, retryCount]);
   
   const markAsRead = async (id: string) => {
     if (!user) return;
     
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', id);
+      const { error } = await safeUpdate(
+        'notifications',
+        { read: true },
+        { column: 'id', value: id }
+      );
       
-      if (error) throw error;
+      if (error) {
+        logDebug('Error marking notification as read:', error, 'error');
+        toast({
+          title: "Error",
+          description: "Failed to mark notification as read. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Update local state
       setNotifications(prev => 
@@ -106,7 +160,12 @@ export function NotificationsDropdown() {
         )
       );
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logDebug('Error marking notification as read:', error, 'error');
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read. Please try again.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -120,23 +179,41 @@ export function NotificationsDropdown() {
         
       if (unreadIds.length === 0) return;
       
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .in('id', unreadIds);
-      
-      if (error) throw error;
-      
-      // Update local state
-      setNotifications(prev => 
-        prev.map(notification => ({ ...notification, read: true }))
+      // Since we can't use .in() with safeUpdate, we'll update notifications one by one
+      // This isn't ideal for performance, but works with our current API
+      const updatePromises = unreadIds.map(id => 
+        safeUpdate('notifications', { read: true }, { column: 'id', value: id })
       );
       
-      toast({
-        title: "All notifications marked as read",
-      });
+      const results = await Promise.allSettled(updatePromises);
+      const hasErrors = results.some(result => 
+        result.status === 'rejected' || 
+        (result.status === 'fulfilled' && result.value.error)
+      );
+      
+      if (hasErrors) {
+        toast({
+          title: "Warning",
+          description: "Some notifications could not be marked as read.",
+          variant: "destructive"
+        });
+      } else {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notification => ({ ...notification, read: true }))
+        );
+        
+        toast({
+          title: "All notifications marked as read",
+        });
+      }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      logDebug('Error marking all notifications as read:', error, 'error');
+      toast({
+        title: "Error",
+        description: "Failed to mark all notifications as read. Please try again.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -174,6 +251,21 @@ export function NotificationsDropdown() {
             <div className="p-4 text-center">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
               <p className="mt-2 text-sm text-muted-foreground">Loading notifications...</p>
+            </div>
+          ) : error ? (
+            <div className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => {
+                  setRetryCount(0);
+                  fetchNotifications();
+                }}
+              >
+                Retry
+              </Button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-4 text-center">
