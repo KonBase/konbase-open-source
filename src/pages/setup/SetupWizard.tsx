@@ -2,12 +2,40 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Key, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import SetupHeader from '@/components/setup/SetupHeader';
 import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
 import AssociationForm from '@/components/setup/AssociationForm';
+import { useEffect, useState } from 'react';
+import { useAssociation } from '@/contexts/AssociationContext';
+import { toast } from '@/components/ui/use-toast';
 
 const SetupWizard = () => {
+  const navigate = useNavigate();
+  const { currentAssociation, isLoading } = useAssociation();
+  const [setupCompleted, setSetupCompleted] = useState(false);
+  
+  // Redirect if user already has an association or when setup is completed
+  useEffect(() => {
+    if (!isLoading && (currentAssociation || setupCompleted)) {
+      toast({
+        title: "Setup completed",
+        description: "Redirecting you to dashboard..."
+      });
+      navigate('/dashboard');
+    }
+  }, [currentAssociation, isLoading, setupCompleted, navigate]);
+  
+  // Handlers for successful setup
+  const handleAssociationCreated = () => {
+    setSetupCompleted(true);
+  };
+  
+  const handleAssociationJoined = () => {
+    setSetupCompleted(true);
+  };
+  
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <SetupHeader />
@@ -31,7 +59,7 @@ const SetupWizard = () => {
               <CardTitle>Join with Invitation Code</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <InvitationCodeForm />
+              <InvitationCodeForm onSuccess={handleAssociationJoined} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -43,7 +71,7 @@ const SetupWizard = () => {
               <CardTitle>Create New Association</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <AssociationForm />
+              <AssociationForm onSuccess={handleAssociationCreated} />
             </CardContent>
           </Card>
         </TabsContent>
