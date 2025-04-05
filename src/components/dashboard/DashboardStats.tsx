@@ -2,16 +2,11 @@
 import React from 'react';
 import { Package, FileBox, MapPin, Calendar } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner, LoadingError } from '@/components/ui/spinner';
+import { DashboardStats as DashboardStatsType } from '@/hooks/useDashboardStats';
 
 interface DashboardStatsProps {
-  stats: {
-    itemsCount: number;
-    categoriesCount: number;
-    locationsCount: number;
-    conventionsCount: number;
-  };
+  stats: DashboardStatsType;
   isLoading: boolean;
   error?: any;
   onRetry?: () => void;
