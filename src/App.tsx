@@ -31,8 +31,8 @@ import { RoleGuard } from './components/auth/RoleGuard';
 // Core application with simplified routing
 const App = () => {
   return (
-    <ErrorBoundary>
-      <Router>
+    <Router>
+      <ErrorBoundary>
         <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
           <AuthProvider>
             <AssociationProvider>
@@ -80,8 +80,8 @@ const App = () => {
             </AssociationProvider>
           </AuthProvider>
         </ThemeProvider>
-      </Router>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </Router>
   );
 };
 
