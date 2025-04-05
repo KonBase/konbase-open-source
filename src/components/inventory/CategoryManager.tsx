@@ -228,7 +228,7 @@ const CategoryManager = () => {
           </TableCell>
         </TableRow>
         {category.children && category.children.map(child => 
-          renderCategoryTreeItem(child, depth + 1)
+          renderCategoryTreeItem(child as Category & { children: Category[] }, depth + 1)
         )}
       </React.Fragment>
     );
@@ -381,7 +381,7 @@ const CategoryManager = () => {
                   <SelectValue placeholder="Select a parent category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (Top Level)</SelectItem>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
                   {categories.map(category => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -442,7 +442,7 @@ const CategoryManager = () => {
                   <SelectValue placeholder="Select a parent category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (Top Level)</SelectItem>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
                   {categories
                     .filter(category => category.id !== currentCategory?.id)
                     .map(category => (

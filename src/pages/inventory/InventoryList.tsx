@@ -11,6 +11,7 @@ import {
 import { PlusCircle } from 'lucide-react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import InventoryItems from '@/components/inventory/InventoryItems';
+import { Link } from 'react-router-dom';
 
 const InventoryList = () => {
   const { currentAssociation, isLoading } = useAssociation();
@@ -66,6 +67,24 @@ const InventoryList = () => {
           <p className="text-muted-foreground">
             Manage your equipment, consumables, and other inventory items
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link to="/inventory/items/new">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add New Item
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/inventory/categories">
+              Manage Categories
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/inventory/locations">
+              Manage Locations
+            </Link>
+          </Button>
         </div>
       </div>
       

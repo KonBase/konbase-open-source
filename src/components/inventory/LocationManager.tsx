@@ -16,6 +16,16 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,10 +44,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Pencil, Trash, FolderTree, MapPin, Home, Room } from 'lucide-react';
+import { PlusCircle, Pencil, Trash, FolderTree, MapPin, Building } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
 
 // Helper function to build a tree structure from flat locations
 const buildLocationTree = (locations: Location[]): (Location & { children: Location[] })[] => {
@@ -83,7 +91,7 @@ const LocationManager = () => {
     name: '',
     description: '',
     parentId: '',
-    isRoom: false
+    type: 'room',
   });
   
   // Prepare the tree view data when in tree mode
@@ -94,7 +102,7 @@ const LocationManager = () => {
       name: '',
       description: '',
       parentId: '',
-      isRoom: false
+      type: 'room',
     });
   };
   
@@ -109,7 +117,7 @@ const LocationManager = () => {
       name: location.name,
       description: location.description || '',
       parentId: location.parentId || '',
-      isRoom: location.isRoom
+      type: location.type || 'room',
     });
     setIsEditDialogOpen(true);
   };
@@ -130,12 +138,12 @@ const LocationManager = () => {
     }
     
     try {
-      await createLocation(
-        formData.name,
-        formData.description,
-        formData.parentId || undefined,
-        formData.isRoom
-      );
+      await createLocation({
+        name: formData.name,
+        description: formData.description,
+        parentId: formData.parentId || null,
+        type: formData.type as 'room' | 'building' | 'container',
+      });
       
       setIsAddDialogOpen(false);
       resetForm();
@@ -169,7 +177,7 @@ const LocationManager = () => {
         name: formData.name,
         description: formData.description,
         parentId: formData.parentId || null,
-        isRoom: formData.isRoom
+        type: formData.type as 'room' | 'building' | 'container',
       });
       
       setIsEditDialogOpen(false);
@@ -212,24 +220,30 @@ const LocationManager = () => {
     }
   };
   
+  const getLocationIcon = (type: string) => {
+    switch (type) {
+      case 'building':
+        return <Building className="h-4 w-4 mr-2" />;
+      case 'container':
+        return <FolderTree className="h-4 w-4 mr-2" />;
+      case 'room':
+      default:
+        return <MapPin className="h-4 w-4 mr-2" />;
+    }
+  };
+  
   const renderLocationTreeItem = (location: Location & { children: Location[] }, depth = 0) => {
     return (
       <React.Fragment key={location.id}>
         <TableRow>
           <TableCell className="font-medium">
             <div style={{ paddingLeft: `${depth * 1.5}rem` }} className="flex items-center">
-              {location.isRoom ? <Room className="h-4 w-4 mr-2" /> : <MapPin className="h-4 w-4 mr-2" />}
+              {getLocationIcon(location.type || 'room')}
               {location.name}
             </div>
           </TableCell>
+          <TableCell>{location.type || 'room'}</TableCell>
           <TableCell>{location.description || "-"}</TableCell>
-          <TableCell>
-            {location.isRoom ? (
-              <Badge variant="outline">Room</Badge>
-            ) : (
-              <Badge>Storage</Badge>
-            )}
-          </TableCell>
           <TableCell className="text-right">
             <div className="flex justify-end space-x-2">
               <Button variant="ghost" size="icon" onClick={() => openEditDialog(location)}>
@@ -242,7 +256,7 @@ const LocationManager = () => {
           </TableCell>
         </TableRow>
         {location.children && location.children.map(child => 
-          renderLocationTreeItem(child, depth + 1)
+          renderLocationTreeItem(child as Location & { children: Location[] }, depth + 1)
         )}
       </React.Fragment>
     );
@@ -252,7 +266,7 @@ const LocationManager = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Storage Locations</CardTitle>
+          <CardTitle>Locations</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -312,8 +326,8 @@ const LocationManager = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -323,23 +337,17 @@ const LocationManager = () => {
                       <TableRow key={location.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center">
-                            {location.isRoom ? <Room className="h-4 w-4 mr-2" /> : <MapPin className="h-4 w-4 mr-2" />}
+                            {getLocationIcon(location.type || 'room')}
                             {location.name}
                             {location.parentId && (
                               <span className="ml-2 text-xs text-muted-foreground">
-                                (Sublocation)
+                                (Sub-location)
                               </span>
                             )}
                           </div>
                         </TableCell>
+                        <TableCell>{location.type || 'room'}</TableCell>
                         <TableCell>{location.description || "-"}</TableCell>
-                        <TableCell>
-                          {location.isRoom ? (
-                            <Badge variant="outline">Room</Badge>
-                          ) : (
-                            <Badge>Storage</Badge>
-                          )}
-                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
                             <Button variant="ghost" size="icon" onClick={() => openEditDialog(location)}>
@@ -368,7 +376,7 @@ const LocationManager = () => {
           <DialogHeader>
             <DialogTitle>Add New Location</DialogTitle>
             <DialogDescription>
-              Create a new storage location or room.
+              Create a new storage location for your inventory items.
             </DialogDescription>
           </DialogHeader>
           
@@ -381,6 +389,23 @@ const LocationManager = () => {
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="Enter location name"
               />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="type">Location Type</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => setFormData({...formData, type: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a location type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="room">Room</SelectItem>
+                  <SelectItem value="building">Building</SelectItem>
+                  <SelectItem value="container">Container/Storage</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="grid gap-2">
@@ -403,7 +428,7 @@ const LocationManager = () => {
                   <SelectValue placeholder="Select a parent location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (Top Level)</SelectItem>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
                   {locations.map(location => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.name}
@@ -411,17 +436,6 @@ const LocationManager = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="is-room" 
-                checked={formData.isRoom}
-                onCheckedChange={(checked) => 
-                  setFormData({...formData, isRoom: checked === true})
-                }
-              />
-              <Label htmlFor="is-room">This is a room (not a storage container)</Label>
             </div>
           </div>
           
@@ -457,6 +471,23 @@ const LocationManager = () => {
             </div>
             
             <div className="grid gap-2">
+              <Label htmlFor="edit-type">Location Type</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => setFormData({...formData, type: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a location type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="room">Room</SelectItem>
+                  <SelectItem value="building">Building</SelectItem>
+                  <SelectItem value="container">Container/Storage</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
               <Label htmlFor="edit-description">Description</Label>
               <Textarea
                 id="edit-description"
@@ -475,7 +506,7 @@ const LocationManager = () => {
                   <SelectValue placeholder="Select a parent location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (Top Level)</SelectItem>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
                   {locations
                     .filter(location => location.id !== currentLocation?.id)
                     .map(location => (
@@ -486,17 +517,6 @@ const LocationManager = () => {
                   }
                 </SelectContent>
               </Select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="edit-is-room" 
-                checked={formData.isRoom}
-                onCheckedChange={(checked) => 
-                  setFormData({...formData, isRoom: checked === true})
-                }
-              />
-              <Label htmlFor="edit-is-room">This is a room (not a storage container)</Label>
             </div>
           </div>
           
@@ -512,14 +532,14 @@ const LocationManager = () => {
       </Dialog>
       
       {/* Delete Location Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this location? Any sublocations or items stored in this location must be updated first.
-            </DialogDescription>
-          </DialogHeader>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this location? Any items stored at this location must be moved first.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           
           {currentLocation && (
             <div className="py-4">
@@ -530,16 +550,14 @@ const LocationManager = () => {
             </div>
           )}
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteLocation}>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLocation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
