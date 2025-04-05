@@ -18,7 +18,8 @@ export type Permission =
   | 'view:conventions'
   | 'view:reports'
   | 'view:public'
-  | 'participate:events';
+  | 'participate:events'
+  | 'elevate:super_admin';
 
 // Import the user role types from user.ts
 import { UserRoleType } from './user';

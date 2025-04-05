@@ -170,11 +170,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
     }
     
-    // Check if user's role in database is actually super_admin
-    if (userProfile.role !== 'super_admin') {
+    // Check if user's role in database is actually system_admin or super_admin
+    if (userProfile.role !== 'system_admin' && userProfile.role !== 'super_admin') {
       return { 
         success: false, 
-        message: "You don't have Super Admin privileges" 
+        message: "You don't have sufficient privileges for this action" 
       };
     }
     
@@ -187,8 +187,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      // Force a new login with 2FA verification to elevate privileges
-      // This is handled through a challenge/verify flow when accessing admin areas
+      // For system_admin, update their role to super_admin
+      if (userProfile.role === 'system_admin') {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ role: 'super_admin' })
+          .eq('id', userProfile.id);
+          
+        if (error) throw error;
+        
+        // Update local user state
+        if (user) {
+          const updatedUser = { ...user, role: 'super_admin' as UserRoleType };
+          setUser(updatedUser);
+        }
+        
+        // Update local profile state
+        setUserProfile({ ...userProfile, role: 'super_admin' });
+      }
       
       // Create a record of this elevation attempt for audit purposes
       await supabase.from('audit_logs').insert({

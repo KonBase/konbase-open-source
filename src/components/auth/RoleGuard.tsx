@@ -52,11 +52,11 @@ export function RoleGuard({
       
       // For super_admin, or when explicit 2FA enforcement is needed,
       // check if the user has 2FA enabled
-      if (
-        (hasRole('super_admin') || enforceTwoFactor) && 
-        userProfile && 
-        !userProfile.two_factor_enabled
-      ) {
+      const needsTwoFactor = (hasRole('super_admin') || 
+                              (hasRole('system_admin') && allowedRoles.includes('super_admin')) || 
+                              enforceTwoFactor);
+      
+      if (needsTwoFactor && userProfile && !userProfile.two_factor_enabled) {
         setShowTwoFactorDialog(true);
         setHasAccess(false);
         setChecking(false);
@@ -66,14 +66,22 @@ export function RoleGuard({
       // For the highest required role in the list, perform a detailed access check
       let highestRequiredRole: UserRoleType = 'guest';
       for (const role of allowedRoles) {
-        if (hasRole(role) && role === 'super_admin') {
-          highestRequiredRole = 'super_admin';
-          break;
-        } else if (hasRole(role) && role === 'admin' && highestRequiredRole !== 'super_admin') {
-          highestRequiredRole = 'admin';
-        } else if (hasRole(role) && role === 'manager' && 
-          highestRequiredRole !== 'super_admin' && highestRequiredRole !== 'admin') {
-          highestRequiredRole = 'manager';
+        if (hasRole(role)) {
+          if (role === 'super_admin') {
+            highestRequiredRole = 'super_admin';
+            break;
+          } else if (role === 'system_admin' && highestRequiredRole !== 'super_admin') {
+            highestRequiredRole = 'system_admin';
+          } else if (role === 'admin' && 
+                    highestRequiredRole !== 'super_admin' && 
+                    highestRequiredRole !== 'system_admin') {
+            highestRequiredRole = 'admin';
+          } else if (role === 'manager' && 
+                    highestRequiredRole !== 'super_admin' && 
+                    highestRequiredRole !== 'system_admin' && 
+                    highestRequiredRole !== 'admin') {
+            highestRequiredRole = 'manager';
+          }
         }
       }
       

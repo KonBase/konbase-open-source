@@ -2,7 +2,7 @@
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Role definitions with hierarchy and permissions
-export type UserRoleType = 'super_admin' | 'admin' | 'manager' | 'member' | 'guest';
+export type UserRoleType = 'super_admin' | 'system_admin' | 'admin' | 'manager' | 'member' | 'guest';
 
 export interface RoleDefinition {
   level: number;
@@ -19,6 +19,13 @@ export const USER_ROLES: Record<UserRoleType, RoleDefinition> = {
     description: 'Complete system access with ability to manage all associations',
     requires2FA: true,
     permissions: ['admin:all', 'manage:users', 'manage:associations', 'manage:billing', 'manage:system']
+  },
+  'system_admin': {
+    level: 90,
+    name: 'System Admin',
+    description: 'Administrative access with limited access to system settings',
+    requires2FA: false,
+    permissions: ['manage:users', 'manage:associations', 'manage:billing']
   },
   'admin': {
     level: 80,

@@ -35,11 +35,18 @@ export function UserRoleManager({
   // Only super_admins can create other super_admins
   const canCreateSuperAdmin = hasRole('super_admin');
   
-  const availableRoles: UserRoleType[] = canCreateSuperAdmin 
-    ? ['super_admin', 'admin', 'manager', 'member', 'guest'] 
-    : ['admin', 'manager', 'member', 'guest'];
+  // Only super_admins can create system_admins
+  const canCreateSystemAdmin = hasRole('super_admin');
+  
+  let availableRoles: UserRoleType[] = ['admin', 'manager', 'member', 'guest'];
+  
+  if (canCreateSuperAdmin) {
+    availableRoles = ['super_admin', 'system_admin', ...availableRoles];
+  } else if (canCreateSystemAdmin) {
+    availableRoles = ['system_admin', ...availableRoles];
+  }
 
-  const showTwoFactorWarning = role === 'super_admin';
+  const requiresTwoFactor = role === 'super_admin' || role === 'system_admin';
 
   const updateUserRole = async () => {
     if (!canChangeRoles || isUpdating) return;
@@ -71,7 +78,7 @@ export function UserRoleManager({
         entity: 'profiles',
         entity_id: userId,
         user_id: userProfile?.id,
-        changes: { old_role: currentRole, new_role: role }
+        changes: JSON.stringify({ old_role: currentRole, new_role: role })
       });
       
       // Create notification for the user
@@ -84,12 +91,12 @@ export function UserRoleManager({
           read: false
         });
       
-      // Show special warning if setting to super_admin
-      if (role === 'super_admin') {
+      // Show special warning if setting to super_admin or system_admin
+      if (role === 'super_admin' || role === 'system_admin') {
         toast({
-          title: "Super Admin role assigned",
-          description: "This user will need to enable 2FA to access super admin functions.",
-          variant: "warning"
+          title: `${USER_ROLES[role].name} role assigned`,
+          description: "This user will need to enable 2FA to access all administrative functions.",
+          variant: "warning" as any
         });
       } else {
         toast({
@@ -145,10 +152,10 @@ export function UserRoleManager({
         </Button>
       </div>
       
-      {showTwoFactorWarning && (
+      {requiresTwoFactor && (
         <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs rounded-md">
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          <p>Super Admin requires 2FA</p>
+          <p>{role === 'super_admin' ? 'Super Admin' : 'System Admin'} requires 2FA</p>
         </div>
       )}
     </div>

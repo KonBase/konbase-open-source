@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
@@ -124,7 +123,7 @@ const App = () => {
                   
                   {/* Admin routes */}
                   <Route element={
-                    <RoleGuard allowedRoles={['admin', 'super_admin']} fallbackPath="/unauthorized">
+                    <RoleGuard allowedRoles={['super_admin', 'system_admin', 'admin']} fallbackPath="/unauthorized">
                       <Outlet />
                     </RoleGuard>
                   }>

@@ -40,6 +40,14 @@ export const processOAuthRedirect = async (hash: string) => {
       
       if (error) throw error;
       
+      // Store session in localStorage to prevent 404 errors on refresh
+      if (data.session) {
+        localStorage.setItem('supabase.auth.token', JSON.stringify({
+          currentSession: data.session,
+          expiresAt: Math.floor(Date.now() / 1000) + (data.session.expires_in || 3600)
+        }));
+      }
+      
       return { success: true, session: data.session };
     }
     

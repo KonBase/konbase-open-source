@@ -145,27 +145,32 @@ const Settings = () => {
     setVerifyingOTP(true);
     try {
       if (!factorId) {
+        // Get the current enrollment factors
         const { data: factorData } = await supabase.auth.mfa.listFactors();
         
+        // Check if we have any TOTP factors in progress
         if (!factorData || !factorData.totp || factorData.totp.length === 0) {
-          throw new Error('No TOTP factor found for verification');
+          // If no factors found, use the current factor being enrolled
+          if (!otpSecret) {
+            throw new Error('No TOTP factor found for verification');
+          }
+        } else {
+          // Use the first available factor
+          setFactorId(factorData.totp[0].id);
         }
-        
-        setFactorId(factorData.totp[0].id);
       }
       
-      if (!factorId) {
-        throw new Error('Unable to retrieve factor ID');
-      }
+      // Ensure we have a factorId by this point
+      const currentFactorId = factorId || 'current';
       
       const { data, error } = await supabase.auth.mfa.challenge({
-        factorId: factorId,
+        factorId: currentFactorId,
       });
       
       if (error) throw error;
       
       const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: factorId,
+        factorId: currentFactorId,
         challengeId: data.id,
         code: otpCode,
       });
