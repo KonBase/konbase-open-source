@@ -1,9 +1,9 @@
 
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageCircle, User, Settings, Shield, LogOut } from 'lucide-react';
+import { MessageCircle, User, Settings, Shield, LogOut, Building2, ArrowLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,7 @@ import {
 import { NotificationsDropdown } from '@/components/notification/NotificationsDropdown';
 import { AssociationSelector } from '@/components/admin/AssociationSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAssociation } from '@/contexts/AssociationContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   Sheet,
@@ -28,6 +29,8 @@ import { ChatModule } from '@/components/chat/ChatModule';
 export function Header() {
   const { user, signOut } = useAuth();
   const { profile } = useUserProfile();
+  const { currentAssociation } = useAssociation();
+  const location = useLocation();
   
   // Extract user display values with fallbacks
   const userName = user?.name || profile?.name || 'User';
@@ -37,6 +40,9 @@ export function Header() {
   const handleSignOut = async () => {
     await signOut();
   };
+
+  // Check if we're on a page that's not the dashboard
+  const showBackToDashboard = location.pathname !== '/dashboard' && location.pathname !== '/';
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -47,7 +53,24 @@ export function Header() {
           </Link>
         </div>
         
-        <div className="flex-1 flex justify-end items-center gap-4">
+        {/* Association info with back button */}
+        {currentAssociation && (
+          <div className="flex items-center gap-2 flex-1">
+            {showBackToDashboard && (
+              <Button variant="ghost" size="icon" asChild className="mr-2">
+                <Link to="/dashboard">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+            <div className="hidden md:flex items-center">
+              <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span className="font-medium">{currentAssociation.name}</span>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex justify-end items-center gap-4">
           {/* Association Selector */}
           <AssociationSelector />
           

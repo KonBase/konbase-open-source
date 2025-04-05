@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import SidebarHeader from './SidebarHeader';
 import SidebarAssociationInfo from './SidebarAssociationInfo';
-import SidebarNav from './SidebarNav';
 import SidebarUserProfile from './SidebarUserProfile';
 import LogoutButton from './LogoutButton';
 
@@ -40,10 +39,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapse }) => {
       {/* Association info */}
       <SidebarAssociationInfo collapsed={collapsed} />
       
-      {/* Navigation menu */}
-      <div className="flex-1 overflow-y-auto py-2">
-        <SidebarNav collapsed={collapsed} />
-      </div>
+      {/* Spacer to push content to bottom */}
+      <div className="flex-1" />
       
       {/* User profile (mini) */}
       <SidebarUserProfile collapsed={collapsed} />

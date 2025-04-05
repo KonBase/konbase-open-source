@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -16,7 +15,8 @@ import {
   BoxIcon,
   FileUp,
   MessageCircle,
-  Bell
+  Bell,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
@@ -162,13 +162,17 @@ const Dashboard = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Storage Locations</h1>
-            <p className="text-muted-foreground">Manage your storage locations.</p>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={() => setShowLocationManager(false)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Storage Locations</h1>
+              <p className="text-muted-foreground">
+                {currentAssociation.name} - Managing your storage locations
+              </p>
+            </div>
           </div>
-          <Button variant="outline" onClick={() => setShowLocationManager(false)}>
-            Back to Dashboard
-          </Button>
         </div>
         <LocationManager />
       </div>
@@ -178,10 +182,22 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {user?.name || 'User'}! Here's an overview of {currentAssociation.name}.
-        </p>
+        <div className="flex items-center gap-3">
+          {location.pathname !== "/dashboard" && (
+            <Button variant="outline" size="icon" asChild>
+              <Link to="/dashboard">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground flex items-center">
+              <Building2 className="h-4 w-4 mr-1 inline-block" />
+              {currentAssociation.name} - Welcome back, {user?.name || 'User'}!
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
