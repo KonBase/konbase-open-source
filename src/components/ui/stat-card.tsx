@@ -1,10 +1,11 @@
 
 import { cn } from "@/lib/utils";
+import React from "react";
 
 interface StatCardProps {
   title: string;
   value: string | number;
-  description?: string;
+  description?: React.ReactNode;  // Update: Changed from string to ReactNode
   icon?: React.ReactNode;
   trend?: {
     value: number;
