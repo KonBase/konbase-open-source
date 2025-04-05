@@ -229,7 +229,10 @@ const TwoFactorAuth = () => {
       // Call Supabase function to disable 2FA
       const { data, error } = await supabase.functions.invoke('disable-2fa', {});
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error from disable-2fa function:', error);
+        throw error;
+      }
       
       // Update the profile
       await updateProfile({ two_factor_enabled: false });

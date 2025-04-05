@@ -39,14 +39,20 @@ serve(async (req) => {
       );
     }
 
-    // Remove 2FA details from the database
-    const { error: deleteError } = await supabaseClient
-      .from('user_2fa')
-      .delete()
-      .eq('user_id', user.id);
+    try {
+      // Try to remove 2FA details from the database if the table exists
+      const { error: deleteError } = await supabaseClient
+        .from('user_2fa')
+        .delete()
+        .eq('user_id', user.id);
 
-    if (deleteError) {
-      throw new Error(`Error removing 2FA details: ${deleteError.message}`);
+      // Only throw if it's not a "relation does not exist" error
+      if (deleteError && !deleteError.message.includes("relation") && !deleteError.message.includes("does not exist")) {
+        throw new Error(`Error removing 2FA details: ${deleteError.message}`);
+      }
+    } catch (error) {
+      // Log the error but continue since the profile update is the critical part
+      console.error("Error during 2FA record deletion:", error);
     }
 
     // Update user profile to disable 2FA
