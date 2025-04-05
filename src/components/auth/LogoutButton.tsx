@@ -11,14 +11,14 @@ interface LogoutButtonProps {
 }
 
 const LogoutButton = ({ variant = "ghost", size = "default" }: LogoutButtonProps) => {
-  const { logout } = useAuth();
+  const { signOut } = useAuth();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      await logout();
+      await signOut();
       toast({
         title: 'Logged out',
         description: 'You have been successfully logged out.',

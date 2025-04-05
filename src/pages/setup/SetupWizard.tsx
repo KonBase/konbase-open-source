@@ -13,10 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Plus, Users, Building, Loader2, Key } from 'lucide-react';
 import { logDebug, handleError } from '@/utils/debug';
-import { createAssociation } from '@/lib/supabase-helpers';
 
 const SetupWizard = () => {
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
@@ -49,41 +48,28 @@ const SetupWizard = () => {
     setIsCreating(true);
     
     try {
-      // First try to use the helper function which handles service role permissions
-      const associationData = {
-        name: formData.name,
-        description: formData.description,
-        contact_email: formData.contactEmail,
-        contact_phone: formData.contactPhone,
-        website: formData.website,
-        address: formData.address
-      };
-      
-      let associationResult;
-      
-      try {
-        // Attempt to create using the supabase-helper function first
-        const { data, error } = await createAssociation(associationData);
-        if (error) throw error;
-        associationResult = { data, error: null };
-      } catch (error) {
-        // Fall back to direct insert if the helper fails 
-        logDebug('Failed to create association using helper, attempting direct insert', { error }, 'warn');
-        associationResult = await supabase
-          .from('associations')
-          .insert(associationData)
-          .select()
-          .single();
-      }
-      
-      if (associationResult.error) throw associationResult.error;
+      // Create the association
+      const { data, error } = await supabase
+        .from('associations')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          contact_email: formData.contactEmail,
+          contact_phone: formData.contactPhone,
+          website: formData.website,
+          address: formData.address
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
       
       // Add the current user as an admin for this association
       const memberResult = await supabase
         .from('association_members')
         .insert({
           user_id: user?.id,
-          association_id: associationResult.data.id,
+          association_id: data.id,
           role: 'admin'
         });
       
@@ -93,7 +79,7 @@ const SetupWizard = () => {
       const profileResult = await supabase
         .from('profiles')
         .update({ 
-          association_id: associationResult.data.id,
+          association_id: data.id,
           role: 'admin'
         })
         .eq('id', user?.id);
@@ -104,19 +90,14 @@ const SetupWizard = () => {
       await supabase.from('audit_logs').insert({
         user_id: user?.id,
         entity: 'associations',
-        entity_id: associationResult.data.id,
+        entity_id: data.id,
         action: 'create',
-        changes: `Created association "${associationResult.data.name}"`
+        changes: `Created association "${data.name}"`
       });
-      
-      // Refresh the user profile to reflect the new role
-      if (refreshUserProfile) {
-        await refreshUserProfile();
-      }
       
       toast({
         title: 'Association Created',
-        description: `${associationResult.data.name} has been created successfully`
+        description: `${data.name} has been created successfully`
       });
       
       navigate('/dashboard');

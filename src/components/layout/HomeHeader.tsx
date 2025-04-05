@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +34,7 @@ import LogoutButton from '../auth/LogoutButton';
 
 const HomeHeader = () => {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, hasPermission } = useAuth();
+  const { user, signOut, isAuthenticated, hasRole } = useAuth();
   const { toast } = useToast();
   
   // Extract user display values with fallbacks
@@ -42,11 +43,11 @@ const HomeHeader = () => {
   const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
   
   // Check if user has admin access
-  const isAdmin = hasPermission('admin') || hasPermission('system_admin') || hasPermission('super_admin');
+  const isAdmin = hasRole('admin') || hasRole('system_admin') || hasRole('super_admin');
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut();
       toast({
         title: "Logged out successfully",
         description: "You have been logged out of your account."

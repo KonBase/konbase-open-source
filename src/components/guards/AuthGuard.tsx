@@ -85,13 +85,6 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
 
   // Check if we're on the setup page - this prevents the infinite redirection loop
   const isSetupPage = location.pathname === '/setup';
-  
-  // Special case for allowing SetupWizard component to bypass RLS issues
-  // This enables users to create associations even if the RLS policy is causing issues
-  if (isSetupPage && isAuthenticated && !isLoading && !isChecking && userProfile) {
-    // Setup page should only be accessible when authenticated
-    return <>{children}</>;
-  }
 
   // Check if user has "guest" role and redirect to setup page
   // This is not in the check email verification flow because we want to redirect guests
