@@ -15,7 +15,6 @@ import {
   ArchiveIcon,
   BoxIcon,
   FileUp,
-  FileDown,
   MessageCircle,
   Bell
 } from 'lucide-react';
@@ -24,7 +23,6 @@ import { useAssociation } from '@/contexts/AssociationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
-import { ChatModule } from '@/components/chat/ChatModule';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -209,12 +207,6 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground">Total conventions</p>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Association Chat */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Association Chat</h2>
-        <ChatModule />
       </div>
 
       {/* Association Management Module */}
