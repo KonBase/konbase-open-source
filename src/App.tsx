@@ -124,10 +124,12 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                 </Route>
                 
-                {/* Setup route - accessible to authenticated users */}
-                <Route element={<AuthGuard><MainLayout /></AuthGuard>}>
-                  <Route path="/setup" element={<SetupWizard />} />
-                </Route>
+                {/* Setup route - accessible to authenticated users but without main layout */}
+                <Route path="/setup" element={
+                  <AuthGuard>
+                    <SetupWizard />
+                  </AuthGuard>
+                } />
                 
                 {/* Protected routes with main layout */}
                 <Route element={<AuthGuard><MainLayout /></AuthGuard>}>
