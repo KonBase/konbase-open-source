@@ -2,6 +2,7 @@
 import { PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js';
 import { Database } from '@/lib/database.types';
 import { logDebug, handleError } from '@/utils/debug';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Type-safe helper for handling Supabase query responses
