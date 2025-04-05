@@ -34,20 +34,20 @@ const MainLayout: React.FC = () => {
   }
 
   // For profile and settings pages, just render the Outlet without sidebar
-  if (isAuthenticated && isSidebarDisabledPage) {
+  if (isSidebarDisabledPage) {
     return <Outlet />;
   }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {isAuthenticated && !isSidebarDisabledPage && (
+      {isAuthenticated && (
         <div className={`${sidebarOpen ? 'w-64' : 'w-16'} transition-all duration-200 ease-in-out`}>
           <Sidebar collapsed={!sidebarOpen} toggleCollapse={toggleSidebar} />
         </div>
       )}
       
       <div className="flex flex-col flex-1 overflow-hidden">
-        {isAuthenticated && !isSidebarDisabledPage && <Header />}
+        {isAuthenticated && <Header />}
         
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <Outlet />

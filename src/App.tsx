@@ -1,8 +1,10 @@
+
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
 import { Toaster } from './components/ui/toaster';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
 import Home from './pages/Home';
@@ -52,97 +54,97 @@ import MainLayoutWrapper from './components/layout/MainLayoutWrapper';
 import AuthGuard from './components/guards/AuthGuard';
 import GuestGuard from './components/guards/GuestGuard';
 import { RoleGuard } from './components/auth/RoleGuard';
-import { RoleBasedRedirect } from './components/guards/RoleBasedRedirect';
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
-      <AuthProvider>
-        <AssociationProvider>
-          <Router>
-            <RoleBasedRedirect />
-            <Routes>
-              {/* Public routes with Footer */}
-              <Route element={<MainLayoutWrapper />}>
-                <Route path="/" element={<Index />} />
-              </Route>
-              
-              {/* Guest routes (redirect to dashboard if authenticated) */}
-              <Route element={<MainLayoutWrapper />}>
-                <Route element={<GuestGuard><Outlet /></GuestGuard>}>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                </Route>
-                
-                {/* Special routes */}
-                <Route path="/reset-password" element={<ResetPassword />} />
-              </Route>
-              
-              {/* Protected routes */}
-              <Route element={<AuthGuard><Outlet /></AuthGuard>}>
-                {/* Setup route */}
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
+        <AuthProvider>
+          <AssociationProvider>
+            <Router>
+              <Routes>
+                {/* Public routes with Footer */}
                 <Route element={<MainLayoutWrapper />}>
-                  <Route path="/setup" element={<SetupWizard />} />
+                  <Route path="/" element={<Home />} />
                 </Route>
                 
-                {/* Routes with main layout */}
-                <Route element={<MainLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/settings/backup" element={<BackupManagement />} />
+                {/* Guest routes (redirect to dashboard if authenticated) */}
+                <Route element={<MainLayoutWrapper />}>
+                  <Route element={<GuestGuard><Outlet /></GuestGuard>}>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                  </Route>
                   
-                  {/* Association Management */}
-                  <Route path="/association/profile" element={<AssociationProfile />} />
-                  <Route path="/association/members" element={<AssociationMembers />} />
-                  <Route path="/associations" element={<AssociationsList />} />
-                  <Route path="/associations/:id" element={<AssociationDetails />} />
+                  {/* Special routes */}
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                </Route>
+                
+                {/* Protected routes */}
+                <Route element={<AuthGuard><Outlet /></AuthGuard>}>
+                  {/* Setup route */}
+                  <Route element={<MainLayoutWrapper />}>
+                    <Route path="/setup" element={<SetupWizard />} />
+                  </Route>
                   
-                  {/* Inventory Management */}
-                  <Route path="/inventory/items" element={<InventoryList />} />
-                  <Route path="/inventory/categories" element={<ItemCategories />} />
-                  <Route path="/inventory/locations" element={<ItemLocations />} />
-                  <Route path="/inventory/sets" element={<EquipmentSets />} />
-                  <Route path="/inventory/warranties" element={<WarrantiesDocuments />} />
-                  <Route path="/inventory/import-export" element={<ImportExport />} />
-                  
-                  {/* Convention Management */}
-                  <Route path="/conventions" element={<ConventionsList />} />
-                  <Route path="/conventions/:id" element={<ConventionDetails />} />
-                  <Route path="/conventions/equipment" element={<ConventionEquipment />} />
-                  <Route path="/conventions/consumables" element={<ConventionConsumables />} />
-                  <Route path="/conventions/locations" element={<ConventionLocations />} />
-                  <Route path="/conventions/requirements" element={<ConventionRequirements />} />
-                  <Route path="/conventions/logs" element={<ConventionLogs />} />
-                  <Route path="/conventions/archive" element={<ConventionArchive />} />
-                  <Route path="/templates" element={<ConventionTemplates />} />
-                  
-                  {/* Reports */}
-                  <Route path="/reports" element={<ReportsList />} />
-                  
-                  {/* Admin routes */}
-                  <Route element={
-                    <RoleGuard allowedRoles={['super_admin', 'system_admin', 'admin']} fallbackPath="/unauthorized">
-                      <Outlet />
-                    </RoleGuard>
-                  }>
-                    <Route path="/admin" element={<AdminPanel />} />
+                  {/* Routes with main layout */}
+                  <Route element={<MainLayout />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/settings/backup" element={<BackupManagement />} />
+                    
+                    {/* Association Management */}
+                    <Route path="/association/profile" element={<AssociationProfile />} />
+                    <Route path="/association/members" element={<AssociationMembers />} />
+                    <Route path="/associations" element={<AssociationsList />} />
+                    <Route path="/associations/:id" element={<AssociationDetails />} />
+                    
+                    {/* Inventory Management */}
+                    <Route path="/inventory/items" element={<InventoryList />} />
+                    <Route path="/inventory/categories" element={<ItemCategories />} />
+                    <Route path="/inventory/locations" element={<ItemLocations />} />
+                    <Route path="/inventory/sets" element={<EquipmentSets />} />
+                    <Route path="/inventory/warranties" element={<WarrantiesDocuments />} />
+                    <Route path="/inventory/import-export" element={<ImportExport />} />
+                    
+                    {/* Convention Management */}
+                    <Route path="/conventions" element={<ConventionsList />} />
+                    <Route path="/conventions/:id" element={<ConventionDetails />} />
+                    <Route path="/conventions/equipment" element={<ConventionEquipment />} />
+                    <Route path="/conventions/consumables" element={<ConventionConsumables />} />
+                    <Route path="/conventions/locations" element={<ConventionLocations />} />
+                    <Route path="/conventions/requirements" element={<ConventionRequirements />} />
+                    <Route path="/conventions/logs" element={<ConventionLogs />} />
+                    <Route path="/conventions/archive" element={<ConventionArchive />} />
+                    <Route path="/templates" element={<ConventionTemplates />} />
+                    
+                    {/* Reports */}
+                    <Route path="/reports" element={<ReportsList />} />
+                    
+                    {/* Admin routes */}
+                    <Route element={
+                      <RoleGuard allowedRoles={['super_admin', 'system_admin', 'admin']} fallbackPath="/unauthorized">
+                        <Outlet />
+                      </RoleGuard>
+                    }>
+                      <Route path="/admin" element={<AdminPanel />} />
+                    </Route>
                   </Route>
                 </Route>
-              </Route>
-              
-              {/* Error pages */}
-              <Route element={<MainLayoutWrapper />}>
-                <Route path="/unauthorized" element={<Unauthorized />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </Router>
-          <Toaster />
-        </AssociationProvider>
-      </AuthProvider>
-    </ThemeProvider>
+                
+                {/* Error pages */}
+                <Route element={<MainLayoutWrapper />}>
+                  <Route path="/unauthorized" element={<Unauthorized />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </Router>
+            <Toaster />
+          </AssociationProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

@@ -1,69 +1,147 @@
+
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { processOAuthRedirect } from '@/lib/oauth-helpers';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Plus, Users, Building, Loader2 } from 'lucide-react';
 
 const SetupWizard = () => {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
-  const [processingOAuth, setProcessingOAuth] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    contactEmail: '',
+    contactPhone: '',
+    website: '',
+    address: ''
+  });
+  const [userAssociations, setUserAssociations] = useState<any[]>([]);
   
   useEffect(() => {
-    const handleOAuthRedirect = async () => {
-      if (location.hash && location.hash.includes('access_token')) {
-        setProcessingOAuth(true);
-        try {
-          const result = await processOAuthRedirect(location.hash);
+    const fetchUserAssociations = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('associations')
+          .select('*')
+          .order('name');
           
-          if (result.success) {
-            window.history.replaceState(null, document.title, window.location.pathname);
-            await refreshUser();
-            
-            toast({
-              title: 'Authentication Successful',
-              description: 'You have successfully signed in with your provider.'
-            });
-          } else {
-            toast({
-              title: 'Authentication Error',
-              description: 'There was a problem with your authentication. Please try again.',
-              variant: 'destructive'
-            });
-          }
-        } catch (error) {
-          console.error('Error handling OAuth redirect:', error);
-          toast({
-            title: 'Authentication Error',
-            description: 'Failed to complete the authentication process.',
-            variant: 'destructive'
-          });
-        } finally {
-          setProcessingOAuth(false);
-        }
+        if (error) throw error;
+        setUserAssociations(data || []);
+      } catch (error) {
+        console.error('Error fetching associations:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load associations',
+          variant: 'destructive'
+        });
       }
     };
     
-    handleOAuthRedirect();
-  }, [location.hash, refreshUser, toast]);
+    fetchUserAssociations();
+  }, [user, toast]);
   
-  if (processingOAuth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md p-6">
-          <CardContent className="flex flex-col items-center justify-center pt-6">
-            <Spinner size="lg" />
-            <p className="mt-4 text-lg font-medium">Processing your sign-in...</p>
-            <p className="text-sm text-muted-foreground mt-2">Please wait while we complete your authentication.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleCreateAssociation = async () => {
+    if (!formData.name || !formData.contactEmail) {
+      toast({
+        title: 'Missing Fields',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setIsCreating(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('associations')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          contact_email: formData.contactEmail,
+          contact_phone: formData.contactPhone,
+          website: formData.website,
+          address: formData.address
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Add the current user as an admin for this association
+      await supabase
+        .from('association_members')
+        .insert({
+          user_id: user?.id,
+          association_id: data.id,
+          role: 'admin'
+        });
+      
+      toast({
+        title: 'Association Created',
+        description: `${data.name} has been created successfully`
+      });
+      
+      // Update user profile with the association ID
+      await supabase
+        .from('profiles')
+        .update({ association_id: data.id })
+        .eq('id', user?.id);
+      
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error creating association:', error);
+      toast({
+        title: 'Failed to Create Association',
+        description: error.message || 'An error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+  
+  const handleJoinAssociation = async (associationId: string) => {
+    try {
+      // Update user profile with the association ID
+      await supabase
+        .from('profiles')
+        .update({ association_id: associationId })
+        .eq('id', user?.id);
+      
+      toast({
+        title: 'Association Joined',
+        description: 'You have successfully joined the association'
+      });
+      
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error joining association:', error);
+      toast({
+        title: 'Failed to Join Association',
+        description: error.message || 'An error occurred',
+        variant: 'destructive'
+      });
+    }
+  };
   
   return (
     <div className="container max-w-4xl mx-auto py-8">
@@ -88,13 +166,7 @@ const SetupWizard = () => {
         
         <TabsContent value="create" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Create a New Association</CardTitle>
-              <CardDescription>
-                Set up your own organization to manage inventory and events
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <form className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Association Name*</Label>
@@ -168,39 +240,32 @@ const SetupWizard = () => {
                     rows={2}
                   />
                 </div>
+                
+                <Button 
+                  className="w-full" 
+                  onClick={handleCreateAssociation}
+                  disabled={isCreating}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Association
+                    </>
+                  )}
+                </Button>
               </form>
             </CardContent>
-            <CardFooter>
-              <Button 
-                className="w-full" 
-                onClick={handleCreateAssociation}
-                disabled={isCreating}
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Association
-                  </>
-                )}
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
         
         <TabsContent value="join" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Join an Existing Association</CardTitle>
-              <CardDescription>
-                Join an organization you've been invited to
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {userAssociations && userAssociations.length > 0 ? (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
@@ -235,17 +300,15 @@ const SetupWizard = () => {
                   </p>
                 </div>
               )}
-            </CardContent>
-            
-            <CardFooter className="flex flex-col gap-4">
-              <div className="w-full border-t pt-4">
+              
+              <div className="w-full border-t mt-6 pt-4">
                 <p className="text-sm text-muted-foreground mb-2">Have an invitation code?</p>
                 <div className="flex gap-2">
                   <Input placeholder="Enter invitation code" className="flex-1" />
                   <Button variant="outline">Join</Button>
                 </div>
               </div>
-            </CardFooter>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
