@@ -101,6 +101,8 @@ const TwoFactorAuth = () => {
       setIsVerifying(true);
       setErrorMessage(null);
       
+      console.log("Verifying TOTP with secret:", secret, "and token:", verificationCode);
+      
       const { data, error } = await supabase.functions.invoke('verify-totp', {
         body: { 
           secret, 
@@ -110,7 +112,10 @@ const TwoFactorAuth = () => {
       
       console.log("Verification response:", data, error);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Verification API error:", error);
+        throw error;
+      }
       
       if (data && data.verified) {
         setIsConfirmed(true);

@@ -51,10 +51,10 @@ serve(async (req) => {
       );
     }
 
-    // Create TOTP instance with the provided secret
-    const totp = new TOTP(secret);
-    
     try {
+      // Create TOTP instance with the provided secret
+      const totp = new TOTP(secret);
+      
       // Verify token
       const verified = totp.verify(token);
       
