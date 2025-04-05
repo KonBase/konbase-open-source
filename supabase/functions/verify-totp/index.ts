@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { TOTP } from "https://deno.land/x/time_based_otp@v2.0.0/mod.ts";
+import { TOTP } from "https://deno.land/x/totp@1.0.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

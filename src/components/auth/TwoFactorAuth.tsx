@@ -316,7 +316,7 @@ const TwoFactorAuth = () => {
                     render={({ slots }) => (
                       <InputOTPGroup>
                         {slots.map((slot, index) => (
-                          <InputOTPSlot key={index} {...slot} />
+                          <InputOTPSlot key={index} {...slot} index={index} />
                         ))}
                       </InputOTPGroup>
                     )}
@@ -364,7 +364,7 @@ const TwoFactorAuth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert variant="warning" className="mb-4">
+          <Alert variant="destructive" className="mb-4">
             <AlertTitle>Important</AlertTitle>
             <AlertDescription>
               These recovery keys will only be shown once. If you lose them, you won't be able to recover your account if you lose access to your authenticator app.
