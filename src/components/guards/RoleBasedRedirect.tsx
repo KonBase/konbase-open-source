@@ -44,9 +44,9 @@ export function RoleBasedRedirect() {
       return;
     }
 
-    // If user has no association, redirect to setup wizard
+    // If user has the guest role and no association, redirect to setup wizard
     // unless they're already on a setup or admin path
-    if (profile && !profile.association_id && !currentAssociation && 
+    if (profile && profile.role === 'guest' && !profile.association_id && !currentAssociation && 
         !currentPath.startsWith('/setup') && 
         !currentPath.startsWith('/admin')) {
       toast({
