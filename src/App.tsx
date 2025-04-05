@@ -33,9 +33,9 @@ const App = () => {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
-        <AuthProvider>
-          <AssociationProvider>
-            <Router>
+        <Router>
+          <AuthProvider>
+            <AssociationProvider>
               <Routes>
                 {/* Public routes with Footer */}
                 <Route path="/" element={<MainLayoutWrapper />}>
@@ -76,10 +76,10 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>
-            </Router>
-            <Toaster />
-          </AssociationProvider>
-        </AuthProvider>
+              <Toaster />
+            </AssociationProvider>
+          </AuthProvider>
+        </Router>
       </ThemeProvider>
     </ErrorBoundary>
   );
