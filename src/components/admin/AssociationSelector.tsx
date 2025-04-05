@@ -31,7 +31,7 @@ export function AssociationSelector() {
   const navigate = useNavigate();
   
   useEffect(() => {
-    if (profile?.role === 'super_admin' || profile?.role === 'admin') {
+    if (profile?.role === 'super_admin' || profile?.role === 'system_admin' || profile?.role === 'admin') {
       fetchAdminAssociations();
     }
   }, [profile]);
@@ -56,24 +56,37 @@ export function AssociationSelector() {
           website: a.website || undefined,
           createdAt: a.created_at,
           updatedAt: a.updated_at
-        })).filter(
-          // Filter out associations the user already has access to
-          assoc => !userAssociations.some(userAssoc => userAssoc.id === assoc.id)
+        }));
+        
+        // Ensure userAssociations exists before filtering
+        const userAssociationsArray = userAssociations || [];
+        
+        // Filter out associations the user already has access to
+        const filteredAssociations = formattedAssociations.filter(
+          assoc => !userAssociationsArray.some(userAssoc => userAssoc.id === assoc.id)
         );
         
-        setAdminAssociations(formattedAssociations);
+        setAdminAssociations(filteredAssociations);
       }
     } catch (error) {
       console.error('Error fetching admin associations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch associations",
+        variant: "destructive"
+      });
     }
   };
   
+  // Ensure userAssociations is always an array (default to empty array if undefined)
+  const safeUserAssociations = userAssociations || [];
+  
   // Combine user associations and admin associations for super admins/admins
-  const displayedAssociations = profile?.role === 'super_admin' || profile?.role === 'admin' 
-    ? [...userAssociations, ...adminAssociations] 
-    : userAssociations;
+  const displayedAssociations = (profile?.role === 'super_admin' || profile?.role === 'system_admin' || profile?.role === 'admin') 
+    ? [...safeUserAssociations, ...adminAssociations] 
+    : safeUserAssociations;
     
-  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'admin';
+  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin' || profile?.role === 'admin';
   
   const handleSelectAssociation = (association: Association) => {
     try {
@@ -101,8 +114,9 @@ export function AssociationSelector() {
     }
   };
   
+  // If there are no associations to display and no current association, return null
   if (!currentAssociation && displayedAssociations.length === 0) {
-    return null; // Nothing to display
+    return null;
   }
   
   return (
@@ -135,7 +149,7 @@ export function AssociationSelector() {
                   >
                     <span className="truncate">
                       {association.name}
-                      {!userAssociations.some(a => a.id === association.id) && isAdmin && (
+                      {!safeUserAssociations.some(a => a.id === association.id) && isAdmin && (
                         <span className="ml-2 text-xs text-muted-foreground">(Admin)</span>
                       )}
                     </span>
