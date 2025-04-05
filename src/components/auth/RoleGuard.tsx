@@ -48,7 +48,7 @@ export function RoleGuard({
         userRole: userProfile?.role,
         allowedRoles,
         isAuthenticated,
-        hasAllowedRole: allowedRoles.some(role => hasRole(role))
+        hasAllowedRole: userProfile ? allowedRoles.some(role => hasRole(role)) : false
       });
       
       // Check if user is authenticated first
