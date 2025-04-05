@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from './Header';
+import DashboardFooter from './DashboardFooter';
 
 const MainLayout: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,6 +42,8 @@ const MainLayout: React.FC = () => {
       <main className="flex-1 overflow-auto p-4 md:p-6">
         <Outlet />
       </main>
+      
+      {isAuthenticated && <DashboardFooter />}
     </div>
   );
 };
