@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import {
@@ -95,11 +94,10 @@ const EquipmentSets = () => {
   
   const [sets, setSets] = useState<EquipmentSet[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [setItems, setSetItems] = useState<{ [key: string]: SetItem[] }>({});
+  const [setItemsMap, setSetItemsMap] = useState<{ [key: string]: SetItem[] }>({});
   const [loading, setLoading] = useState(true);
   const [expandedSets, setExpandedSets] = useState<string[]>([]);
   
-  // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -107,7 +105,6 @@ const EquipmentSets = () => {
   const [currentSet, setCurrentSet] = useState<EquipmentSet | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Form states
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -134,7 +131,6 @@ const EquipmentSets = () => {
     
     setLoading(true);
     try {
-      // Fetch equipment sets
       const { data: setsData, error: setsError } = await supabase
         .from('equipment_sets')
         .select('*')
@@ -142,7 +138,6 @@ const EquipmentSets = () => {
       
       if (setsError) throw setsError;
       
-      // For each set, count the number of items
       const setsWithItemCount = await Promise.all(setsData.map(async (set) => {
         const { count, error: countError } = await supabase
           .from('equipment_set_items')
@@ -159,7 +154,6 @@ const EquipmentSets = () => {
       
       setSets(setsWithItemCount);
       
-      // Fetch set items for all sets
       for (const set of setsData) {
         await fetchSetItems(set.id);
       }
@@ -223,7 +217,7 @@ const EquipmentSets = () => {
         item_description: item.items.description
       }));
       
-      setSetItems(prev => ({
+      setSetItemsMap(prev => ({
         ...prev,
         [setId]: formattedItems
       }));
@@ -302,7 +296,6 @@ const EquipmentSets = () => {
     if (!currentSet) return;
     
     try {
-      // First delete all items in the set
       const { error: itemsError } = await supabase
         .from('equipment_set_items')
         .delete()
@@ -310,7 +303,6 @@ const EquipmentSets = () => {
       
       if (itemsError) throw itemsError;
       
-      // Then delete the set itself
       const { error } = await supabase
         .from('equipment_sets')
         .delete()
@@ -339,7 +331,6 @@ const EquipmentSets = () => {
     if (!currentSet) return;
     
     try {
-      // Check if item already exists in set
       const { data: existingItems, error: checkError } = await supabase
         .from('equipment_set_items')
         .select('*')
@@ -349,7 +340,6 @@ const EquipmentSets = () => {
       if (checkError) throw checkError;
       
       if (existingItems && existingItems.length > 0) {
-        // Update existing item quantity
         const { error } = await supabase
           .from('equipment_set_items')
           .update({
@@ -360,7 +350,6 @@ const EquipmentSets = () => {
         
         if (error) throw error;
       } else {
-        // Add new item to set
         const { error } = await supabase
           .from('equipment_set_items')
           .insert({
@@ -380,7 +369,7 @@ const EquipmentSets = () => {
       setIsAddItemDialogOpen(false);
       resetItemForm();
       fetchSetItems(currentSet.id);
-      fetchSets(); // Refresh the item count
+      fetchSets();
     } catch (error: any) {
       console.error('Error adding item to set:', error);
       toast({
@@ -407,7 +396,7 @@ const EquipmentSets = () => {
       });
       
       fetchSetItems(setId);
-      fetchSets(); // Refresh the item count
+      fetchSets();
     } catch (error: any) {
       console.error('Error removing item from set:', error);
       toast({
@@ -589,7 +578,7 @@ const EquipmentSets = () => {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="p-4 border-t">
-                      {setItems[set.id] && setItems[set.id].length > 0 ? (
+                      {setItemsMap[set.id] && setItemsMap[set.id].length > 0 ? (
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -599,7 +588,7 @@ const EquipmentSets = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {setItems[set.id].map((item) => (
+                            {setItemsMap[set.id].map((item) => (
                               <TableRow key={item.item_id}>
                                 <TableCell>
                                   <div>
@@ -643,7 +632,6 @@ const EquipmentSets = () => {
         </div>
       )}
       
-      {/* Add Equipment Set Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -691,7 +679,6 @@ const EquipmentSets = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Edit Equipment Set Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -739,7 +726,6 @@ const EquipmentSets = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -769,7 +755,6 @@ const EquipmentSets = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Add Item to Set Dialog */}
       <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>

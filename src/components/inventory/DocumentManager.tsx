@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { supabase } from '@/lib/supabase';
@@ -43,7 +42,7 @@ import {
   Upload,
   FileText,
   FileImage,
-  FilePdf,
+  FileUp,
   FolderOpen
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -75,12 +74,10 @@ const DocumentManager = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   
-  // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentDocument, setCurrentDocument] = useState<Document | null>(null);
   
-  // Form states
   const [formData, setFormData] = useState({
     name: '',
     itemId: '',
@@ -169,7 +166,6 @@ const DocumentManager = () => {
     setUploading(true);
     
     try {
-      // First upload the file to storage
       const fileExt = formData.file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `documents/${fileName}`;
@@ -180,19 +176,16 @@ const DocumentManager = () => {
       
       if (uploadError) throw uploadError;
       
-      // Get the URL of the uploaded file
       const { data: urlData } = await supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
       
       const fileUrl = urlData.publicUrl;
       
-      // Get the current user ID
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) throw new Error('Not authenticated');
       
-      // Create the document record in the database
       const { error: docError } = await supabase
         .from('documents')
         .insert({
@@ -229,12 +222,10 @@ const DocumentManager = () => {
     if (!currentDocument) return;
     
     try {
-      // Extract the file path from the URL
       const fileUrl = currentDocument.file_url;
       const filePathMatch = fileUrl.match(/\/([^/]+)$/);
       const filePath = filePathMatch ? `documents/${filePathMatch[1]}` : null;
       
-      // Delete the database record first
       const { error: dbError } = await supabase
         .from('documents')
         .delete()
@@ -242,7 +233,6 @@ const DocumentManager = () => {
       
       if (dbError) throw dbError;
       
-      // If we have a valid file path, try to delete the file from storage
       if (filePath) {
         const { error: storageError } = await supabase.storage
           .from('documents')
@@ -250,7 +240,6 @@ const DocumentManager = () => {
         
         if (storageError) {
           console.error('Warning: File could not be deleted from storage:', storageError);
-          // Continue anyway since the database record is deleted
         }
       }
       
@@ -290,12 +279,11 @@ const DocumentManager = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  // Helper function to get icon based on file type
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
       return <FileImage className="h-5 w-5" />;
     } else if (fileType === 'application/pdf') {
-      return <FilePdf className="h-5 w-5" />;
+      return <FileUp className="h-5 w-5" />;
     } else {
       return <FileText className="h-5 w-5" />;
     }
@@ -380,7 +368,6 @@ const DocumentManager = () => {
         </CardContent>
       </Card>
       
-      {/* Upload Document Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -467,7 +454,6 @@ const DocumentManager = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useLocations, Location } from '@/hooks/useLocations';
@@ -50,6 +49,10 @@ interface LocationNodeProps {
   level: number;
   onEditClick: (location: Location) => void;
   onDeleteClick: (location: Location) => void;
+}
+
+interface LocationWithChildren extends Location {
+  children: LocationWithChildren[];
 }
 
 const LocationNode: React.FC<LocationNodeProps> = ({ 
@@ -227,17 +230,14 @@ const LocationManager: React.FC = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  // Build hierarchical structure for locations
   const buildLocationTree = () => {
-    const locationMap = new Map<string, Location & { children: Location[] }>();
+    const locationMap = new Map<string, LocationWithChildren>();
     
-    // First pass: create location objects with empty children arrays
     locations.forEach(location => {
       locationMap.set(location.id, { ...location, children: [] });
     });
     
-    // Second pass: populate children arrays
-    const rootLocations: (Location & { children: Location[] })[] = [];
+    const rootLocations: LocationWithChildren[] = [];
     
     locationMap.forEach(location => {
       if (location.parentId && locationMap.has(location.parentId)) {
@@ -247,7 +247,6 @@ const LocationManager: React.FC = () => {
       }
     });
     
-    // Sort locations alphabetically
     rootLocations.sort((a, b) => a.name.localeCompare(b.name));
     locationMap.forEach(location => {
       location.children.sort((a, b) => a.name.localeCompare(b.name));
@@ -256,7 +255,7 @@ const LocationManager: React.FC = () => {
     return rootLocations;
   };
   
-  const renderLocationTree = (locations: (Location & { children: Location[] })[], level: number = 0) => {
+  const renderLocationTree = (locations: LocationWithChildren[], level: number = 0) => {
     return (
       <div>
         {locations.map(location => (
@@ -336,7 +335,6 @@ const LocationManager: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* Add Location Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -409,7 +407,6 @@ const LocationManager: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Edit Location Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -482,7 +479,6 @@ const LocationManager: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
