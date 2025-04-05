@@ -96,7 +96,11 @@ const Dashboard = () => {
           // Fetch unread notifications count
           safeSelect('notifications', '*', { 
             column: 'user_id', 
-            value: user.id 
+            value: user.id,
+            order: {
+              column: 'created_at',
+              ascending: false
+            }
           })
         ]);
         
@@ -117,6 +121,18 @@ const Dashboard = () => {
         if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.data) {
           const unreadCount = notificationsResponse.value.data.filter(n => !n.read).length;
           setUnreadNotifications(unreadCount);
+          
+          // Log success for debugging
+          logDebug('Successfully fetched notifications', {
+            total: notificationsResponse.value.data.length,
+            unread: unreadCount
+          }, 'info');
+        } else if (notificationsResponse.status === 'rejected') {
+          // Log error for debugging
+          logDebug('Failed to fetch notifications', 
+            notificationsResponse.reason, 
+            'error'
+          );
         }
       } catch (error) {
         logDebug('Error fetching dashboard stats:', error, 'error');
@@ -134,7 +150,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardStats();
-  }, [currentAssociation, user, retryCount]);
+  }, [currentAssociation, user, retryCount, safeSelect]);
   
   // Separate effect for notification subscription
   useEffect(() => {
@@ -160,15 +176,14 @@ const Dashboard = () => {
             if (data) {
               const unreadCount = data.filter(n => !n.read).length;
               setUnreadNotifications(unreadCount);
+              logDebug('Updated notification count via realtime', { unreadCount }, 'info');
             }
           }).catch(error => {
             logDebug('Error updating notification count:', error, 'error');
           });
         }
       )
-      .subscribe((status) => {
-        logDebug(`Notification subscription status: ${status}`, null, 'info');
-      });
+      .subscribe();
     
     // Return cleanup function
     return () => {
@@ -176,10 +191,14 @@ const Dashboard = () => {
     };
   }, [user, supabase, safeSelect]);
   
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+  };
+  
   if (associationLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Spinner size="xl" />
+      <div className="flex items-center justify-center h-[50vh]">
+        <Spinner size="xl" loadingText="Loading your dashboard..." />
       </div>
     );
   }
@@ -197,20 +216,6 @@ const Dashboard = () => {
     );
   }
 
-  if (error && !isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-        <div className="text-destructive text-xl">{error}</div>
-        <button 
-          onClick={() => setRetryCount(prev => prev + 1)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   const isHome = location.pathname === "/dashboard";
 
   return (
@@ -222,7 +227,12 @@ const Dashboard = () => {
       />
 
       {/* Stats Cards */}
-      <DashboardStats stats={stats} isLoading={isLoading} />
+      <DashboardStats 
+        stats={stats} 
+        isLoading={isLoading} 
+        error={error} 
+        onRetry={handleRetry} 
+      />
 
       {/* Association Management Module */}
       <AssociationManagementSection onShowLocationManager={() => setShowLocationManager(true)} />

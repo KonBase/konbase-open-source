@@ -3,6 +3,7 @@ import React from 'react';
 import { Package, FileBox, MapPin, Calendar } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner, LoadingError } from '@/components/ui/spinner';
 
 interface DashboardStatsProps {
   stats: {
@@ -12,17 +13,24 @@ interface DashboardStatsProps {
     conventionsCount: number;
   };
   isLoading: boolean;
+  error?: any;
+  onRetry?: () => void;
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, isLoading }) => {
+const DashboardStats: React.FC<DashboardStatsProps> = ({ 
+  stats, 
+  isLoading, 
+  error, 
+  onRetry 
+}) => {
+  if (error) {
+    return <LoadingError error={error} retry={onRetry} />;
+  }
+
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg">
-            <Skeleton className="h-full w-full" />
-          </div>
-        ))}
+      <div className="flex items-center justify-center p-8">
+        <Spinner size="lg" loadingText="Loading dashboard statistics..." />
       </div>
     );
   }
