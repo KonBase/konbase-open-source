@@ -229,17 +229,29 @@ export function AssociationManagement() {
   };
 
   const handleManageAssociation = (association: Association) => {
-    // Set this association as the current association for admin to manage
-    setCurrentAssociation(association);
-    
-    // Navigate to the association profile page
-    navigate(`/association/profile?id=${association.id}`);
-    
-    // Notify the admin
-    toast({
-      title: "Association Selected",
-      description: `You are now managing ${association.name}`,
-    });
+    try {
+      // Set this association as the current association for admin to manage
+      setCurrentAssociation(association);
+      
+      // Create a small delay to ensure the context is updated
+      setTimeout(() => {
+        // Navigate to the association profile page
+        navigate(`/association/profile`);
+        
+        // Notify the admin
+        toast({
+          title: "Association Selected",
+          description: `You are now managing ${association.name}`,
+        });
+      }, 100);
+    } catch (error: any) {
+      console.error("Error selecting association:", error);
+      toast({
+        title: "Error",
+        description: "Failed to select association for management",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -250,7 +262,7 @@ export function AssociationManagement() {
   // Filter associations based on search query
   const filteredAssociations = associations.filter(association => 
     association.name.toLowerCase().includes(associationSearchQuery.toLowerCase()) ||
-    association.description.toLowerCase().includes(associationSearchQuery.toLowerCase())
+    association.description?.toLowerCase().includes(associationSearchQuery.toLowerCase() || '')
   );
   
   return (

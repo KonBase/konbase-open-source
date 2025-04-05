@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { toast } from '@/components/ui/use-toast';
@@ -12,20 +12,33 @@ export function RoleBasedRedirect() {
   const { profile, loading } = useUserProfile();
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (loading || associationLoading) return;
     
     // Get current path
-    const currentPath = window.location.pathname;
+    const currentPath = location.pathname;
     
     // If user is admin or super_admin, redirect to admin panel
-    // unless they're already on an admin path
+    // unless they're already on an admin path or specific pages
+    const adminOrAssociationPaths = [
+      '/admin', 
+      '/association', 
+      '/profile', 
+      '/settings',
+      '/dashboard'
+    ];
+    
+    const isOnAllowedPath = adminOrAssociationPaths.some(path => 
+      currentPath.startsWith(path)
+    );
+    
     if ((profile?.role === 'admin' || profile?.role === 'super_admin') && 
-        !currentPath.startsWith('/admin')) {
+        currentPath === '/' && !isOnAllowedPath) {
       toast({
         title: "Admin Access",
-        description: "You have been redirected to the admin panel.",
+        description: "Welcome to your admin dashboard.",
       });
       navigate('/admin');
       return;
@@ -43,7 +56,7 @@ export function RoleBasedRedirect() {
       navigate('/setup');
       return;
     }
-  }, [profile, loading, currentAssociation, associationLoading, navigate]);
+  }, [profile, loading, currentAssociation, associationLoading, navigate, location]);
 
   return null;
 }

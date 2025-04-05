@@ -44,18 +44,22 @@ export function UserRoleManager({
       setIsUpdating(true);
       
       // Update the user's role in the profiles table
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ role })
         .eq('id', userId);
       
-      if (error) throw error;
+      if (profileError) throw profileError;
       
       // Also update any association_members entries if they exist
-      await supabase
+      const { error: memberError } = await supabase
         .from('association_members')
         .update({ role })
         .eq('user_id', userId);
+      
+      if (memberError) {
+        console.log('Note: No association memberships to update or error occurred:', memberError);
+      }
       
       // Create an audit log entry
       await supabase.from('audit_logs').insert({

@@ -19,14 +19,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from '@/components/ui/use-toast';
 
 export function AssociationSelector() {
   const { currentAssociation, setCurrentAssociation, userAssociations } = useAssociation();
   const { profile } = useUserProfile();
   const [open, setOpen] = useState(false);
   const [adminAssociations, setAdminAssociations] = useState<Association[]>([]);
+  const navigate = useNavigate();
   
   useEffect(() => {
     if (profile?.role === 'super_admin' || profile?.role === 'admin') {
@@ -73,6 +75,32 @@ export function AssociationSelector() {
     
   const isAdmin = profile?.role === 'super_admin' || profile?.role === 'admin';
   
+  const handleSelectAssociation = (association: Association) => {
+    try {
+      setCurrentAssociation(association);
+      setOpen(false);
+      
+      // Add a toast notification for feedback
+      toast({
+        title: "Association Selected",
+        description: `You are now viewing ${association.name}`,
+      });
+    } catch (error: any) {
+      console.error("Error selecting association:", error);
+      toast({
+        title: "Error",
+        description: "Failed to select association",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handleManageAssociation = () => {
+    if (currentAssociation) {
+      navigate(`/association/profile`);
+    }
+  };
+  
   if (!currentAssociation && displayedAssociations.length === 0) {
     return null; // Nothing to display
   }
@@ -102,10 +130,7 @@ export function AssociationSelector() {
                 {displayedAssociations.map((association) => (
                   <CommandItem
                     key={association.id}
-                    onSelect={() => {
-                      setCurrentAssociation(association);
-                      setOpen(false);
-                    }}
+                    onSelect={() => handleSelectAssociation(association)}
                     className="flex items-center justify-between"
                   >
                     <span className="truncate">
@@ -129,12 +154,11 @@ export function AssociationSelector() {
         <Button
           variant="ghost"
           size="icon"
-          asChild
+          onClick={handleManageAssociation}
           className="h-9 w-9"
+          title="Manage Association"
         >
-          <Link to={`/association/profile?id=${currentAssociation.id}`} title="Manage Association">
-            <Settings className="h-4 w-4" />
-          </Link>
+          <Settings className="h-4 w-4" />
         </Button>
       )}
     </div>

@@ -59,7 +59,7 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
       // First check if user exists
       const { data: userData, error: userError } = await supabase
         .from('profiles')
-        .select('id, email, name')
+        .select('id, email, name, association_id')
         .eq('email', email.trim())
         .maybeSingle();
       
@@ -106,17 +106,13 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
       if (addError) throw addError;
       
       // Update the user's profile to set this association as their current association if they don't have one
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('association_id')
-        .eq('id', userData.id)
-        .single();
-        
-      if (!profileData.association_id) {
-        await supabase
+      if (!userData.association_id) {
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({ association_id: associationId })
           .eq('id', userData.id);
+          
+        if (profileError) throw profileError;
       }
       
       // Create notification for the user

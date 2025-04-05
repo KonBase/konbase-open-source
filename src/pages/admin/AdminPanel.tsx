@@ -5,9 +5,20 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import { AssociationManagement } from '@/components/admin/AssociationManagement';
 import { SystemSettings } from '@/components/admin/SystemSettings';
 import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
+import { useEffect, useState } from 'react';
 
 const AdminPanel = () => {
   const { profile } = useUserProfile();
+  const [activeTab, setActiveTab] = useState('users');
+  
+  // Check for any tab parameter in URL on component mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['users', 'associations', 'system', 'audit'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, []);
   
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -18,7 +29,7 @@ const AdminPanel = () => {
         </p>
       </div>
       
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="associations">Association Management</TabsTrigger>
