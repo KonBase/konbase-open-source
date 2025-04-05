@@ -6,17 +6,17 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/ShiroLuxferre/KonBase/stargazers">
-    <img src="https://img.shields.io/github/stars/ShiroLuxferre/KonBase" alt="Stars" />
+  <a href="https://github.com/KonBase/KonBase/stargazers">
+    <img src="https://img.shields.io/github/stars/KonBase/KonBase" alt="Stars" />
   </a>
-  <a href="https://github.com/ShiroLuxferre/KonBase/network/members">
-    <img src="https://img.shields.io/github/forks/ShiroLuxferre/KonBase" alt="Forks" />
+  <a href="https://github.com/KonBase/KonBase/network/members">
+    <img src="https://img.shields.io/github/forks/KonBase/KonBase" alt="Forks" />
   </a>
-  <a href="https://github.com/ShiroLuxferre/KonBase/issues">
-    <img src="https://img.shields.io/github/issues/ShiroLuxferre/KonBase" alt="Issues" />
+  <a href="https://github.com/KonBase/KonBase/issues">
+    <img src="https://img.shields.io/github/issues/KonBase/KonBase" alt="Issues" />
   </a>
   <a href="./LICENSE.md">
-    <img src="https://img.shields.io/github/license/ShiroLuxferre/KonBase" alt="License" />
+    <img src="https://img.shields.io/github/license/KonBase/KonBase" alt="License" />
   </a>
 </p>
 
