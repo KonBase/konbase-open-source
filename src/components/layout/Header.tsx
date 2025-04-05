@@ -25,9 +25,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ChatModule } from '@/components/chat/ChatModule';
+import LogoutButton from '../auth/LogoutButton';
 
 export function Header() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { profile } = useUserProfile();
   const { currentAssociation } = useAssociation();
   const location = useLocation();
@@ -37,10 +38,6 @@ export function Header() {
   const userEmail = user?.email || profile?.email || '';
   const userInitial = userName && userName.length > 0 ? userName.charAt(0).toUpperCase() : 'U';
   
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   // Check if we're on a page that's not the dashboard
   const showBackToDashboard = location.pathname !== '/dashboard' && location.pathname !== '/';
   
@@ -131,9 +128,8 @@ export function Header() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+              <DropdownMenuItem>
+                <LogoutButton variant="ghost" size="sm" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
