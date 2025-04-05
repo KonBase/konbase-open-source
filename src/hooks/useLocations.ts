@@ -11,7 +11,7 @@ export interface Location {
   parentId: string | null;
   associationId: string;
   isRoom: boolean;
-  type: string; // Added type property to match what's being used in LocationManager
+  type: string; // This is needed for the UI
   createdAt: string;
   updatedAt: string;
 }

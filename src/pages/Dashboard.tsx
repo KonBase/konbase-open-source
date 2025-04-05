@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -22,6 +23,7 @@ import { useAssociation } from '@/contexts/AssociationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
+import LocationManager from '@/components/inventory/LocationManager';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -34,6 +36,7 @@ const Dashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showLocationManager, setShowLocationManager] = useState(false);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -155,6 +158,23 @@ const Dashboard = () => {
     );
   }
 
+  if (showLocationManager) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Storage Locations</h1>
+            <p className="text-muted-foreground">Manage your storage locations.</p>
+          </div>
+          <Button variant="outline" onClick={() => setShowLocationManager(false)}>
+            Back to Dashboard
+          </Button>
+        </div>
+        <LocationManager />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -260,8 +280,11 @@ const Dashboard = () => {
             </Link>
           </Card>
           
-          <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-            <Link to="/inventory/locations" className="block p-6">
+          <Card 
+            className="hover:bg-accent/50 cursor-pointer transition-colors"
+            onClick={() => setShowLocationManager(true)}
+          >
+            <div className="block p-6">
               <div className="flex items-center space-x-4">
                 <MapPin className="h-10 w-10 text-primary" />
                 <div>
@@ -269,7 +292,7 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground">Manage storage locations</p>
                 </div>
               </div>
-            </Link>
+            </div>
           </Card>
           
           <Card className="hover:bg-accent/50 cursor-pointer transition-colors">

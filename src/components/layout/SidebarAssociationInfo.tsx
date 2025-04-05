@@ -1,37 +1,71 @@
 
 import React from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Link } from 'react-router-dom';
 import { useAssociation } from '@/contexts/AssociationContext';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Building } from 'lucide-react';
 
 interface SidebarAssociationInfoProps {
   collapsed: boolean;
 }
 
 const SidebarAssociationInfo: React.FC<SidebarAssociationInfoProps> = ({ collapsed }) => {
-  const { currentAssociation } = useAssociation();
+  const { currentAssociation, isLoading } = useAssociation();
   
-  if (!currentAssociation) return null;
-
+  if (isLoading) {
+    return (
+      <div className="py-3 px-3 border-b border-border">
+        <Skeleton className="h-10 w-full rounded-md" />
+      </div>
+    );
+  }
+  
+  if (!currentAssociation) {
+    return (
+      <div className={`py-3 px-3 border-b border-border ${collapsed ? 'text-center' : ''}`}>
+        <Button 
+          variant="outline" 
+          size={collapsed ? "icon" : "sm"} 
+          className="w-full"
+          asChild
+        >
+          <Link to="/setup">
+            <Building className="h-4 w-4" />
+            {!collapsed && <span className="ml-2">Set Up Association</span>}
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+  
   return (
-    <div className={`p-4 border-b border-border ${collapsed ? 'items-center justify-center' : ''} flex flex-col`}>
-      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2 flex-shrink-0">
+    <Link to="/dashboard" className="block border-b border-border hover:bg-accent/30 transition-colors">
+      <div className={`py-3 px-3 flex ${collapsed ? 'justify-center' : 'items-center'}`}>
         {currentAssociation.logo ? (
-          <img src={currentAssociation.logo} alt={currentAssociation.name} className="w-12 h-12 rounded-full" />
+          <div className={`bg-primary/10 rounded-md flex items-center justify-center ${collapsed ? 'h-8 w-8' : 'h-10 w-10'}`}>
+            <img 
+              src={currentAssociation.logo} 
+              alt={currentAssociation.name} 
+              className="h-6 w-6 object-contain" 
+            />
+          </div>
         ) : (
-          <Avatar className="h-12 w-12">
-            <AvatarFallback>{currentAssociation.name.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <div className={`bg-primary/10 rounded-md flex items-center justify-center ${collapsed ? 'h-8 w-8' : 'h-10 w-10'}`}>
+            <Building className="h-5 w-5 text-primary" />
+          </div>
+        )}
+        
+        {!collapsed && (
+          <div className="ml-3 overflow-hidden">
+            <p className="font-medium text-sm truncate">{currentAssociation.name}</p>
+            {currentAssociation.type && (
+              <p className="text-xs text-muted-foreground truncate">{currentAssociation.type}</p>
+            )}
+          </div>
         )}
       </div>
-      {!collapsed && (
-        <div className="text-center">
-          <h3 className="font-medium truncate">{currentAssociation.name}</h3>
-          {currentAssociation.contactEmail && (
-            <p className="text-xs text-muted-foreground truncate">{currentAssociation.contactEmail}</p>
-          )}
-        </div>
-      )}
-    </div>
+    </Link>
   );
 };
 

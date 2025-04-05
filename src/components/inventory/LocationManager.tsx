@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLocations, Location } from '@/hooks/useLocations';
 import { Button } from '@/components/ui/button';
@@ -89,7 +90,7 @@ const LocationManager = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: '',
+    parentId: 'none', // Changed from empty string to 'none' to fix the Select.Item error
     type: 'room',
   });
   
@@ -100,7 +101,7 @@ const LocationManager = () => {
     setFormData({
       name: '',
       description: '',
-      parentId: '',
+      parentId: 'none', // Changed from empty string to 'none'
       type: 'room',
     });
   };
@@ -115,7 +116,7 @@ const LocationManager = () => {
     setFormData({
       name: location.name,
       description: location.description || '',
-      parentId: location.parentId || '',
+      parentId: location.parentId || 'none', // Changed from empty string to 'none'
       type: location.type || 'room',
     });
     setIsEditDialogOpen(true);
@@ -140,7 +141,7 @@ const LocationManager = () => {
       await createLocation({
         name: formData.name,
         description: formData.description,
-        parentId: formData.parentId || null,
+        parentId: formData.parentId === 'none' ? null : formData.parentId,
         type: formData.type as 'room' | 'building' | 'container',
       });
       
@@ -175,7 +176,7 @@ const LocationManager = () => {
       await updateLocation(currentLocation.id, {
         name: formData.name,
         description: formData.description,
-        parentId: formData.parentId || null,
+        parentId: formData.parentId === 'none' ? null : formData.parentId,
         type: formData.type as 'room' | 'building' | 'container',
       });
       
@@ -237,11 +238,11 @@ const LocationManager = () => {
         <TableRow>
           <TableCell className="font-medium">
             <div style={{ paddingLeft: `${depth * 1.5}rem` }} className="flex items-center">
-              {getLocationIcon(location.type || 'room')}
+              {getLocationIcon(location.type)}
               {location.name}
             </div>
           </TableCell>
-          <TableCell>{location.type || 'room'}</TableCell>
+          <TableCell>{location.type}</TableCell>
           <TableCell>{location.description || "-"}</TableCell>
           <TableCell className="text-right">
             <div className="flex justify-end space-x-2">
@@ -336,7 +337,7 @@ const LocationManager = () => {
                       <TableRow key={location.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center">
-                            {getLocationIcon(location.type || 'room')}
+                            {getLocationIcon(location.type)}
                             {location.name}
                             {location.parentId && (
                               <span className="ml-2 text-xs text-muted-foreground">
@@ -345,7 +346,7 @@ const LocationManager = () => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{location.type || 'room'}</TableCell>
+                        <TableCell>{location.type}</TableCell>
                         <TableCell>{location.description || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
