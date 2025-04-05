@@ -25,7 +25,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
       eventsPerSecond: 10,
     },
   },
-  debug: process.env.NODE_ENV !== 'production',
 });
 
 // Add event listeners for connection status

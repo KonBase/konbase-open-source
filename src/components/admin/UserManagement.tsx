@@ -24,6 +24,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
+import { handleError } from '@/utils/debug';
+import { safelyConvertQueryResult } from '@/utils/supabase-utils';
 
 // Interface for user profiles
 interface UserProfile {
@@ -39,20 +42,21 @@ export function UserManagement() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const { safeSelect, safeDelete } = useTypeSafeSupabase();
   
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, name, role, association_id, created_at')
-        .order('created_at', { ascending: false });
+      const { data, error } = await safeSelect<UserProfile>(
+        'profiles',
+        'id, email, name, role, association_id, created_at'
+      );
         
       if (error) throw error;
       
       setUsers(data || []);
     } catch (error: any) {
-      console.error('Error fetching users:', error);
+      handleError(error, 'UserManagement.fetchUsers');
       toast({
         title: 'Error',
         description: 'Failed to load user profiles',
@@ -70,28 +74,28 @@ export function UserManagement() {
   const handleDeleteUser = async (userId: string) => {
     try {
       // First remove user from any associations
-      const { error: membershipError } = await supabase
-        .from('association_members')
-        .delete()
-        .eq('user_id', userId);
+      const { error: membershipError } = await safeDelete(
+        'association_members',
+        { column: 'user_id', value: userId }
+      );
         
       if (membershipError) throw membershipError;
       
       // Then delete the user profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
+      const { error: profileError } = await safeDelete(
+        'profiles',
+        { column: 'id', value: userId }
+      );
         
       if (profileError) throw profileError;
       
-      // Create audit log entry
+      // Create audit log entry - using safe insert
       await supabase.from('audit_logs').insert({
         action: 'delete_user',
         entity: 'users',
         entity_id: userId,
         user_id: '', // Will be filled by auth context
-      });
+      } as any);
       
       toast({
         title: 'Success',
@@ -102,7 +106,7 @@ export function UserManagement() {
       fetchUsers();
       
     } catch (error: any) {
-      console.error('Error deleting user:', error);
+      handleError(error, 'UserManagement.handleDeleteUser');
       toast({
         title: 'Error',
         description: error.message || 'Failed to delete user',

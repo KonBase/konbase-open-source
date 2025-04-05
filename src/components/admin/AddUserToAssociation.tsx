@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { UserRoleType } from '@/types/user'; // Use correct import from types
+import { UserRoleType } from '@/types/user';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
+import { handleError } from '@/utils/debug';
 
 interface AddUserToAssociationProps {
   associationId: string;
@@ -31,25 +32,25 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
     setIsSubmitting(true);
 
     try {
-      // Check if user exists
+      // Check if user exists - use eq_filter instead of direct eq for type safety
       const { data: profilesData, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', email)
+        .filter('email', 'eq', email)
         .single();
 
       if (profileError || !profilesData) {
         throw new Error('User with this email does not exist');
       }
 
-      // Add user to association
+      // Add user to association - use type cast for the insert operation
       const { error: addError } = await supabase
         .from('association_members')
         .insert({
           association_id: associationId,
           user_id: profilesData.id,
           role: role,
-        });
+        } as any);
 
       if (addError) throw addError;
 
@@ -65,6 +66,7 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
       // Callback
       if (onUserAdded) onUserAdded();
     } catch (error: any) {
+      handleError(error, 'AddUserToAssociation.handleSubmit');
       toast({
         title: 'Error Adding User',
         description: error.message || 'An error occurred. Please try again.',
