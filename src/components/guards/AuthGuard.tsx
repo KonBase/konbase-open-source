@@ -15,6 +15,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [shouldSignOut, setShouldSignOut] = useState(false);
 
   useEffect(() => {
     // Check if email is verified
@@ -37,9 +38,9 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
         if (data?.user?.email_confirmed_at) {
           setIsEmailVerified(true);
         } else {
-          // Email not verified - don't call signOut inside this auth check
-          // to prevent potential recursion
+          // Email not verified - mark for sign out without causing render loop
           setIsEmailVerified(false);
+          setShouldSignOut(true);
           
           toast({
             title: "Email Verification Required",
@@ -63,13 +64,14 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     }
   }, [isLoading, isAuthenticated, user]);
 
-  // Handle logout separately to avoid recursive rendering
+  // Handle logout separately
   useEffect(() => {
-    if (!isLoading && !isChecking && isAuthenticated && !isEmailVerified) {
+    if (shouldSignOut) {
       // Use setTimeout to avoid immediate auth state change
       const timer = setTimeout(async () => {
         try {
           await supabase.auth.signOut();
+          setShouldSignOut(false);
         } catch (error) {
           console.error("Error signing out:", error);
         }
@@ -77,7 +79,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       
       return () => clearTimeout(timer);
     }
-  }, [isLoading, isChecking, isAuthenticated, isEmailVerified]);
+  }, [shouldSignOut]);
 
   if (isLoading || isChecking) {
     return (

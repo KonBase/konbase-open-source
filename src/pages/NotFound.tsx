@@ -3,9 +3,11 @@ import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from '@/contexts/AuthContext';
 
 const NotFound = () => {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     console.error(
@@ -23,13 +25,19 @@ const NotFound = () => {
           The page you are looking for might have been removed, had its name changed,
           or is temporarily unavailable.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-4 justify-center flex-wrap">
           <Button asChild>
             <Link to="/">Return to Home</Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link to="/dashboard">Go to Dashboard</Link>
-          </Button>
+          {isAuthenticated ? (
+            <Button variant="outline" asChild>
+              <Link to="/dashboard">Go to Dashboard</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" asChild>
+              <Link to="/login">Go to Login</Link>
+            </Button>
+          )}
         </div>
       </div>
     </div>
