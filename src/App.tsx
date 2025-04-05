@@ -6,6 +6,7 @@ import { AssociationProvider } from './contexts/AssociationContext';
 
 // Pages
 import Home from './pages/Home';
+import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -45,6 +46,7 @@ import ConventionTemplates from './pages/conventions/ConventionTemplates';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
+import MainLayoutWrapper from './components/layout/MainLayoutWrapper';
 
 // Guards
 import AuthGuard from './components/guards/AuthGuard';
@@ -61,23 +63,29 @@ const App = () => {
         <AssociationProvider>
           <Router>
             <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Home />} />
-              
-              {/* Guest routes (redirect to dashboard if authenticated) */}
-              <Route element={<GuestGuard><Outlet /></GuestGuard>}>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
+              {/* Public routes with Footer */}
+              <Route element={<MainLayoutWrapper />}>
+                <Route path="/" element={<Index />} />
               </Route>
               
-              {/* Special routes */}
-              <Route path="/reset-password" element={<ResetPassword />} />
+              {/* Guest routes (redirect to dashboard if authenticated) */}
+              <Route element={<MainLayoutWrapper />}>
+                <Route element={<GuestGuard><Outlet /></GuestGuard>}>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                </Route>
+                
+                {/* Special routes */}
+                <Route path="/reset-password" element={<ResetPassword />} />
+              </Route>
               
               {/* Protected routes */}
               <Route element={<AuthGuard><Outlet /></AuthGuard>}>
                 {/* Setup route */}
-                <Route path="/setup" element={<SetupWizard />} />
+                <Route element={<MainLayoutWrapper />}>
+                  <Route path="/setup" element={<SetupWizard />} />
+                </Route>
                 
                 {/* Routes with main layout */}
                 <Route element={<MainLayout />}>
@@ -126,8 +134,10 @@ const App = () => {
               </Route>
               
               {/* Error pages */}
-              <Route path="/unauthorized" element={<Unauthorized />} />
-              <Route path="*" element={<NotFound />} />
+              <Route element={<MainLayoutWrapper />}>
+                <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
             </Routes>
           </Router>
           <Toaster />

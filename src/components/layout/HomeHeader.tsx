@@ -13,7 +13,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle
 } from '@/components/ui/navigation-menu';
-import { User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Settings, LayoutDashboard, Github, Discord } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -87,11 +87,35 @@ const HomeHeader = () => {
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <a href="https://github.com/ShiroLuxferre/KonBase" target="_blank" rel="noopener noreferrer" className={navigationMenuTriggerStyle()}>
-                    GitHub
-                  </a>
-                </NavigationMenuLink>
+                <NavigationMenuTrigger>Community</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <div className="grid gap-3 p-4 w-[400px]">
+                    <a 
+                      href="https://github.com/ShiroLuxferre/KonBase" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2 hover:bg-accent rounded-md"
+                    >
+                      <Github className="h-5 w-5" />
+                      <div>
+                        <div className="font-medium">GitHub</div>
+                        <div className="text-sm text-muted-foreground">Contribute to the code</div>
+                      </div>
+                    </a>
+                    <a 
+                      href="https://discord.gg/konbase" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2 hover:bg-accent rounded-md"
+                    >
+                      <Discord className="h-5 w-5" />
+                      <div>
+                        <div className="font-medium">Discord</div>
+                        <div className="text-sm text-muted-foreground">Join the community</div>
+                      </div>
+                    </a>
+                  </div>
+                </NavigationMenuContent>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
