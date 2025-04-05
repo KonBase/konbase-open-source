@@ -7,7 +7,7 @@ import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
-import Home from './pages/Home';
+import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -39,7 +39,7 @@ const App = () => {
               <Routes>
                 {/* Public routes with Footer */}
                 <Route path="/" element={<MainLayoutWrapper />}>
-                  <Route index element={<Home />} />
+                  <Route index element={<Index />} />
                 </Route>
                 
                 {/* Guest routes (redirect to dashboard if authenticated) */}

@@ -1,6 +1,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
+import { Database } from '@/lib/database.types';
 
 type TableName = 'profiles' | 'associations' | 'audit_logs' | 'categories' 
   | 'items' | 'locations' | 'chat_messages' | 'notifications' 
@@ -22,7 +23,7 @@ export function useTypeSafeSupabase() {
       let query = supabase.from(table).select(columns);
       
       if (condition) {
-        query = query.filter(condition.column, 'eq', condition.value);
+        query = query.eq(condition.column, condition.value);
       }
       
       const { data, error } = await query;
@@ -43,7 +44,7 @@ export function useTypeSafeSupabase() {
    */
   const safeInsert = async <T>(
     table: TableName,
-    data: Record<string, any>
+    data: any
   ): Promise<{ data: T | null; error: any }> => {
     try {
       const { data: result, error } = await supabase
@@ -68,14 +69,14 @@ export function useTypeSafeSupabase() {
    */
   const safeUpdate = async <T>(
     table: TableName,
-    updates: Record<string, any>,
+    updates: any,
     condition: { column: string; value: any }
   ): Promise<{ data: T | null; error: any }> => {
     try {
       const { data: result, error } = await supabase
         .from(table)
         .update(updates)
-        .filter(condition.column, 'eq', condition.value)
+        .eq(condition.column, condition.value)
         .select()
         .single();
       
@@ -101,7 +102,7 @@ export function useTypeSafeSupabase() {
       const { error } = await supabase
         .from(table)
         .delete()
-        .filter(condition.column, 'eq', condition.value);
+        .eq(condition.column, condition.value);
       
       if (error) {
         throw error;
