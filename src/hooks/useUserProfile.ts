@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { User } from '@/types/user';
+import { User, UserRoleType } from '@/types/user';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define the profile type with the expected fields
@@ -10,15 +10,12 @@ export interface UserProfile {
   email: string;
   name: string;
   profile_image?: string;
-  role: string;
+  role: UserRoleType;
   association_id?: string;
   two_factor_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
-
-// Export the UserRole type explicitly with the export type syntax to resolve TS error
-export type { UserRole } from '@/types';
 
 // Hook to get and update the user profile
 export const useUserProfile = () => {

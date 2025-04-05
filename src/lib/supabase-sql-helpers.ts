@@ -1,5 +1,4 @@
 
-
 /**
  * Helper file containing SQL snippets that were used to resolve infinite recursion in RLS policies
  * 
@@ -91,12 +90,53 @@
  *     )
  *   );
  * ```
+ * 
+ * -- To fix the infinite recursion in the profiles table RLS policies, we need to modify them:
+ * 
+ * ```sql
+ * -- Drop the existing problematic policies on profiles
+ * DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
+ * DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+ * DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+ * DROP POLICY IF EXISTS "Admins can update all profiles" ON profiles;
+ * 
+ * -- Create a security definer function to safely check user role
+ * CREATE OR REPLACE FUNCTION public.get_user_role(user_id UUID)
+ * RETURNS TEXT AS $$
+ * DECLARE
+ *   user_role TEXT;
+ * BEGIN
+ *   -- Direct query to avoid RLS
+ *   SELECT role INTO user_role FROM profiles WHERE id = user_id;
+ *   RETURN user_role;
+ * EXCEPTION WHEN OTHERS THEN
+ *   RETURN 'guest';
+ * END;
+ * $$ LANGUAGE plpgsql SECURITY DEFINER;
+ * 
+ * -- Create updated policies using the security definer function
+ * CREATE POLICY "Users can view their own profile"
+ *   ON profiles FOR SELECT
+ *   USING (auth.uid() = id);
+ *   
+ * CREATE POLICY "Users can update their own profile"
+ *   ON profiles FOR UPDATE
+ *   USING (auth.uid() = id);
+ * 
+ * CREATE POLICY "Admins can view all profiles"
+ *   ON profiles FOR SELECT
+ *   USING (public.get_user_role(auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
+ * 
+ * CREATE POLICY "Admins can update all profiles"
+ *   ON profiles FOR UPDATE
+ *   USING (public.get_user_role(auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
+ * ```
  */
 
 // This file is for documentation purposes - import it in components that need to know about required SQL fixes
 export const REQUIRED_SQL_FIXES = {
   infiniteRecursionFix: true,
   fixStatus: 'applied',  // updated to show the fix has been applied
-  conventionAccessFix: true // added to track convention access fix
+  conventionAccessFix: true, // added to track convention access fix
+  profilesRLSFix: true // added to track profiles RLS fix
 };
-

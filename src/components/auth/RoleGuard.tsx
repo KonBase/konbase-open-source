@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
 import { UserRoleType } from '@/types/user';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +34,7 @@ export function RoleGuard({
   const [hasAccess, setHasAccess] = useState(false);
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -52,9 +53,11 @@ export function RoleGuard({
       
       // For super_admin, system_admin, or when explicit 2FA enforcement is needed,
       // check if the user has 2FA enabled
-      const needsTwoFactor = (hasRole('super_admin') || 
-                              hasRole('system_admin') || 
-                              (enforceTwoFactor));
+      const needsTwoFactor = (
+        hasRole('super_admin') || 
+        hasRole('system_admin') || 
+        enforceTwoFactor
+      );
       
       if (needsTwoFactor && userProfile && !userProfile.two_factor_enabled) {
         setShowTwoFactorDialog(true);
@@ -65,8 +68,10 @@ export function RoleGuard({
       
       // For the highest required role in the list, perform a detailed access check
       let highestRequiredRole: UserRoleType = 'guest';
+      
       for (const role of allowedRoles) {
         if (hasRole(role)) {
+          // Check roles from highest to lowest level
           if (role === 'super_admin') {
             highestRequiredRole = 'super_admin';
             break;

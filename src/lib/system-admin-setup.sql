@@ -6,33 +6,21 @@
 -- Check if the enum type exists and alter it to include system_admin
 DO $$ 
 BEGIN
-  -- Check if the enum type exists
-  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
-    -- Check if system_admin is already a value in the enum
-    IF NOT EXISTS (
-      SELECT 1 
-      FROM pg_enum 
-      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'user_role_enum')
-      AND enumlabel = 'system_admin'
-    ) THEN
-      -- Add system_admin to the enum
-      ALTER TYPE user_role_enum ADD VALUE IF NOT EXISTS 'system_admin';
-    END IF;
-  ELSE
-    -- Create the enum type if it doesn't exist
-    CREATE TYPE user_role_enum AS ENUM ('super_admin', 'system_admin', 'admin', 'manager', 'member', 'guest');
-  END IF;
-  
-  -- Check if there's a check constraint on the profiles table for roles
+  -- Check if system_admin is already in the role column constraint
   IF EXISTS (
     SELECT 1 
-    FROM pg_constraint 
-    WHERE conname = 'valid_profile_role' AND conrelid = 'profiles'::regclass
+    FROM information_schema.check_constraints cc
+    JOIN information_schema.constraint_column_usage ccu ON cc.constraint_name = ccu.constraint_name
+    WHERE ccu.table_name = 'profiles' AND ccu.column_name = 'role'
   ) THEN
-    -- Drop the existing constraint
+    -- Drop the existing constraint first
     ALTER TABLE profiles DROP CONSTRAINT IF EXISTS valid_profile_role;
     
-    -- Recreate the constraint with the updated values
+    -- Add a new constraint with system_admin included
+    ALTER TABLE profiles ADD CONSTRAINT valid_profile_role 
+      CHECK (role IN ('super_admin', 'system_admin', 'admin', 'manager', 'member', 'guest'));
+  ELSE
+    -- If no constraint exists, add one
     ALTER TABLE profiles ADD CONSTRAINT valid_profile_role 
       CHECK (role IN ('super_admin', 'system_admin', 'admin', 'manager', 'member', 'guest'));
   END IF;
@@ -46,35 +34,30 @@ DROP POLICY IF EXISTS "Admins can update all profiles" ON profiles;
 -- Now create updated policies that include system_admin
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
-  USING (auth.jwt() ->> 'role' = 'authenticated' AND 
-         (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
+  USING (public.get_user_role(auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
 
 CREATE POLICY "Admins can update all profiles"
   ON profiles FOR UPDATE
-  USING (auth.jwt() ->> 'role' = 'authenticated' AND 
-         (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
+  USING (public.get_user_role(auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
 
 -- 3. Update RLS policies for admin-specific tables
 -- First for audit_logs
 DROP POLICY IF EXISTS "Admins can view audit logs" ON audit_logs;
 CREATE POLICY "Admins can view audit logs"
   ON audit_logs FOR SELECT
-  USING (auth.jwt() ->> 'role' = 'authenticated' AND 
-         (SELECT role FROM profiles WHERE id = auth.uid()) IN ('super_admin'));
+  USING (public.get_user_role(auth.uid()) IN ('super_admin'));
 
 -- 4. Update RLS policies for associations table to grant system_admin access
 DROP POLICY IF EXISTS "Admins can manage all associations" ON associations;
 CREATE POLICY "Admins can manage all associations"
   ON associations
-  USING (auth.jwt() ->> 'role' = 'authenticated' AND 
-         (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
+  USING (public.get_user_role(auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
 
 -- 5. Update the association_members policies
 DROP POLICY IF EXISTS "Admin users can manage all memberships" ON association_members;
 CREATE POLICY "Admin users can manage all memberships"
   ON association_members
-  USING (auth.jwt() ->> 'role' = 'authenticated' AND 
-         (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
+  USING (public.get_user_role(auth.uid()) IN ('admin', 'system_admin', 'super_admin'));
 
 -- 6. Create a function to check if a user has system_admin or super_admin role
 CREATE OR REPLACE FUNCTION public.has_elevated_admin_role(user_id UUID)
