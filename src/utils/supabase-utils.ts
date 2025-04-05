@@ -1,5 +1,5 @@
 
-import { QueryData, PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js';
+import { PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js';
 import { Database } from '@/lib/database.types';
 import { logDebug, handleError } from '@/utils/debug';
 
@@ -35,16 +35,12 @@ export function extractRowData<T, K extends keyof T>(
 /**
  * Type-safe wrapper for database insert operations
  */
-export async function insertRow<
-  Schema extends keyof Database,
-  Table extends keyof Database[Schema]['Tables'],
-  Row extends Database[Schema]['Tables'][Table]['Insert']
->(
+export async function insertRow<T>(
   supabaseQuery: any,
-  row: Row
+  row: Record<string, any>
 ) {
   try {
-    const { data, error } = await supabaseQuery.insert(row as any).select().single();
+    const { data, error } = await supabaseQuery.insert(row).select().single();
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
@@ -56,17 +52,13 @@ export async function insertRow<
 /**
  * Type-safe wrapper for database update operations
  */
-export async function updateRow<
-  Schema extends keyof Database,
-  Table extends keyof Database[Schema]['Tables'],
-  Row extends Database[Schema]['Tables'][Table]['Update']
->(
+export async function updateRow<T>(
   supabaseQuery: any,
-  row: Row,
+  row: Record<string, any>,
   condition: any
 ) {
   try {
-    const { data, error } = await supabaseQuery.update(row as any).match(condition).select().single();
+    const { data, error } = await supabaseQuery.update(row).match(condition).select().single();
     if (error) throw error;
     return { data, error: null };
   } catch (error) {

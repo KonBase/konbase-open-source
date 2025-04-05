@@ -1,5 +1,4 @@
 
-import { PostgrestFilterBuilder, PostgrestSingleResponse } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
 
@@ -23,7 +22,7 @@ export function useTypeSafeSupabase() {
       let query = supabase.from(table).select(columns);
       
       if (condition) {
-        query = query.filter(condition.column, 'eq', condition.value) as any;
+        query = query.filter(condition.column, 'eq', condition.value);
       }
       
       const { data, error } = await query;
@@ -49,7 +48,7 @@ export function useTypeSafeSupabase() {
     try {
       const { data: result, error } = await supabase
         .from(table)
-        .insert(data as any)
+        .insert(data)
         .select()
         .single();
       
@@ -75,7 +74,7 @@ export function useTypeSafeSupabase() {
     try {
       const { data: result, error } = await supabase
         .from(table)
-        .update(updates as any)
+        .update(updates)
         .filter(condition.column, 'eq', condition.value)
         .select()
         .single();
