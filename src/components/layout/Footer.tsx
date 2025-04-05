@@ -1,6 +1,6 @@
 
 import { Link } from 'react-router-dom';
-import { GitHubIcon, MessageCircle, Coffee, Heart } from 'lucide-react';
+import { Github, MessageCircle, Coffee, Heart } from 'lucide-react';
 import { Button } from '../ui/button';
 
 const Footer = () => {
@@ -22,7 +22,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                <GitHubIcon className="h-5 w-5" />
+                <Github className="h-5 w-5" />
                 <span className="sr-only">GitHub</span>
               </a>
               <a 

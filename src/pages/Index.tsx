@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import HomeHeader from '@/components/layout/HomeHeader';
 import Footer from '@/components/layout/Footer';
-import { ArrowRight, BarChart3, Box, CheckCircle, Database, Shield, Users, MessageCircle, GitHubIcon, Coffee } from 'lucide-react';
+import { ArrowRight, BarChart3, Box, CheckCircle, Database, Shield, Users, MessageCircle, Github, Coffee } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -133,7 +133,7 @@ const Index = () => {
               </div>
               
               <div className="bg-card p-8 rounded-lg border text-center">
-                <GitHubIcon className="h-12 w-12 mx-auto text-primary mb-4" />
+                <Github className="h-12 w-12 mx-auto text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">GitHub Repository</h3>
                 <p className="text-muted-foreground mb-4">
                   Star our repository, report issues, or contribute code to help improve KonBase.

@@ -13,7 +13,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle
 } from '@/components/ui/navigation-menu';
-import { User, LogOut, Settings, LayoutDashboard, GitHubIcon, MessageCircle } from 'lucide-react';
+import { User, LogOut, Settings, LayoutDashboard, Github, MessageCircle } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -96,7 +96,7 @@ const HomeHeader = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 hover:bg-accent rounded-md"
                     >
-                      <GitHubIcon className="h-5 w-5" />
+                      <Github className="h-5 w-5" />
                       <div>
                         <div className="font-medium">GitHub</div>
                         <div className="text-sm text-muted-foreground">Contribute to the code</div>
