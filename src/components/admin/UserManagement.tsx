@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -26,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
 import { handleError } from '@/utils/debug';
-import { safelyConvertQueryResult } from '@/utils/supabase-utils';
 
 // Interface for user profiles
 interface UserProfile {

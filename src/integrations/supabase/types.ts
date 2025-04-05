@@ -1002,6 +1002,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_system_or_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       convention_status: "planned" | "active" | "completed" | "archived"

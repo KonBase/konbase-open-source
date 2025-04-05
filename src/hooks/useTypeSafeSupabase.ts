@@ -19,13 +19,24 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
 // Type for our Supabase client
 export type TypeSafeSupabaseClient = typeof supabase;
 
+// Define table names as a union type to ensure type safety
+type TableNames = keyof Database['public']['Tables'];
+
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
   // Helper function for safe SELECT operations
   const safeSelect = async <T>(
-    table: string,
+    table: TableNames,
     columns: string = '*',
-    queryOptions?: { column?: string; value?: any; limit?: number; order?: { column: string; ascending?: boolean } }
+    queryOptions?: { 
+      column?: string; 
+      value?: any; 
+      limit?: number; 
+      order?: { 
+        column: string; 
+        ascending?: boolean 
+      } 
+    }
   ) => {
     try {
       let query = supabase.from(table).select(columns);
@@ -54,7 +65,7 @@ export const useTypeSafeSupabase = () => {
 
   // Helper function for safe UPDATE operations  
   const safeUpdate = async (
-    table: string,
+    table: TableNames,
     updateData: Record<string, any>,
     condition: { column: string; value: any }
   ) => {
@@ -71,7 +82,7 @@ export const useTypeSafeSupabase = () => {
   
   // Helper function for safe DELETE operations
   const safeDelete = async (
-    table: string,
+    table: TableNames,
     condition: { column: string; value: any }
   ) => {
     try {
@@ -87,11 +98,15 @@ export const useTypeSafeSupabase = () => {
   
   // Helper function for safe INSERT operations
   const safeInsert = async <T>(
-    table: string,
+    table: TableNames,
     data: Record<string, any> | Record<string, any>[]
   ) => {
     try {
-      return await supabase.from(table).insert(data).select();
+      const result = await supabase.from(table).insert(data as any);
+      if (result.error) {
+        throw result.error;
+      }
+      return result;
     } catch (error) {
       console.error(`Error in safeInsert for ${table}:`, error);
       return { data: null, error };
