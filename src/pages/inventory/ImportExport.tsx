@@ -14,16 +14,18 @@ import { supabase } from '@/lib/supabase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+interface ImportStats {
+  categoriesAdded: number;
+  locationsAdded: number;
+  itemsAdded: number;
+}
+
 interface ImportOperation {
   id: string;
   timestamp: Date;
   filename: string;
   status: 'completed' | 'failed' | 'in_progress';
-  stats: {
-    categoriesAdded: number;
-    locationsAdded: number;
-    itemsAdded: number;
-  };
+  stats: ImportStats;
   errors: string[];
 }
 
@@ -208,13 +210,19 @@ const ImportExport = () => {
       // Import the data
       const { success, errors, stats } = await importCSVData(parsedData, currentAssociation.id);
       
+      const importStats: ImportStats = {
+        categoriesAdded: stats.categoriesAdded || 0,
+        locationsAdded: stats.locationsAdded || 0,
+        itemsAdded: stats.itemsAdded || 0
+      };
+      
       // Record the import operation
       const newImport: ImportOperation = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
         filename: importFile.name,
         status: success ? 'completed' : 'failed',
-        stats,
+        stats: importStats,
         errors
       };
       
@@ -230,7 +238,7 @@ const ImportExport = () => {
       if (success) {
         toast({
           title: "Import Successful",
-          description: `Imported ${stats.categoriesAdded} categories, ${stats.locationsAdded} locations, and ${stats.itemsAdded} items.`
+          description: `Imported ${importStats.categoriesAdded} categories, ${importStats.locationsAdded} locations, and ${importStats.itemsAdded} items.`
         });
         
         // Close the dialog after successful import
@@ -258,7 +266,11 @@ const ImportExport = () => {
         timestamp: new Date(),
         filename: importFile.name,
         status: 'failed',
-        stats: { categoriesAdded: 0, locationsAdded: 0, itemsAdded: 0 },
+        stats: {
+          categoriesAdded: 0,
+          locationsAdded: 0,
+          itemsAdded: 0
+        },
         errors: [`Error during import: ${error.message}`]
       };
       
