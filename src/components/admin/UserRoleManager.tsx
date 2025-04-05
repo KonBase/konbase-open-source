@@ -1,163 +1,138 @@
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { UserRoleType, USER_ROLES } from '@/types/user';
-import {
+import { Button } from '@/components/ui/button';
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
-import { AlertTriangle } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
+import { UserRoleType } from '@/types/user';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
+import { handleError } from '@/utils/debug';
 
 interface UserRoleManagerProps {
   userId: string;
   currentRole: UserRoleType;
   onRoleUpdated?: () => void;
+  associationContext?: boolean;
 }
 
 export function UserRoleManager({ 
   userId, 
   currentRole, 
-  onRoleUpdated 
+  onRoleUpdated,
+  associationContext = false
 }: UserRoleManagerProps) {
-  const { userProfile, hasRole } = useAuth();
   const [role, setRole] = useState<UserRoleType>(currentRole);
   const [isUpdating, setIsUpdating] = useState(false);
-  
-  // Check if current user has permission to change roles
-  const canChangeRoles = hasRole('admin');
-  
-  // Only super_admins can create other super_admins
-  const canCreateSuperAdmin = hasRole('super_admin');
-  
-  // Only super_admins can create system_admins
-  const canCreateSystemAdmin = hasRole('super_admin');
-  
-  let availableRoles: UserRoleType[] = ['admin', 'manager', 'member', 'guest'];
-  
-  if (canCreateSuperAdmin) {
-    availableRoles = ['super_admin', 'system_admin', ...availableRoles];
-  } else if (canCreateSystemAdmin) {
-    availableRoles = ['system_admin', ...availableRoles];
-  }
+  const { toast } = useToast();
+  const { user, hasPermission } = useAuth();
+  const { safeUpdate } = useTypeSafeSupabase();
 
-  const requiresTwoFactor = role === 'super_admin' || role === 'system_admin';
-
-  const updateUserRole = async () => {
-    if (!canChangeRoles || isUpdating) return;
+  const updateUserRole = async (newRole: UserRoleType) => {
+    if (newRole === currentRole) return;
     
+    setIsUpdating(true);
     try {
-      setIsUpdating(true);
-      
-      // Update the user's role in the profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', userId);
-      
-      if (profileError) throw profileError;
-      
-      // Also update any association_members entries if they exist
-      const { error: memberError } = await supabase
-        .from('association_members')
-        .update({ role })
-        .eq('user_id', userId);
-      
-      if (memberError) {
-        console.log('Note: No association memberships to update or error occurred:', memberError);
+      // Update the user's role
+      if (associationContext) {
+        // Update in association_members table
+        const { error } = await safeUpdate(
+          'association_members',
+          { role: newRole },
+          { column: 'user_id', value: userId }
+        );
+        
+        if (error) throw error;
+      } else {
+        // Update in profiles table
+        const { error } = await safeUpdate(
+          'profiles',
+          { role: newRole },
+          { column: 'id', value: userId }
+        );
+        
+        if (error) throw error;
       }
       
-      // Create an audit log entry
+      // Create audit log entry
       await supabase.from('audit_logs').insert({
         action: 'update_role',
-        entity: 'profiles',
+        entity: associationContext ? 'association_members' : 'profiles',
         entity_id: userId,
-        user_id: userProfile?.id,
-        changes: JSON.stringify({ old_role: currentRole, new_role: role })
+        user_id: user?.id,
+        changes: `Changed role from ${currentRole} to ${newRole}`
+      } as any);
+      
+      // Send a notification to the user
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'Role Updated',
+        message: `Your role has been updated to ${newRole} by an administrator.`,
+        read: false
+      } as any);
+      
+      // Update the local state
+      setRole(newRole);
+      
+      toast({
+        title: 'Role Updated',
+        description: `User role has been updated to ${newRole}`,
       });
       
-      // Create notification for the user
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: userId,
-          title: 'Role Updated',
-          message: `Your role has been updated to ${USER_ROLES[role].name}`,
-          read: false
-        });
-      
-      // Show special warning if setting to super_admin or system_admin
-      if (role === 'super_admin' || role === 'system_admin') {
-        toast({
-          title: `${USER_ROLES[role].name} role assigned`,
-          description: "This user will need to enable 2FA to access all administrative functions.",
-          variant: "warning" as any
-        });
-      } else {
-        toast({
-          title: "Role updated",
-          description: `User role has been updated to ${USER_ROLES[role].name}`,
-        });
-      }
-      
+      // Call the callback if provided
       if (onRoleUpdated) onRoleUpdated();
       
-    } catch (error: any) {
+    } catch (error) {
+      handleError(error, 'UserRoleManager.updateUserRole');
       toast({
-        variant: "destructive",
-        title: "Error updating role",
-        description: error.message,
+        title: 'Error',
+        description: 'Failed to update user role',
+        variant: 'destructive',
       });
     } finally {
       setIsUpdating(false);
     }
   };
-  
-  if (!canChangeRoles) {
-    return <div className="text-sm text-muted-foreground">{USER_ROLES[currentRole].name}</div>;
-  }
-  
+
+  // Define which roles the current user can assign
+  const getAssignableRoles = (): UserRoleType[] => {
+    if (hasPermission('super_admin')) {
+      return ['member', 'manager', 'admin', 'system_admin', 'super_admin'];
+    } else if (hasPermission('system_admin')) {
+      return ['member', 'manager', 'admin', 'system_admin'];
+    } else if (hasPermission('admin')) {
+      return ['member', 'manager', 'admin'];
+    } else {
+      return ['member', 'manager'];
+    }
+  };
+
+  const assignableRoles = getAssignableRoles();
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 items-center">
-        <Select
-          value={role}
-          onValueChange={(value) => setRole(value as UserRoleType)}
-          disabled={isUpdating}
-        >
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            {availableRoles.map((roleOption) => (
-              <SelectItem key={roleOption} value={roleOption}>
-                {USER_ROLES[roleOption].name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        
-        <Button 
-          size="sm"
-          variant="outline"
-          onClick={updateUserRole}
-          disabled={isUpdating || role === currentRole}
-        >
-          {isUpdating ? "Updating..." : "Update"}
-        </Button>
-      </div>
-      
-      {requiresTwoFactor && (
-        <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs rounded-md">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          <p>{role === 'super_admin' ? 'Super Admin' : 'System Admin'} requires 2FA</p>
-        </div>
-      )}
+    <div className="flex items-center gap-2">
+      <Select
+        value={role}
+        onValueChange={(value) => updateUserRole(value as UserRoleType)}
+        disabled={isUpdating || userId === user?.id}
+      >
+        <SelectTrigger className="w-[130px]">
+          <SelectValue placeholder="Select role" />
+        </SelectTrigger>
+        <SelectContent>
+          {assignableRoles.map((role) => (
+            <SelectItem key={role} value={role} className="capitalize">
+              {role.replace('_', ' ')}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

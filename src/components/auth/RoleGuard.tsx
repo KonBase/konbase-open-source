@@ -48,6 +48,9 @@ export function RoleGuard({
       if (!hasAllowedRole) {
         setHasAccess(false);
         setChecking(false);
+        
+        // Display error message in console for debugging
+        console.error(`Access denied: User with role ${userProfile?.role} attempted to access a resource requiring one of these roles: ${allowedRoles.join(', ')}`);
         return;
       }
       

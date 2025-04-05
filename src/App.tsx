@@ -17,6 +17,7 @@ import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
 import NotFound from './pages/NotFound';
 import Unauthorized from './pages/error/Unauthorized';
+import AdminPanel from './pages/admin/AdminPanel';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -61,11 +62,11 @@ const App = () => {
                   
                   {/* Admin routes */}
                   <Route element={
-                    <RoleGuard allowedRoles={['admin', 'super_admin']} fallbackPath="/unauthorized">
+                    <RoleGuard allowedRoles={['admin', 'system_admin', 'super_admin']} fallbackPath="/unauthorized">
                       <Outlet />
                     </RoleGuard>
                   }>
-                    <Route path="/admin" element={<div>Admin Panel</div>} />
+                    <Route path="/admin" element={<AdminPanel />} />
                   </Route>
                 </Route>
                 
