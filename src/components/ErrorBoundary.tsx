@@ -3,7 +3,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Bug, Refresh, Home, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Bug, RefreshCw, Home, ArrowLeft } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface Props {
@@ -121,7 +121,7 @@ class ErrorBoundary extends Component<Props, State> {
                   onClick={() => window.location.reload()}
                   className="flex items-center gap-1"
                 >
-                  <Refresh className="h-4 w-4" />
+                  <RefreshCw className="h-4 w-4" />
                   Refresh Page
                 </Button>
                 
