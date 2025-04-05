@@ -45,7 +45,7 @@ export function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await safeSelect(
+      const { data, error } = await safeSelect<UserProfile>(
         'profiles',
         'id, email, name, role, association_id, created_at'
       );

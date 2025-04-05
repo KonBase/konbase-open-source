@@ -1,7 +1,26 @@
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
+
+// Use direct values from the Supabase project
+const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
+
+// Simplified version to avoid deep type instantiation issues
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: localStorage,
+  },
+});
+
+// Type for our Supabase client
+export type TypeSafeSupabaseClient = typeof supabase;
 
 // Define the table names explicitly as a union type
+// Use a string literal union to avoid deep type instantiation issues
 type TableNames = 
   | 'association_members'
   | 'associations'
@@ -26,24 +45,21 @@ type TableNames =
   | 'requirements'
   | 'association_invitations';
 
-// Define a simple interface for query options
-interface QueryOptions {
-  column?: string;
-  value?: any;
-  limit?: number;
-  order?: {
-    column: string;
-    ascending?: boolean;
-  };
-}
-
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
   // Helper function for safe SELECT operations
-  const safeSelect = async (
+  const safeSelect = async <T>(
     table: TableNames,
     columns: string = '*',
-    queryOptions?: QueryOptions
+    queryOptions?: { 
+      column?: string; 
+      value?: any; 
+      limit?: number; 
+      order?: { 
+        column: string; 
+        ascending?: boolean 
+      } 
+    }
   ) => {
     try {
       let query = supabase.from(table).select(columns);
@@ -103,16 +119,13 @@ export const useTypeSafeSupabase = () => {
     }
   };
   
-  // Helper function for safe INSERT operations - simplified to avoid type issues
+  // Helper function for safe INSERT operations - simplify the types to avoid excessive depth
   const safeInsert = async (
     table: TableNames,
-    data: Record<string, any>  // Using a simple type to avoid deep type inference
+    data: Record<string, any> | Record<string, any>[]
   ) => {
     try {
-      const result = await supabase
-        .from(table)
-        .insert(data);
-        
+      const result = await supabase.from(table).insert(data);
       if (result.error) {
         throw result.error;
       }

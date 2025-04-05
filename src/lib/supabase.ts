@@ -27,9 +27,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   },
 });
 
-// Export the client type for type safety
-export type TypeSafeSupabaseClient = typeof supabase;
-
 // Add event listeners for connection status
 if (typeof window !== 'undefined') {
   // Log when connection is established or lost
