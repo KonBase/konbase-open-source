@@ -1,7 +1,7 @@
 
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LogoutButton } from '@/components/auth/LogoutButton';
+import LogoutButton from '@/components/auth/LogoutButton';  // Changed from named to default import
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle } from 'lucide-react';
