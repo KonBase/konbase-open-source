@@ -1,6 +1,6 @@
-
 import { supabase } from '@/lib/supabase';
 import { User, UserRoleType } from '@/types/user';
+import { logDebug, handleError } from '@/utils/debug';
 
 /**
  * Fetches the user profile data from Supabase
@@ -11,6 +11,8 @@ export const fetchUserProfile = async (userId: string) => {
   if (!userId) return null;
   
   try {
+    logDebug('Fetching user profile', { userId }, 'info');
+    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -18,13 +20,14 @@ export const fetchUserProfile = async (userId: string) => {
       .single();
       
     if (error) {
-      console.error('Error fetching user profile:', error);
+      handleError(error, 'fetchUserProfile');
       return null;
     }
     
+    logDebug('User profile fetched successfully', { profileId: data?.id }, 'debug');
     return data;
   } catch (error) {
-    console.error('Exception fetching user profile:', error);
+    handleError(error, 'fetchUserProfile');
     return null;
   }
 };
@@ -38,10 +41,12 @@ export const fetchUserProfile = async (userId: string) => {
 export const enhanceUserWithProfile = (user: User, profileData: any) => {
   if (!user || !profileData) return user;
   
+  logDebug('Enhancing user with profile data', { userId: user.id }, 'debug');
+  
   return {
     ...user,
-    name: profileData.name || profileData.email?.split('@')[0] || 'User',
-    profileImage: profileData.profile_image,
+    name: profileData.name || user.user_metadata?.name || profileData.email?.split('@')[0] || 'User',
+    profileImage: profileData.profile_image || user.user_metadata?.avatar_url,
     role: profileData.role as UserRoleType || 'guest',
     email: user.email || profileData.email
   };
@@ -58,5 +63,72 @@ export const isSessionValid = (session: any) => {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = session.expires_at || session.expiresAt;
   
-  return expiresAt > now;
+  const isValid = expiresAt > now;
+  logDebug('Checking session validity', { isValid, expiresAt, now }, 'debug');
+  
+  return isValid;
+};
+
+/**
+ * Gets the authentication provider information for a user
+ * @param user The user object
+ * @returns The authentication provider (email, google, discord, etc)
+ */
+export const getAuthProvider = (user: User | null): string => {
+  if (!user) return 'none';
+  
+  // Check for identities data from Supabase user object
+  if (user.app_metadata?.provider) {
+    return user.app_metadata.provider;
+  }
+  
+  if (user.app_metadata?.providers && user.app_metadata.providers.length > 0) {
+    return user.app_metadata.providers[0];
+  }
+  
+  return 'email';
+};
+
+/**
+ * Checks if a user authenticated with a social provider
+ * @param user The user object
+ * @returns True if the user authenticated with a social provider
+ */
+export const isSocialAuth = (user: User | null): boolean => {
+  if (!user) return false;
+  
+  const provider = getAuthProvider(user);
+  return provider !== 'email' && provider !== 'none';
+};
+
+/**
+ * Handles Supabase authentication errors with friendly messages
+ * @param error The error object from Supabase
+ * @returns A user-friendly error message
+ */
+export const getAuthErrorMessage = (error: any): string => {
+  if (!error) return 'An unknown error occurred';
+  
+  // Extract error message or code
+  const errorCode = error.code || '';
+  const errorMessage = error.message || 'An unknown error occurred';
+  
+  // Map common Supabase error codes to user-friendly messages
+  switch (errorCode) {
+    case 'auth/invalid-email':
+      return 'The email address is not valid.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled.';
+    case 'auth/user-not-found':
+      return 'No account found with this email address.';
+    case 'auth/wrong-password':
+      return 'Incorrect password. Please try again.';
+    case 'auth/email-already-in-use':
+      return 'This email is already registered. Please log in instead.';
+    case 'auth/weak-password':
+      return 'The password is too weak. Please use at least 8 characters.';
+    default:
+      // Keep the original message for other errors
+      return errorMessage;
+  }
 };
