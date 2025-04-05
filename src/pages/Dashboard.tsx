@@ -126,12 +126,14 @@ const Dashboard = () => {
 
     fetchDashboardStats();
     
-    // Set up subscription for notifications - using a more resilient approach
-    const setupNotificationsSubscription = async () => {
-      if (!user) return null;
+    // Set up subscription for notifications - fixing the async issue
+    let channelCleanup: (() => void) | null = null;
+    
+    if (user) {
+      const { supabase } = useTypeSafeSupabase();
       
       try {
-        const notificationsChannel = useTypeSafeSupabase().supabase
+        const channel = supabase
           .channel('notifications-changes-dashboard')
           .on(
             'postgres_changes',
@@ -160,18 +162,18 @@ const Dashboard = () => {
             logDebug(`Notification subscription status: ${status}`, null, 'info');
           });
           
-        return notificationsChannel;
+        // Store the cleanup function to be called on unmount
+        channelCleanup = () => {
+          supabase.removeChannel(channel);
+        };
       } catch (error) {
         logDebug('Error setting up notifications subscription:', error, 'error');
-        return null;
       }
-    };
-    
-    const notificationsChannel = setupNotificationsSubscription();
+    }
         
     return () => {
-      if (notificationsChannel) {
-        useTypeSafeSupabase().supabase.removeChannel(notificationsChannel);
+      if (channelCleanup) {
+        channelCleanup();
       }
     };
   }, [currentAssociation, user, retryCount]);
