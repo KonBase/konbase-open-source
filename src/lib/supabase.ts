@@ -21,5 +21,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
 
 // Helper function to check if using default credentials
 export const isUsingDefaultCredentials = () => {
-  return !SUPABASE_URL || SUPABASE_URL === "";
+  return !SUPABASE_URL || SUPABASE_URL.length === 0;
 };

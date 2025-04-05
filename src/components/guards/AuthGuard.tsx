@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
-import { RoleBasedRedirect } from './RoleBasedRedirect';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 
@@ -79,13 +78,8 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Navigate to="/login" state={{ emailVerification: true }} replace />;
   }
 
-  // Add the role-based redirect component
-  return (
-    <>
-      <RoleBasedRedirect />
-      {children}
-    </>
-  );
+  // Return children without RoleBasedRedirect as it will be used explicitly where needed
+  return <>{children}</>;
 };
 
 export default AuthGuard;
