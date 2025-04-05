@@ -1,6 +1,5 @@
 
-import { supabase, TypeSafeSupabaseClient } from '@/lib/supabase';
-import type { Database } from '@/lib/database.types';
+import { supabase } from '@/lib/supabase';
 
 // Define the table names explicitly as a union type
 type TableNames = 
@@ -27,7 +26,7 @@ type TableNames =
   | 'requirements'
   | 'association_invitations';
 
-// Define a generic type for query options to avoid deep type instantiation
+// Define a simple interface for query options
 interface QueryOptions {
   column?: string;
   value?: any;
@@ -41,7 +40,7 @@ interface QueryOptions {
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
   // Helper function for safe SELECT operations
-  const safeSelect = async <T>(
+  const safeSelect = async (
     table: TableNames,
     columns: string = '*',
     queryOptions?: QueryOptions
@@ -104,14 +103,16 @@ export const useTypeSafeSupabase = () => {
     }
   };
   
-  // Helper function for safe INSERT operations
-  // Simplified to avoid deep type instantiation issues
+  // Helper function for safe INSERT operations - simplified to avoid type issues
   const safeInsert = async (
     table: TableNames,
-    data: any // Using 'any' to avoid complex type inference
+    data: Record<string, unknown>  // Simpler type definition
   ) => {
     try {
-      const result = await supabase.from(table).insert(data);
+      const result = await supabase
+        .from(table)
+        .insert(data as any);  // Use type assertion to avoid compile issues
+        
       if (result.error) {
         throw result.error;
       }
