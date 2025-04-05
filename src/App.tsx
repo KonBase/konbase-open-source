@@ -32,8 +32,8 @@ import { RoleGuard } from './components/auth/RoleGuard';
 const App = () => {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
-        <Router>
+      <Router>
+        <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
           <AuthProvider>
             <AssociationProvider>
               <Routes>
@@ -79,8 +79,8 @@ const App = () => {
               <Toaster />
             </AssociationProvider>
           </AuthProvider>
-        </Router>
-      </ThemeProvider>
+        </ThemeProvider>
+      </Router>
     </ErrorBoundary>
   );
 };

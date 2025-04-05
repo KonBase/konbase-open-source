@@ -1,7 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
-import { Database } from '@/lib/database.types';
 
 type TableName = 'profiles' | 'associations' | 'audit_logs' | 'categories' 
   | 'items' | 'locations' | 'chat_messages' | 'notifications' 
