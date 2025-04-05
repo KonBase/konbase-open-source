@@ -27,15 +27,18 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
+  // Filter visible items based on user permissions
+  const visibleItems = navItems.filter(item => 
+    !item.requiredRole || hasPermission(item.requiredRole)
+  );
+
   return (
     <div className="flex flex-col h-full">
-      <nav className={`px-2 space-y-1 flex-grow ${collapsed ? 'text-center' : ''}`}>
-        {navItems.map(item => {
-          // Skip items the user doesn't have permission for
-          if (item.requiredRole && !hasPermission(item.requiredRole)) {
-            return null;
-          }
-
+      <nav className={cn(
+        "px-2 space-y-1 flex-grow",
+        collapsed ? "text-center" : ""
+      )}>
+        {visibleItems.map(item => {
           const isItemActive = isActive(item.path);
           const isExpanded = expandedItems[item.title] || isItemActive;
 
