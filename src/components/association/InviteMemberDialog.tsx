@@ -115,14 +115,17 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
         // Generate an invitation code
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         
-        // Use the type-safe insert method
-        const { error } = await safeInsert('association_invitations', {
+        // Create the invitation data with proper typing
+        const invitationData = {
           code,
           association_id: currentAssociation.id,
           email: values.email,
           role: values.role,
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-        });
+        };
+        
+        // Use the safe insert method
+        const { error } = await safeInsert('association_invitations', invitationData);
         
         if (error) throw error;
         
