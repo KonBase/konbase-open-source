@@ -1,6 +1,7 @@
 
 import { OAuthParams } from '@/types';
 import { supabase } from './supabase';
+import { logDebug, handleError } from '@/utils/debug';
 
 /**
  * Extracts OAuth parameters from URL hash
@@ -57,7 +58,7 @@ export const processOAuthRedirect = async (hash: string) => {
     
     return { success: false, error: 'No access token found in URL' };
   } catch (error) {
-    console.error('Error processing OAuth redirect:', error);
+    handleError(error, 'processOAuthRedirect');
     return { success: false, error };
   }
 };

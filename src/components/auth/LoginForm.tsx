@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -86,7 +85,8 @@ const LoginForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'email profile',
         }
       });
       
@@ -98,7 +98,6 @@ const LoginForm = () => {
         description: error.message || 'Could not sign in with Google.',
         variant: 'destructive',
       });
-    } finally {
       setIsGoogleLoading(false);
     }
   };
@@ -111,7 +110,8 @@ const LoginForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'identify email',
         }
       });
       
@@ -123,7 +123,6 @@ const LoginForm = () => {
         description: error.message || 'Could not sign in with Discord.',
         variant: 'destructive',
       });
-    } finally {
       setIsDiscordLoading(false);
     }
   };

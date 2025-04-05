@@ -1,4 +1,3 @@
-
 // Re-export all type definitions for easy imports
 export * from './user';
 export * from './association';
@@ -31,12 +30,13 @@ export interface UserRole {
   roleType: UserRoleType;
 }
 
-// OAuth redirect handling types
+// OAuth response parameters from URL hash
 export interface OAuthParams {
   access_token?: string;
-  expires_at?: string;
   expires_in?: string;
-  provider_token?: string;
   refresh_token?: string;
   token_type?: string;
+  provider_token?: string;
+  provider_refresh_token?: string;
+  [key: string]: string | undefined;
 }

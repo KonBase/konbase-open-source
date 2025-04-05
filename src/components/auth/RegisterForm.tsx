@@ -75,10 +75,10 @@ const RegisterForm = () => {
         description: "Please check your email to verify your account.",
       });
       
-      // If email confirmation is disabled, navigate to setup wizard
+      // If email confirmation is disabled, navigate to dashboard
       if (data.session) {
         logDebug('User registered with session', { userId: data.user?.id }, 'info');
-        navigate('/setup');
+        navigate('/dashboard');
       } else {
         // If email confirmation is enabled, navigate to login
         logDebug('User registered, email confirmation required', null, 'info');
@@ -104,7 +104,7 @@ const RegisterForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/setup`,
+          redirectTo: `${window.location.origin}/dashboard`,
         }
       });
       
@@ -116,7 +116,6 @@ const RegisterForm = () => {
         description: error.message || 'Could not sign up with Google.',
         variant: 'destructive',
       });
-    } finally {
       setIsGoogleLoading(false);
     }
   };
@@ -129,7 +128,8 @@ const RegisterForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: `${window.location.origin}/setup`,
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'identify email',
         }
       });
       
@@ -141,7 +141,6 @@ const RegisterForm = () => {
         description: error.message || 'Could not sign up with Discord.',
         variant: 'destructive',
       });
-    } finally {
       setIsDiscordLoading(false);
     }
   };

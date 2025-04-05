@@ -1,10 +1,13 @@
-
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
 import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
+import { useEffect } from 'react';
+import { processOAuthRedirect } from './utils/oauth-utils';
+import { useToast } from './hooks/use-toast';
+import { supabase } from './lib/supabase';
 
 // Pages
 import Index from './pages/Index';
@@ -55,6 +58,44 @@ import AuthGuard from './components/guards/AuthGuard';
 import GuestGuard from './components/guards/GuestGuard';
 import { RoleGuard } from './components/auth/RoleGuard';
 
+// OAuth Handler component to process redirects
+const OAuthRedirectHandler = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const handleOAuthRedirect = async () => {
+      // Only process OAuth redirects if we have a hash in the URL
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        const { success, error } = await processOAuthRedirect();
+        
+        if (success) {
+          toast({
+            title: 'Authentication successful',
+            description: 'You have been successfully authenticated.',
+          });
+          
+          // Navigate to dashboard after successful authentication
+          navigate('/dashboard', { replace: true });
+        } else {
+          console.error('OAuth redirect handling failed:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Authentication failed',
+            description: 'Could not complete the authentication process. Please try again.',
+          });
+          navigate('/login', { replace: true });
+        }
+      }
+    };
+
+    handleOAuthRedirect();
+  }, [navigate, toast, location]);
+
+  return null;
+};
+
 // Core application with simplified routing
 const App = () => {
   return (
@@ -63,6 +104,7 @@ const App = () => {
         <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
           <AuthProvider>
             <AssociationProvider>
+              <OAuthRedirectHandler />
               <Routes>
                 {/* Public routes with Footer */}
                 <Route path="/" element={<MainLayoutWrapper />}>
