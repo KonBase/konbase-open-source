@@ -1,15 +1,16 @@
 
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { toast } from '@/components/ui/use-toast';
+import { UserRoleType } from '@/types/user';
 
 /**
  * Component that redirects users based on their role and association status
  */
 export function RoleBasedRedirect() {
-  const { profile, loading } = useUserProfile();
+  const { userProfile, hasRole, loading } = useAuth();
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +35,7 @@ export function RoleBasedRedirect() {
       currentPath.startsWith(path)
     );
     
-    if ((profile?.role === 'admin' || profile?.role === 'super_admin') && 
+    if (hasRole('admin') && 
         currentPath === '/' && !isOnAllowedPath) {
       toast({
         title: "Admin Access",
@@ -46,7 +47,10 @@ export function RoleBasedRedirect() {
 
     // If user has the guest role and no association, redirect to setup wizard
     // unless they're already on a setup or admin path
-    if (profile && profile.role === 'guest' && !profile.association_id && !currentAssociation && 
+    if (userProfile && 
+        userProfile.role === 'guest' && 
+        !userProfile.association_id && 
+        !currentAssociation && 
         !currentPath.startsWith('/setup') && 
         !currentPath.startsWith('/admin')) {
       toast({
@@ -56,7 +60,7 @@ export function RoleBasedRedirect() {
       navigate('/setup');
       return;
     }
-  }, [profile, loading, currentAssociation, associationLoading, navigate, location]);
+  }, [userProfile, loading, currentAssociation, associationLoading, navigate, location, hasRole]);
 
   return null;
 }
