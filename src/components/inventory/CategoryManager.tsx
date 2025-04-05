@@ -1,255 +1,387 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCategories, Category } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { PlusCircle, Pencil, Trash, FolderTree, FileBox } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { FolderIcon, PlusIcon, TrashIcon, Pencil } from 'lucide-react';
-import { Category, useCategories } from '@/hooks/useCategories';
 
-interface CategoryManagerProps {
-  minimal?: boolean;
-}
+// Helper function to build a tree structure from flat categories
+const buildCategoryTree = (categories: Category[]): (Category & { children: Category[] })[] => {
+  const categoriesMap: Record<string, Category & { children: Category[] }> = {};
+  
+  // Initialize map with all categories
+  categories.forEach(category => {
+    categoriesMap[category.id] = { ...category, children: [] };
+  });
+  
+  // Build the tree structure
+  const rootCategories: (Category & { children: Category[] })[] = [];
+  
+  categories.forEach(category => {
+    if (category.parentId) {
+      // Add to parent's children if parent exists
+      if (categoriesMap[category.parentId]) {
+        categoriesMap[category.parentId].children.push(categoriesMap[category.id]);
+      } else {
+        // If parent doesn't exist (data inconsistency), add to root
+        rootCategories.push(categoriesMap[category.id]);
+      }
+    } else {
+      // Add to root categories if no parent
+      rootCategories.push(categoriesMap[category.id]);
+    }
+  });
+  
+  return rootCategories;
+};
 
-const CategoryManager: React.FC<CategoryManagerProps> = ({ minimal = false }) => {
+const CategoryManager = () => {
   const { categories, loading, createCategory, updateCategory, deleteCategory } = useCategories();
+  const { toast } = useToast();
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newCategory, setNewCategory] = useState({
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'tree'>('list');
+  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+  
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: '' as string | null
+    parentId: '',
   });
-  const { toast } = useToast();
-
+  
+  // Prepare the tree view data when in tree mode
+  const categoryTree = buildCategoryTree(categories);
+  
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      parentId: '',
+    });
+  };
+  
+  const openAddDialog = () => {
+    resetForm();
+    setIsAddDialogOpen(true);
+  };
+  
+  const openEditDialog = (category: Category) => {
+    setCurrentCategory(category);
+    setFormData({
+      name: category.name,
+      description: category.description || '',
+      parentId: category.parentId || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+  
+  const openDeleteDialog = (category: Category) => {
+    setCurrentCategory(category);
+    setIsDeleteDialogOpen(true);
+  };
+  
   const handleCreateCategory = async () => {
-    if (!newCategory.name.trim()) {
+    if (!formData.name) {
       toast({
-        title: 'Error',
-        description: 'Category name is required',
-        variant: 'destructive'
+        title: "Error",
+        description: "Category name is required",
+        variant: "destructive",
       });
       return;
     }
     
-    const result = await createCategory(
-      newCategory.name,
-      newCategory.description,
-      newCategory.parentId || undefined
-    );
-    
-    if (result) {
-      toast({
-        title: 'Success',
-        description: 'Category created successfully',
-      });
+    try {
+      await createCategory(
+        formData.name,
+        formData.description,
+        formData.parentId || undefined
+      );
+      
       setIsAddDialogOpen(false);
-      setNewCategory({ name: '', description: '', parentId: null });
+      resetForm();
+      
+      toast({
+        title: "Success",
+        description: "Category created successfully",
+      });
+    } catch (error) {
+      console.error('Error creating category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create category",
+        variant: "destructive",
+      });
     }
   };
-
+  
   const handleUpdateCategory = async () => {
-    if (!editingCategory) return;
-    
-    const success = await updateCategory(editingCategory.id, {
-      name: editingCategory.name,
-      description: editingCategory.description,
-      parentId: editingCategory.parentId
-    });
-    
-    if (success) {
+    if (!currentCategory || !formData.name) {
       toast({
-        title: 'Success',
-        description: 'Category updated successfully',
+        title: "Error",
+        description: "Category name is required",
+        variant: "destructive",
       });
-      setEditingCategory(null);
+      return;
+    }
+    
+    try {
+      await updateCategory(currentCategory.id, {
+        name: formData.name,
+        description: formData.description,
+        parentId: formData.parentId || null,
+      });
+      
+      setIsEditDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Category updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category",
+        variant: "destructive",
+      });
     }
   };
-
-  const handleDeleteCategory = async (id: string) => {
-    const confirmed = window.confirm('Are you sure you want to delete this category?');
-    if (!confirmed) return;
+  
+  const handleDeleteCategory = async () => {
+    if (!currentCategory) return;
     
-    const success = await deleteCategory(id);
-    if (success) {
+    try {
+      const success = await deleteCategory(currentCategory.id);
+      
+      if (success) {
+        setIsDeleteDialogOpen(false);
+        
+        toast({
+          title: "Success",
+          description: "Category deleted successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
       toast({
-        title: 'Success',
-        description: 'Category deleted successfully',
+        title: "Error",
+        description: "Failed to delete category",
+        variant: "destructive",
       });
     }
   };
-
+  
+  const renderCategoryTreeItem = (category: Category & { children: Category[] }, depth = 0) => {
+    return (
+      <React.Fragment key={category.id}>
+        <TableRow>
+          <TableCell className="font-medium">
+            <div style={{ paddingLeft: `${depth * 1.5}rem` }} className="flex items-center">
+              <FileBox className="h-4 w-4 mr-2" />
+              {category.name}
+            </div>
+          </TableCell>
+          <TableCell>{category.description || "-"}</TableCell>
+          <TableCell className="text-right">
+            <div className="flex justify-end space-x-2">
+              <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(category)}>
+                <Trash className="h-4 w-4" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+        {category.children && category.children.map(child => 
+          renderCategoryTreeItem(child, depth + 1)
+        )}
+      </React.Fragment>
+    );
+  };
+  
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Minimal view for dashboard
-  if (minimal) {
-    return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Categories</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => setIsAddDialogOpen(true)}>
-            <PlusIcon className="h-4 w-4" />
-          </Button>
+        <CardHeader>
+          <CardTitle>Categories</CardTitle>
         </CardHeader>
         <CardContent>
-          {categories.length === 0 ? (
-            <div className="text-center py-6">
-              <FolderIcon className="h-8 w-8 mx-auto text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">No categories yet</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {categories.slice(0, 5).map(category => (
-                <div key={category.id} className="flex justify-between items-center py-1">
-                  <span>{category.name}</span>
-                </div>
-              ))}
-              {categories.length > 5 && (
-                <Button variant="link" size="sm" className="px-0">View all {categories.length} categories</Button>
-              )}
-            </div>
-          )}
+          <div className="space-y-2">
+            <div className="h-8 bg-muted rounded animate-pulse"></div>
+            <div className="h-8 bg-muted rounded animate-pulse"></div>
+            <div className="h-8 bg-muted rounded animate-pulse"></div>
+          </div>
         </CardContent>
       </Card>
     );
   }
-
-  // Full view
+  
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Item Categories</h2>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
-
-      {categories.length === 0 ? (
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center py-10">
-              <FolderIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Categories Yet</h3>
-              <p className="mt-1 text-muted-foreground">
-                Get started by creating your first category.
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle>Categories</CardTitle>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'list' ? 'tree' : 'list')}
+            >
+              {viewMode === 'list' ? (
+                <>
+                  <FolderTree className="h-4 w-4 mr-2" />
+                  Tree View
+                </>
+              ) : (
+                <>
+                  <FileBox className="h-4 w-4 mr-2" />
+                  List View
+                </>
+              )}
+            </Button>
+            <Button size="sm" onClick={openAddDialog}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {categories.length === 0 ? (
+            <div className="text-center py-6">
+              <FileBox className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h3 className="mt-2 text-lg font-medium">No Categories Yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Categories help you organize your inventory items.
               </p>
-              <Button className="mt-4" onClick={() => setIsAddDialogOpen(true)}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add Category
+              <Button className="mt-4" onClick={openAddDialog}>
+                Create Your First Category
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-6">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Parent Category</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map(category => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell>{category.description || 'N/A'}</TableCell>
-                    <TableCell>
-                      {category.parentId 
-                        ? categories.find(c => c.id === category.parentId)?.name || 'Unknown'
-                        : 'None'
-                      }
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingCategory(category)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteCategory(category.id)}
-                        className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
+                </TableHeader>
+                <TableBody>
+                  {viewMode === 'list' ? (
+                    categories.map(category => (
+                      <TableRow key={category.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center">
+                            <FileBox className="h-4 w-4 mr-2" />
+                            {category.name}
+                            {category.parentId && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                (Subcategory)
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{category.description || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(category)}>
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    categoryTree.map(category => renderCategoryTreeItem(category))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
       {/* Add Category Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Category</DialogTitle>
             <DialogDescription>
-              Create a new category for organizing your inventory items.
+              Create a new category to organize your inventory items.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Category Name</Label>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Category Name *</Label>
               <Input
                 id="name"
-                placeholder="e.g., Electronics, Audio Equipment"
-                value={newCategory.name}
-                onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Enter category name"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Describe this category..."
-                value={newCategory.description}
-                onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Enter category description"
               />
             </div>
-            <div className="space-y-2">
+            
+            <div className="grid gap-2">
               <Label htmlFor="parent">Parent Category (Optional)</Label>
               <Select
-                value={newCategory.parentId || ''}
-                onValueChange={(value) => setNewCategory({
-                  ...newCategory,
-                  parentId: value === '' ? null : value
-                })}
+                value={formData.parentId}
+                onValueChange={(value) => setFormData({...formData, parentId: value})}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a parent category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="">None (Top Level)</SelectItem>
                   {categories.map(category => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -259,25 +391,20 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ minimal = false }) =>
               </Select>
             </div>
           </div>
+          
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddDialogOpen(false);
-                setNewCategory({ name: '', description: '', parentId: null });
-              }}
-            >
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleCreateCategory}>
-              Create Category
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       {/* Edit Category Dialog */}
-      <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
@@ -285,65 +412,86 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ minimal = false }) =>
               Update category details.
             </DialogDescription>
           </DialogHeader>
-          {editingCategory && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Category Name</Label>
-                <Input
-                  id="edit-name"
-                  value={editingCategory.name}
-                  onChange={(e) => setEditingCategory({
-                    ...editingCategory,
-                    name: e.target.value
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Description (Optional)</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingCategory.description || ''}
-                  onChange={(e) => setEditingCategory({
-                    ...editingCategory,
-                    description: e.target.value || null
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-parent">Parent Category (Optional)</Label>
-                <Select
-                  value={editingCategory.parentId || ''}
-                  onValueChange={(value) => setEditingCategory({
-                    ...editingCategory,
-                    parentId: value === '' ? null : value
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a parent category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {categories
-                      .filter(cat => cat.id !== editingCategory.id)
-                      .map(category => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Category Name *</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+              />
             </div>
-          )}
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="edit-parent">Parent Category</Label>
+              <Select
+                value={formData.parentId}
+                onValueChange={(value) => setFormData({...formData, parentId: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a parent category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None (Top Level)</SelectItem>
+                  {categories
+                    .filter(category => category.id !== currentCategory?.id)
+                    .map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditingCategory(null)}
-            >
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleUpdateCategory}>
-              Update Category
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Category Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this category? Any subcategories or items assigned to this category must be updated first.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {currentCategory && (
+            <div className="py-4">
+              <p className="font-medium">{currentCategory.name}</p>
+              {currentCategory.description && (
+                <p className="text-sm text-muted-foreground mt-1">{currentCategory.description}</p>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteCategory}>
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

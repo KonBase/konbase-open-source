@@ -10,10 +10,10 @@ import {
 } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
 import { useAssociation } from '@/contexts/AssociationContext';
+import InventoryItems from '@/components/inventory/InventoryItems';
 
 const InventoryList = () => {
   const { currentAssociation, isLoading } = useAssociation();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   if (isLoading) {
     return (
@@ -59,7 +59,7 @@ const InventoryList = () => {
   }
   
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
@@ -67,33 +67,9 @@ const InventoryList = () => {
             Manage your equipment, consumables, and other inventory items
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
-        </div>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Implementation In Progress</CardTitle>
-          <CardDescription>
-            The inventory management module is currently under development
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>Coming features:</p>
-          <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>Item categorization and tagging</li>
-            <li>Location tracking</li>
-            <li>Equipment sets management</li>
-            <li>Warranty and documentation tracking</li>
-            <li>Consumable item tracking</li>
-            <li>Import/export capabilities</li>
-          </ul>
-        </CardContent>
-      </Card>
+      <InventoryItems />
     </div>
   );
 };

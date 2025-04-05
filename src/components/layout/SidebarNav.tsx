@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, Home } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -98,7 +97,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
   return (
     <nav className={`px-2 space-y-1 ${collapsed ? 'text-center' : ''}`}>
       {navItems.map(item => {
-        // Check permissions
         if (item.requiredRole && !hasPermission(item.requiredRole)) {
           return null;
         }
@@ -149,7 +147,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
             </div>
           );
         } else if (item.submenu && collapsed) {
-          // Show just the main item icon when collapsed
           return (
             <div key={item.title} className="my-2 flex justify-center">
               <Link
@@ -167,7 +164,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
             </div>
           );
         } else {
-          // Regular menu item
           return (
             <Link
               key={item.path}
@@ -194,7 +190,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed }) => {
 
 export default SidebarNav;
 
-// Missing imports from the original file
 import { 
   Building2, 
   LayoutDashboard, 
@@ -206,4 +201,5 @@ import {
   FileText, 
   Settings,
   ShieldAlert,
+  Home
 } from 'lucide-react';
