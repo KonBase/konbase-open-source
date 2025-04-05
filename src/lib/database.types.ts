@@ -48,6 +48,35 @@ export interface Database {
           updated_at?: string
         }
       }
+      association_invitations: {
+        Row: {
+          id: string
+          code: string
+          association_id: string
+          email: string | null
+          role: string
+          created_at: string
+          expires_at: string | null
+        }
+        Insert: {
+          id?: string
+          code: string
+          association_id: string
+          email?: string | null
+          role?: string
+          created_at?: string
+          expires_at?: string | null
+        }
+        Update: {
+          id?: string
+          code?: string
+          association_id?: string
+          email?: string | null
+          role?: string
+          created_at?: string
+          expires_at?: string | null
+        }
+      }
       profiles: {
         Row: {
           id: string

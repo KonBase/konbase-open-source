@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
 
@@ -42,7 +41,8 @@ type TableNames =
   | 'movements'
   | 'notifications'
   | 'requirement_items'
-  | 'requirements';
+  | 'requirements'
+  | 'association_invitations';
 
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {

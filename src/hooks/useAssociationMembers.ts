@@ -158,15 +158,20 @@ export function useAssociationMembers() {
   };
 
   const checkInvitationCode = async (code: string): Promise<{valid: boolean, role?: string, email?: string}> => {
+    if (!currentAssociation) {
+      return { valid: false };
+    }
+    
     try {
       const { data, error } = await supabase
         .from('association_invitations')
         .select('*')
         .eq('code', code)
-        .eq('association_id', currentAssociation?.id)
+        .eq('association_id', currentAssociation.id)
         .single();
 
       if (error) {
+        console.error('Error checking invitation code:', error);
         return { valid: false };
       }
 

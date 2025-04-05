@@ -22,6 +22,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -36,6 +37,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const { toast } = useToast();
   const { currentAssociation } = useAssociation();
+  const { safeInsert } = useTypeSafeSupabase();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -113,7 +115,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
         // Generate an invitation code
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         
-        // Create an invitation record
+        // Use the type-safe insert method
         const { error } = await supabase.from('association_invitations').insert({
           code,
           association_id: currentAssociation.id,
