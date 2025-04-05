@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { 
   NavigationMenu,
   NavigationMenuContent,
@@ -11,7 +12,6 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-  navigationMenuTriggerStyle
 } from '@/components/ui/navigation-menu';
 import { User, LogOut, Settings, LayoutDashboard, Github, MessageCircle } from 'lucide-react';
 import { 
@@ -68,7 +68,7 @@ const HomeHeader = () => {
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center space-x-2">
             <img 
-              src="/lovable-uploads/6f523cb7-5ab8-45c3-970e-916108513515.png" 
+              src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
               alt="KonBase Logo" 
               className="h-10 w-10" 
             />
@@ -78,23 +78,19 @@ const HomeHeader = () => {
           <NavigationMenu className="hidden md:flex">
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link to="/#features" className="text-konbase-white hover:text-konbase-yellow px-4 py-2 transition-colors">
-                    Features
-                  </Link>
-                </NavigationMenuLink>
+                <Link to="/#features" className="text-konbase-white hover:text-konbase-yellow px-4 py-2 transition-colors">
+                  Features
+                </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link to="/#about" className="text-konbase-white hover:text-konbase-yellow px-4 py-2 transition-colors">
-                    About
-                  </Link>
-                </NavigationMenuLink>
+                <Link to="/#about" className="text-konbase-white hover:text-konbase-yellow px-4 py-2 transition-colors">
+                  About
+                </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuTrigger className="text-konbase-white bg-transparent hover:bg-konbase-blue-800/40 hover:text-konbase-yellow">Community</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid gap-3 p-4 w-[400px] bg-white text-foreground">
+                  <div className="grid gap-3 p-4 w-[400px] bg-white dark:bg-gray-800 text-foreground">
                     <a 
                       href="https://github.com/ShiroLuxferre/KonBase" 
                       target="_blank" 
@@ -138,6 +134,8 @@ const HomeHeader = () => {
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Dashboard
               </Button>
+
+              <ThemeToggle />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -190,6 +188,7 @@ const HomeHeader = () => {
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <Button 
                 variant="ghost" 
                 onClick={handleLogin}

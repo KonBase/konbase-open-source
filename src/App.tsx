@@ -1,8 +1,9 @@
 
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
-import { ThemeProvider } from './components/ui/theme-provider';
+import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
+import { Toaster } from './components/ui/toaster';
 
 // Pages
 import Home from './pages/Home';
@@ -52,9 +53,7 @@ import MainLayoutWrapper from './components/layout/MainLayoutWrapper';
 import AuthGuard from './components/guards/AuthGuard';
 import GuestGuard from './components/guards/GuestGuard';
 import { RoleGuard } from './components/auth/RoleGuard';
-
-// Providers
-import { Toaster } from './components/ui/toaster';
+import { RoleBasedRedirect } from './components/guards/RoleBasedRedirect';
 
 const App = () => {
   return (
@@ -62,6 +61,7 @@ const App = () => {
       <AuthProvider>
         <AssociationProvider>
           <Router>
+            <RoleBasedRedirect />
             <Routes>
               {/* Public routes with Footer */}
               <Route element={<MainLayoutWrapper />}>
