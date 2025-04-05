@@ -4,7 +4,7 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import LogoutButton from '@/components/auth/LogoutButton';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, User, Settings, Shield } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,11 +30,21 @@ export function Header() {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   
+  // Extract user display values with fallbacks
+  const userName = user?.name || profile?.name || 'User';
+  const userEmail = user?.email || profile?.email || '';
+  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
       <div className="container flex h-14 items-center px-4">
         <div className="mr-4 md:flex">
           <Link to="/" className="mr-6 flex items-center space-x-2">
+            <img 
+              src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+              alt="KonBase Logo" 
+              className="h-8 w-8" 
+            />
             <span className="hidden font-bold sm:inline-block">KonBase</span>
           </Link>
         </div>
@@ -68,29 +78,41 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    {profile?.profile_image && <AvatarImage src={profile.profile_image} alt={user?.name || "User avatar"} />}
-                    <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                    {profile?.profile_image ? (
+                      <AvatarImage src={profile.profile_image} alt={userName} />
+                    ) : (
+                      <AvatarFallback>{userInitial}</AvatarFallback>
+                    )}
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.name || "User"}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium leading-none">{userName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile">Profile</Link>
+                  <Link to="/profile">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
                 {(profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'system_admin') && (
                   <DropdownMenuItem asChild>
-                    <Link to="/admin">Admin Panel</Link>
+                    <Link to="/admin">
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Panel
+                    </Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem asChild>
-                  <Link to="/settings">Settings</Link>
+                  <Link to="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>

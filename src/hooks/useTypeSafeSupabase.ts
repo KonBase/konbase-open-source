@@ -56,7 +56,7 @@ export function useTypeSafeSupabase() {
         throw error;
       }
       
-      return { data: result as T, error: null };
+      return { data: result as unknown as T, error: null };
     } catch (error) {
       handleError(error, `safeInsert.${table}`);
       return { data: null, error };
@@ -83,7 +83,7 @@ export function useTypeSafeSupabase() {
         throw error;
       }
       
-      return { data: result as T, error: null };
+      return { data: result as unknown as T, error: null };
     } catch (error) {
       handleError(error, `safeUpdate.${table}`);
       return { data: null, error };

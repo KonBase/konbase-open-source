@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   NavigationMenu,
   NavigationMenuContent,
@@ -152,17 +153,13 @@ const HomeHeader = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <div className="w-8 h-8 rounded-full bg-konbase-light-blue/20 flex items-center justify-center">
+                    <Avatar className="h-8 w-8">
                       {user?.profileImage ? (
-                        <img 
-                          src={user.profileImage} 
-                          alt={userName} 
-                          className="w-8 h-8 rounded-full" 
-                        />
+                        <AvatarImage src={user.profileImage} alt={userName} />
                       ) : (
-                        <span className="font-medium text-konbase-white">{userInitial}</span>
+                        <AvatarFallback>{userInitial}</AvatarFallback>
                       )}
-                    </div>
+                    </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
