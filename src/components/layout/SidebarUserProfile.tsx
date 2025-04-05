@@ -12,7 +12,21 @@ const SidebarUserProfile: React.FC<SidebarUserProfileProps> = ({ collapsed }) =>
   const { user } = useAuth();
   const { profile } = useUserProfile();
   
-  if (!user || collapsed) return null;
+  if (!user) return null;
+
+  // In collapsed mode, just show the avatar
+  if (collapsed) {
+    return (
+      <div className="p-4 border-t border-border flex justify-center">
+        <Avatar className="h-8 w-8">
+          {profile?.profile_image && (
+            <AvatarImage src={profile.profile_image} alt={user.name || "User"} />
+          )}
+          <AvatarFallback>{user.name?.[0] || "U"}</AvatarFallback>
+        </Avatar>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 border-t border-border">
