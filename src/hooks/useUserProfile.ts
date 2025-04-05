@@ -4,14 +4,13 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { REQUIRED_SQL_FIXES } from '@/lib/supabase-sql-helpers';
-
-export type UserRole = 'super_admin' | 'admin' | 'manager' | 'member' | 'guest';
+import { UserRoleType, USER_ROLES } from '@/types/user';
 
 export interface Profile {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
+  role: UserRoleType;
   association_id: string | null;
   profile_image: string | null;
   two_factor_enabled: boolean;
@@ -137,10 +136,13 @@ export function useUserProfile() {
           variant: "destructive"
         });
       } else if (data) {
-        // Ensure role is treated as UserRole type
+        // Validate the role from the database
+        const role = validateRole(data.role);
+        
+        // Ensure role is treated as UserRoleType
         const profileData: Profile = {
           ...data,
-          role: data.role as UserRole
+          role
         };
         setProfile(profileData);
       } else {
@@ -158,6 +160,16 @@ export function useUserProfile() {
     }
   };
 
+  // Validate the role from database against our defined roles
+  const validateRole = (dbRole: string): UserRoleType => {
+    if (Object.keys(USER_ROLES).includes(dbRole)) {
+      return dbRole as UserRoleType;
+    }
+    // Fallback to guest if role is invalid
+    console.warn(`Invalid role '${dbRole}' found, defaulting to 'guest'`);
+    return 'guest';
+  };
+
   // Helper function to create and use a default profile
   const handleDefaultProfile = (userId: string, email: string) => {
     // Create a properly typed object for client-side use
@@ -165,7 +177,7 @@ export function useUserProfile() {
       id: userId,
       email: email,
       name: email.split('@')[0] || "User",
-      role: 'guest' as UserRole,
+      role: 'guest' as UserRoleType,
       association_id: null,
       profile_image: null,
       two_factor_enabled: false,
@@ -218,3 +230,6 @@ export function useUserProfile() {
     refreshProfile: () => user && fetchProfile(user.id),
   };
 }
+
+// Re-export the UserRoleType for convenience
+export { UserRoleType } from '@/types/user';

@@ -2,7 +2,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import HomeHeader from '@/components/layout/HomeHeader';
-import Footer from '@/components/layout/Footer';
 import { ArrowRight, BarChart3, Box, CheckCircle, Database, Shield, Users, MessageCircle, Github, Coffee } from 'lucide-react';
 
 const Index = () => {
@@ -11,7 +10,7 @@ const Index = () => {
       <HomeHeader />
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-background to-muted/20 py-20">
+      <section className="bg-gradient-to-b from-background to-muted/20 py-20" id="home">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
@@ -25,7 +24,7 @@ const Index = () => {
                 <Link to="/register">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link to="/#features">Learn More</Link>
+                <a href="#features">Learn More</a>
               </Button>
             </div>
           </div>
@@ -110,7 +109,7 @@ const Index = () => {
       </section>
       
       {/* Community Section */}
-      <section className="py-20">
+      <section className="py-20" id="community">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
@@ -150,7 +149,7 @@ const Index = () => {
       </section>
       
       {/* Sponsorship Section */}
-      <section className="py-20 bg-muted/20">
+      <section className="py-20 bg-muted/20" id="sponsor">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold mb-4">Support KonBase</h2>
@@ -186,8 +185,6 @@ const Index = () => {
           </Button>
         </div>
       </section>
-      
-      <Footer />
     </div>
   );
 };

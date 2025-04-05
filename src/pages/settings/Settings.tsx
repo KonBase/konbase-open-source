@@ -114,14 +114,22 @@ const Settings = () => {
   const handleVerifyOTP = async () => {
     setVerifyingOTP(true);
     try {
+      const { data: factorData } = await supabase.auth.mfa.listFactors();
+      
+      if (!factorData || !factorData.totp || factorData.totp.length === 0) {
+        throw new Error('No TOTP factor found for verification');
+      }
+      
+      const factorId = factorData.totp[0].id;
+      
       const { data, error } = await supabase.auth.mfa.challenge({
-        factorId: 'totp',
+        factorId: factorId,
       });
       
       if (error) throw error;
       
       const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: 'totp',
+        factorId: factorId,
         challengeId: data.id,
         code: otpCode,
       });

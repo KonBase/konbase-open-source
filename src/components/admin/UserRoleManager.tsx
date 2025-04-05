@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
-import { useUserProfile, UserRole } from '@/hooks/useUserProfile';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { UserRoleType, USER_ROLES } from '@/types/user';
 import {
   Select,
   SelectContent,
@@ -11,10 +12,11 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { AlertTriangle } from 'lucide-react';
 
 interface UserRoleManagerProps {
   userId: string;
-  currentRole: UserRole;
+  currentRole: UserRoleType;
   onRoleUpdated?: () => void;
 }
 
@@ -23,19 +25,21 @@ export function UserRoleManager({
   currentRole, 
   onRoleUpdated 
 }: UserRoleManagerProps) {
-  const { profile } = useUserProfile();
-  const [role, setRole] = useState<UserRole>(currentRole);
+  const { userProfile, hasRole } = useAuth();
+  const [role, setRole] = useState<UserRoleType>(currentRole);
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Check if current user has permission to change roles
-  const canChangeRoles = profile?.role === 'super_admin' || profile?.role === 'admin';
+  const canChangeRoles = hasRole('admin');
   
   // Only super_admins can create other super_admins
-  const canCreateSuperAdmin = profile?.role === 'super_admin';
+  const canCreateSuperAdmin = hasRole('super_admin');
   
-  const availableRoles: UserRole[] = canCreateSuperAdmin 
+  const availableRoles: UserRoleType[] = canCreateSuperAdmin 
     ? ['super_admin', 'admin', 'manager', 'member', 'guest'] 
     : ['admin', 'manager', 'member', 'guest'];
+
+  const showTwoFactorWarning = role === 'super_admin';
 
   const updateUserRole = async () => {
     if (!canChangeRoles || isUpdating) return;
@@ -66,7 +70,7 @@ export function UserRoleManager({
         action: 'update_role',
         entity: 'profiles',
         entity_id: userId,
-        user_id: profile?.id,
+        user_id: userProfile?.id,
         changes: { old_role: currentRole, new_role: role }
       });
       
@@ -76,14 +80,23 @@ export function UserRoleManager({
         .insert({
           user_id: userId,
           title: 'Role Updated',
-          message: `Your role has been updated to ${role}`,
+          message: `Your role has been updated to ${USER_ROLES[role].name}`,
           read: false
         });
       
-      toast({
-        title: "Role updated",
-        description: `User role has been updated to ${role}`,
-      });
+      // Show special warning if setting to super_admin
+      if (role === 'super_admin') {
+        toast({
+          title: "Super Admin role assigned",
+          description: "This user will need to enable 2FA to access super admin functions.",
+          variant: "warning"
+        });
+      } else {
+        toast({
+          title: "Role updated",
+          description: `User role has been updated to ${USER_ROLES[role].name}`,
+        });
+      }
       
       if (onRoleUpdated) onRoleUpdated();
       
@@ -99,36 +112,45 @@ export function UserRoleManager({
   };
   
   if (!canChangeRoles) {
-    return <div className="text-sm text-muted-foreground">{currentRole}</div>;
+    return <div className="text-sm text-muted-foreground">{USER_ROLES[currentRole].name}</div>;
   }
   
   return (
-    <div className="flex gap-2 items-center">
-      <Select
-        value={role}
-        onValueChange={(value) => setRole(value as UserRole)}
-        disabled={isUpdating}
-      >
-        <SelectTrigger className="w-32">
-          <SelectValue placeholder="Select role" />
-        </SelectTrigger>
-        <SelectContent>
-          {availableRoles.map((roleOption) => (
-            <SelectItem key={roleOption} value={roleOption}>
-              {roleOption}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2 items-center">
+        <Select
+          value={role}
+          onValueChange={(value) => setRole(value as UserRoleType)}
+          disabled={isUpdating}
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Select role" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableRoles.map((roleOption) => (
+              <SelectItem key={roleOption} value={roleOption}>
+                {USER_ROLES[roleOption].name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <Button 
+          size="sm"
+          variant="outline"
+          onClick={updateUserRole}
+          disabled={isUpdating || role === currentRole}
+        >
+          {isUpdating ? "Updating..." : "Update"}
+        </Button>
+      </div>
       
-      <Button 
-        size="sm"
-        variant="outline"
-        onClick={updateUserRole}
-        disabled={isUpdating || role === currentRole}
-      >
-        {isUpdating ? "Updating..." : "Update"}
-      </Button>
+      {showTwoFactorWarning && (
+        <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs rounded-md">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <p>Super Admin requires 2FA</p>
+        </div>
+      )}
     </div>
   );
 }

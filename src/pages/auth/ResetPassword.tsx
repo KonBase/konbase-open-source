@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,32 +11,61 @@ import { supabase } from '@/lib/supabase';
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [hashError, setHashError] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    // Check if we're in a reset password flow
-    const checkSession = async () => {
+    // Check if we're in a reset password flow by validating hash in URL
+    const checkResetSession = async () => {
       setIsLoading(true);
-      const { data, error } = await supabase.auth.getSession();
       
-      if (error || !data.session) {
+      try {
+        // Get hash parameter from URL if present
+        const hash = location.hash.substring(1);
+        
+        if (!hash) {
+          // Try to check if we have a valid session
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError || !session) {
+            setHashError(true);
+            toast({
+              title: "Invalid or expired reset link",
+              description: "Please try requesting a new password reset link.",
+              variant: "destructive"
+            });
+          }
+        } else {
+          // If there's a hash in the URL, try to use it
+          const { error } = await supabase.auth.verifyOtp({
+            type: 'recovery',
+            token_hash: hash,
+          });
+          
+          if (error) {
+            console.error('Password reset token verification failed:', error);
+            setHashError(true);
+            toast({
+              title: "Invalid or expired reset link",
+              description: "Please try requesting a new password reset link.",
+              variant: "destructive"
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error during password reset verification:', error);
         setHashError(true);
-        toast({
-          title: "Invalid or expired reset link",
-          description: "Please try requesting a new password reset link.",
-          variant: "destructive"
-        });
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
-    checkSession();
-  }, [toast]);
+    checkResetSession();
+  }, [location, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

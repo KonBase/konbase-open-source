@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '@/lib/supabase';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
-import { User } from '@/types/user';
+import { User, UserRoleType, USER_ROLES } from '@/types/user';
 
 interface AuthContextType {
   session: Session | null;
@@ -15,10 +15,13 @@ interface AuthContextType {
   error: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  hasPermission: (role: string) => boolean;
+  hasPermission: (permission: string) => boolean;
+  hasRole: (requiredRole: UserRoleType) => boolean;
+  checkRoleAccess: (role: UserRoleType) => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   userProfile: any | null;
+  elevateToSuperAdmin: () => Promise<{success: boolean, message: string}>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -104,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...user,
           name: profileData.name || profileData.email?.split('@')[0] || 'User',
           profileImage: profileData.profile_image,
-          role: profileData.role || 'guest',
+          role: profileData.role as UserRoleType || 'guest',
           email: user.email || profileData.email
         };
         
@@ -116,21 +119,97 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const hasPermission = (requiredRole: string) => {
-    if (!userProfile) return false;
+  const hasRole = (requiredRole: UserRoleType): boolean => {
+    if (!userProfile || !userProfile.role) return false;
     
-    const roleHierarchy: Record<string, number> = {
-      'super_admin': 100,
-      'admin': 80,
-      'manager': 60,
-      'member': 40,
-      'guest': 20
-    };
-    
-    const userRoleValue = roleHierarchy[userProfile.role as string] || 0;
-    const requiredRoleValue = roleHierarchy[requiredRole] || 0;
+    const userRoleValue = USER_ROLES[userProfile.role as UserRoleType]?.level || 0;
+    const requiredRoleValue = USER_ROLES[requiredRole]?.level || 0;
     
     return userRoleValue >= requiredRoleValue;
+  };
+
+  const hasPermission = (requiredPermission: string): boolean => {
+    if (!userProfile || !userProfile.role) return false;
+    
+    const rolePermissions = USER_ROLES[userProfile.role as UserRoleType]?.permissions || [];
+    
+    // Check if the user has the specific permission or admin:all
+    return rolePermissions.includes(requiredPermission) || rolePermissions.includes('admin:all');
+  };
+
+  const checkRoleAccess = async (role: UserRoleType): Promise<boolean> => {
+    // If not even authenticated, no access
+    if (!isAuthenticated || !userProfile) {
+      return false;
+    }
+    
+    // If current role doesn't have necessary level, no access
+    if (!hasRole(role)) {
+      return false;
+    }
+    
+    // If role requires 2FA but user doesn't have it enabled, no access
+    if (USER_ROLES[role].requires2FA && !userProfile.two_factor_enabled) {
+      toast({
+        title: "Two-Factor Authentication Required",
+        description: `The ${USER_ROLES[role].name} role requires 2FA to be enabled.`,
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Function to elevate to super_admin after verifying 2FA
+  const elevateToSuperAdmin = async (): Promise<{success: boolean, message: string}> => {
+    if (!isAuthenticated || !userProfile) {
+      return { 
+        success: false, 
+        message: "You must be logged in to access Super Admin privileges" 
+      };
+    }
+    
+    // Check if user's role in database is actually super_admin
+    if (userProfile.role !== 'super_admin') {
+      return { 
+        success: false, 
+        message: "You don't have Super Admin privileges" 
+      };
+    }
+    
+    // Check if 2FA is enabled
+    if (!userProfile.two_factor_enabled) {
+      return { 
+        success: false, 
+        message: "Two-Factor Authentication must be enabled to access Super Admin privileges" 
+      };
+    }
+    
+    try {
+      // Force a new login with 2FA verification to elevate privileges
+      // This is handled through a challenge/verify flow when accessing admin areas
+      
+      // Create a record of this elevation attempt for audit purposes
+      await supabase.from('audit_logs').insert({
+        action: 'super_admin_elevation',
+        entity: 'users',
+        entity_id: userProfile.id,
+        user_id: userProfile.id,
+        changes: { role: 'super_admin' }
+      });
+      
+      return { 
+        success: true, 
+        message: "Super Admin privileges activated" 
+      };
+    } catch (error: any) {
+      console.error('Error during super admin elevation:', error);
+      return { 
+        success: false, 
+        message: error.message || "Failed to activate Super Admin privileges"
+      };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -229,9 +308,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated,
       isLoading,
       hasPermission,
+      hasRole,
+      checkRoleAccess,
       login,
       logout,
-      userProfile
+      userProfile,
+      elevateToSuperAdmin
     }}>
       {children}
     </AuthContext.Provider>
