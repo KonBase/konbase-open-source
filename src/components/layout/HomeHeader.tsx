@@ -9,28 +9,40 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
-import { User, LogOut, Settings, LayoutDashboard, Github, MessageCircle } from 'lucide-react';
+import { 
+  User, 
+  LogOut, 
+  Settings, 
+  LayoutDashboard, 
+  Github, 
+  MessageCircle, 
+  Shield 
+} from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import LogoutButton from '../auth/LogoutButton';
 
 const HomeHeader = () => {
   const navigate = useNavigate();
-  const { user, signOut, isAuthenticated } = useAuth();
+  const { user, signOut, isAuthenticated, hasRole } = useAuth();
   const { toast } = useToast();
   
   // Extract user display values with fallbacks
   const userName = user?.name || 'User';
   const userEmail = user?.email || '';
   const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
+  
+  // Check if user has admin access
+  const isAdmin = hasRole('admin') || hasRole('system_admin') || hasRole('super_admin');
 
   const handleLogout = async () => {
     try {
@@ -154,31 +166,28 @@ const HomeHeader = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <div className="flex flex-col items-center p-4 border-b">
-                    <div className="w-12 h-12 rounded-full bg-konbase-light-blue/20 flex items-center justify-center mb-2">
-                      {user?.profileImage ? (
-                        <img 
-                          src={user.profileImage} 
-                          alt={userName} 
-                          className="w-12 h-12 rounded-full" 
-                        />
-                      ) : (
-                        <span className="text-lg font-medium text-konbase-blue">{userInitial}</span>
-                      )}
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{userName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
                     </div>
-                    <div className="text-center">
-                      <p className="font-medium">{userName}</p>
-                      <p className="text-xs text-muted-foreground">{userEmail}</p>
-                    </div>
-                  </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout

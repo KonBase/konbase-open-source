@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
+import { logDebug, handleError } from '@/utils/debug';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -26,17 +27,20 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       }
 
       try {
+        logDebug(`Checking email verification for user: ${user.id}`, { email: user.email }, 'info');
         const { data, error } = await supabase.auth.getUser();
         
         if (error) {
-          console.error("Error checking email verification:", error);
+          handleError(error, 'AuthGuard.checkEmailVerification');
           setIsChecking(false);
           return;
         }
         
         if (data?.user?.email_confirmed_at) {
+          logDebug('Email verified', { email: user.email, confirmed_at: data.user.email_confirmed_at }, 'info');
           setIsEmailVerified(true);
         } else {
+          logDebug('Email not verified', { email: user.email }, 'warn');
           setIsEmailVerified(false);
           
           toast({
@@ -48,12 +52,13 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
           // Sign out user with unverified email
           try {
             await supabase.auth.signOut();
+            logDebug('Signed out unverified user', { email: user.email }, 'info');
           } catch (error) {
-            console.error("Error signing out:", error);
+            handleError(error, 'AuthGuard.signOutUnverifiedUser');
           }
         }
       } catch (error) {
-        console.error("Error checking email verification:", error);
+        handleError(error, 'AuthGuard.checkEmailVerification');
       } finally {
         setIsChecking(false);
       }
@@ -61,6 +66,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     
     // Only check email verification if the user is logged in
     if (!isLoading) {
+      logDebug('Auth state check complete', { isAuthenticated, userId: user?.id }, 'debug');
       if (isAuthenticated && user) {
         checkEmailVerification();
       } else {
@@ -78,14 +84,17 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   if (!isAuthenticated) {
+    logDebug('Redirecting unauthenticated user to login', { from: location.pathname }, 'info');
     // Use replace to avoid back button issues
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (!isEmailVerified) {
+    logDebug('Redirecting user with unverified email to login', { email: user?.email }, 'info');
     return <Navigate to="/login" state={{ emailVerification: true }} replace />;
   }
 
+  logDebug('User authenticated and email verified, rendering protected content', { userId: user?.id }, 'debug');
   return <>{children}</>;
 };
 
