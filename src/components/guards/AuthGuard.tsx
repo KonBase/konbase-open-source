@@ -83,10 +83,13 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     }
   }, [isLoading, isAuthenticated, user, toast]);
 
+  // Check if we're on the setup page - this prevents the infinite redirection loop
+  const isSetupPage = location.pathname === '/setup';
+
   // Check if user has "guest" role and redirect to setup page
   // This is not in the check email verification flow because we want to redirect guests
   // even if they are already email verified
-  if (!isLoading && !isChecking && isAuthenticated && userProfile?.role === 'guest') {
+  if (!isLoading && !isChecking && isAuthenticated && userProfile?.role === 'guest' && !isSetupPage) {
     logDebug('Redirecting guest user to setup page', { userId: user?.id, role: userProfile?.role }, 'info');
     return <Navigate to="/setup" state={{ from: location }} replace />;
   }
