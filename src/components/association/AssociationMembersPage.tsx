@@ -4,9 +4,9 @@ import { useAssociation } from '@/contexts/AssociationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import CategoryManager from '@/components/inventory/CategoryManager';
+import MemberManager from './MemberManager';
 
-const ItemCategories = () => {
+const AssociationMembersPage = () => {
   const { currentAssociation } = useAssociation();
 
   if (!currentAssociation) {
@@ -32,14 +32,14 @@ const ItemCategories = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Item Categories</h1>
-          <p className="text-muted-foreground">Manage categories for inventory items.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Association Members</h1>
+          <p className="text-muted-foreground">Manage members and permissions for {currentAssociation.name}.</p>
         </div>
       </div>
       
-      <CategoryManager />
+      <MemberManager />
     </div>
   );
 };
 
-export default ItemCategories;
+export default AssociationMembersPage;

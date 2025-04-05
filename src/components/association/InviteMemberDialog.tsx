@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -14,12 +15,13 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Copy } from 'lucide-react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -31,6 +33,7 @@ type FormValues = z.infer<typeof formSchema>;
 const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
   const { toast } = useToast();
   const { currentAssociation } = useAssociation();
 
@@ -55,12 +58,6 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
     setIsLoading(true);
 
     try {
-      // In a real implementation, you would generate an invitation code and send an email
-      // For demonstration, we'll simulate this process
-      
-      // Create a record for the invitation
-      const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      
       // Check if user already exists
       const { data: existingUser, error: userError } = await supabase
         .from('profiles')
@@ -73,6 +70,28 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
       }
       
       if (existingUser) {
+        // Check if user is already a member
+        const { data: existingMember, error: memberError } = await supabase
+          .from('association_members')
+          .select('user_id')
+          .eq('user_id', existingUser.id)
+          .eq('association_id', currentAssociation.id)
+          .single();
+          
+        if (memberError && memberError.code !== 'PGRST116') {
+          throw memberError;
+        }
+        
+        if (existingMember) {
+          toast({
+            title: 'User Already Member',
+            description: `${values.email} is already a member of this association.`,
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         // Add user directly to association_members
         const { error } = await supabase.from('association_members').insert({
           user_id: existingUser.id,
@@ -86,17 +105,35 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
           title: 'Member Added',
           description: `${values.email} has been added to the association.`,
         });
+        
+        setIsOpen(false);
+        if (onInviteSent) onInviteSent();
+        form.reset();
       } else {
-        // Simulated invitation (in a real app you would send an email with the code)
+        // Generate an invitation code
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        
+        // Create an invitation record
+        const { error } = await supabase.from('association_invitations').insert({
+          code,
+          association_id: currentAssociation.id,
+          email: values.email,
+          role: values.role,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        });
+        
+        if (error) throw error;
+        
+        // Set the invite code to show to the user
+        setInviteCode(code);
+        
+        // In a real app, you would send an email with the code
+        // For now, we'll display it to the user to copy
         toast({
-          title: 'Invitation Sent',
-          description: `Invitation code ${inviteCode} generated for ${values.email}.`,
+          title: 'Invitation Created',
+          description: `Please share the invitation code with ${values.email}.`,
         });
       }
-      
-      setIsOpen(false);
-      if (onInviteSent) onInviteSent();
-      form.reset();
     } catch (error: any) {
       console.error('Error inviting member:', error);
       toast({
@@ -107,6 +144,22 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const copyInviteCode = () => {
+    if (inviteCode) {
+      navigator.clipboard.writeText(inviteCode);
+      toast({
+        title: 'Copied',
+        description: 'Invitation code copied to clipboard',
+      });
+    }
+  };
+
+  const closeDialog = () => {
+    setIsOpen(false);
+    setInviteCode(null);
+    form.reset();
   };
 
   return (
@@ -125,59 +178,83 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
           </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleInvite)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter email address" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-col space-y-1"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="member" id="member" />
-                        <Label htmlFor="member">Member</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="manager" id="manager" />
-                        <Label htmlFor="manager">Manager</Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
-                Cancel
+        {inviteCode ? (
+          <div className="space-y-4">
+            <Alert>
+              <AlertDescription>
+                Share this code with the user to join the association:
+              </AlertDescription>
+            </Alert>
+            <div className="flex items-center gap-2 p-2 bg-background border rounded-md">
+              <span className="font-mono text-lg font-bold flex-1">{inviteCode}</span>
+              <Button variant="outline" size="sm" onClick={copyInviteCode}>
+                <Copy className="h-4 w-4" />
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Sending...' : 'Send Invitation'}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The code will expire in 7 days. The user will need to sign up or log in to use this code.
+            </p>
+            <DialogFooter>
+              <Button onClick={closeDialog}>
+                Done
               </Button>
             </DialogFooter>
-          </form>
-        </Form>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleInvite)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter email address" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-1"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="member" id="member" />
+                          <Label htmlFor="member">Member</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="manager" id="manager" />
+                          <Label htmlFor="manager">Manager</Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Sending...' : 'Send Invitation'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

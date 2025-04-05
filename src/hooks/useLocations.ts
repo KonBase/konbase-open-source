@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -47,7 +48,7 @@ export function useLocations() {
         description: loc.description,
         associationId: loc.association_id,
         parentId: loc.parent_id,
-        isRoom: loc.is_room || false,
+        isRoom: loc.is_room,
         createdAt: loc.created_at,
         updatedAt: loc.updated_at
       }));
@@ -65,11 +66,7 @@ export function useLocations() {
     }
   };
 
-  const createLocation = async (name: string, options?: { 
-    description?: string; 
-    parentId?: string; 
-    isRoom?: boolean;
-  }) => {
+  const createLocation = async (name: string, description?: string, parentId?: string, isRoom: boolean = false) => {
     if (!currentAssociation) {
       toast({
         title: 'Error',
@@ -88,16 +85,17 @@ export function useLocations() {
         .insert({
           id,
           name,
-          description: options?.description || null,
+          description: description || null,
           association_id: currentAssociation.id,
-          parent_id: options?.parentId || null,
-          is_room: options?.isRoom || false,
+          parent_id: parentId || null,
+          is_room: isRoom,
           created_at: now,
           updated_at: now
         });
 
       if (error) throw error;
-
+      
+      // Fetch the newly created location
       const { data: newLocationData, error: fetchError } = await supabase
         .from('locations')
         .select('*')
@@ -112,7 +110,7 @@ export function useLocations() {
         description: newLocationData.description,
         associationId: newLocationData.association_id,
         parentId: newLocationData.parent_id,
-        isRoom: newLocationData.is_room || false,
+        isRoom: newLocationData.is_room,
         createdAt: newLocationData.created_at,
         updatedAt: newLocationData.updated_at
       };
@@ -130,12 +128,7 @@ export function useLocations() {
     }
   };
 
-  const updateLocation = async (id: string, updates: { 
-    name?: string; 
-    description?: string | null; 
-    parentId?: string | null;
-    isRoom?: boolean;
-  }) => {
+  const updateLocation = async (id: string, updates: { name?: string; description?: string; parentId?: string | null; isRoom?: boolean }) => {
     try {
       const { error } = await supabase
         .from('locations')
@@ -190,7 +183,7 @@ export function useLocations() {
       if (count && count > 0) {
         toast({
           title: 'Cannot Delete',
-          description: `This location has ${count} items stored in it. Please move or delete these items first.`,
+          description: `This location has ${count} items assigned to it. Please reassign or delete these items first.`,
           variant: 'destructive'
         });
         return false;
@@ -207,7 +200,7 @@ export function useLocations() {
       if (childCount && childCount > 0) {
         toast({
           title: 'Cannot Delete',
-          description: `This location has ${childCount} sub-locations. Please delete these sub-locations first.`,
+          description: `This location has ${childCount} sub-locations. Please delete or reassign these sub-locations first.`,
           variant: 'destructive'
         });
         return false;
@@ -239,107 +232,7 @@ export function useLocations() {
     loading,
     refreshLocations: fetchLocations,
     createLocation,
-    updateLocation: async (id: string, updates: { 
-      name?: string; 
-      description?: string | null; 
-      parentId?: string | null;
-      isRoom?: boolean;
-    }) => {
-      try {
-        const { error } = await supabase
-          .from('locations')
-          .update({
-            name: updates.name,
-            description: updates.description,
-            parent_id: updates.parentId,
-            is_room: updates.isRoom,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-
-        if (error) throw error;
-
-        setLocations(prev =>
-          prev.map(loc =>
-            loc.id === id
-              ? { 
-                  ...loc, 
-                  name: updates.name || loc.name, 
-                  description: updates.description !== undefined ? updates.description : loc.description,
-                  parentId: updates.parentId !== undefined ? updates.parentId : loc.parentId,
-                  isRoom: updates.isRoom !== undefined ? updates.isRoom : loc.isRoom,
-                  updatedAt: new Date().toISOString()
-                }
-              : loc
-          )
-        );
-        
-        return true;
-      } catch (error: any) {
-        console.error('Error updating location:', error);
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive'
-        });
-        return false;
-      }
-    },
-    deleteLocation: async (id: string) => {
-      try {
-        // Check if location has items
-        const { count, error: countError } = await supabase
-          .from('items')
-          .select('id', { count: 'exact', head: true })
-          .eq('location_id', id);
-
-        if (countError) throw countError;
-        
-        if (count && count > 0) {
-          toast({
-            title: 'Cannot Delete',
-            description: `This location has ${count} items stored in it. Please move or delete these items first.`,
-            variant: 'destructive'
-          });
-          return false;
-        }
-
-        // Check if location has children
-        const { count: childCount, error: childCountError } = await supabase
-          .from('locations')
-          .select('id', { count: 'exact', head: true })
-          .eq('parent_id', id);
-
-        if (childCountError) throw childCountError;
-        
-        if (childCount && childCount > 0) {
-          toast({
-            title: 'Cannot Delete',
-            description: `This location has ${childCount} sub-locations. Please delete these sub-locations first.`,
-            variant: 'destructive'
-          });
-          return false;
-        }
-
-        // Proceed with deletion
-        const { error } = await supabase
-          .from('locations')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-
-        setLocations(prev => prev.filter(loc => loc.id !== id));
-        return true;
-      } catch (error: any) {
-        console.error('Error deleting location:', error);
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive'
-        });
-        return false;
-      }
-    }
+    updateLocation,
+    deleteLocation
   };
 }
