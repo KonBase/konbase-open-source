@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { enableDebugMode, logDebug } from '@/utils/debug';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bug, Wifi, WifiOff, RefreshCw, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Bug, Wifi, WifiOff, RefreshCw, X, ChevronDown, ChevronRight, AlertCircle, Info } from 'lucide-react';
 
 interface DebugPanelProps {
   networkStatus: 'online' | 'offline';
@@ -19,7 +19,14 @@ interface DebugPanelProps {
   };
   errorData?: any;
   onRetry?: () => void;
-  testConnection?: () => Promise<boolean>;
+  testConnection?: () => Promise<boolean | null>;
+  isTestingConnection?: boolean;
+  lastTestedAt?: number | null;
+  testResults?: {
+    success: boolean;
+    timestamp: number;
+    error?: Error;
+  } | null;
 }
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({
@@ -28,31 +35,53 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
   userData,
   errorData,
   onRetry,
-  testConnection
+  testConnection,
+  isTestingConnection,
+  lastTestedAt,
+  testResults
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<boolean | null>(null);
+  const [errorCount, setErrorCount] = useState<number>(0);
+  
+  // Track error count to show a warning if errors are increasing
+  useEffect(() => {
+    if (errorData) {
+      setErrorCount(prev => prev + 1);
+    }
+  }, [errorData]);
+
+  // Reset error count when network status changes to online
+  useEffect(() => {
+    if (networkStatus === 'online') {
+      setErrorCount(0);
+    }
+  }, [networkStatus]);
   
   const handleTestConnection = async () => {
-    if (!testConnection) return;
+    if (!testConnection || isTestingConnection) return;
     
-    setIsTestingConnection(true);
     try {
       const result = await testConnection();
-      setConnectionTestResult(result);
-      logDebug('Connection test result', { success: result }, 'info');
+      setConnectionTestResult(result === null ? null : !!result);
+      logDebug('Manual connection test result', { success: result }, 'info');
     } catch (error) {
-      logDebug('Connection test error', error, 'error');
+      logDebug('Manual connection test error', error, 'error');
       setConnectionTestResult(false);
-    } finally {
-      setIsTestingConnection(false);
     }
   };
   
   const handleEnableDebugMode = () => {
     enableDebugMode(true);
     logDebug('Debug mode enabled via debug panel', null, 'info');
+  };
+
+  // Format time elapsed since last test
+  const formatTimeElapsed = () => {
+    if (!lastTestedAt) return 'Never';
+    const elapsed = Date.now() - lastTestedAt;
+    if (elapsed < 60000) return `${Math.floor(elapsed / 1000)}s ago`;
+    return `${Math.floor(elapsed / 60000)}m ago`;
   };
   
   return (
@@ -69,6 +98,17 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             )}
             {networkStatus}
           </Badge>
+          {errorCount > 3 && (
+            <Badge variant="warning" className="text-xs">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Multiple Errors
+            </Badge>
+          )}
+          {isTestingConnection && (
+            <Badge variant="info" className="text-xs animate-pulse">
+              Testing...
+            </Badge>
+          )}
         </div>
         <Button
           size="sm"
@@ -88,8 +128,15 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
         <AlertDescription className="space-y-2 mt-2">
           <div className="flex flex-wrap gap-2">
             {onRetry && (
-              <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs">
-                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={onRetry} 
+                className="h-7 text-xs"
+                disabled={isTestingConnection}
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${isTestingConnection ? 'animate-spin' : ''}`} /> 
+                Retry
               </Button>
             )}
             {testConnection && (
@@ -109,11 +156,26 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
             </Button>
           </div>
           
-          {connectionTestResult !== null && (
-            <div className={`text-xs p-1 rounded ${connectionTestResult ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-              Connection test: {connectionTestResult ? 'Successful' : 'Failed'}
+          <div className="flex flex-col gap-1">
+            <div className="text-xs font-semibold flex justify-between items-center">
+              <span>Connection Status</span>
+              <span className="text-muted-foreground">Last checked: {formatTimeElapsed()}</span>
             </div>
-          )}
+            
+            {testResults && (
+              <div className={`text-xs p-1 rounded ${testResults.success ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                <div className="flex justify-between">
+                  <span>Connection test: {testResults.success ? 'Successful' : 'Failed'}</span>
+                  <span>{new Date(testResults.timestamp).toLocaleTimeString()}</span>
+                </div>
+                {testResults.error && (
+                  <div className="mt-1 text-xs overflow-hidden text-ellipsis">
+                    Error: {testResults.error.message}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           
           <div className="font-mono text-xs bg-background p-2 rounded border overflow-auto max-h-[200px]">
             <p>Network: {networkStatus}</p>
@@ -141,6 +203,14 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               </pre>
             </details>
           )}
+          
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Rate Limit: 10 req/sec</span>
+            <span>
+              <Info className="h-3 w-3 inline mr-1" />
+              ERR_INSUFFICIENT_RESOURCES indicates rate limiting
+            </span>
+          </div>
         </AlertDescription>
       )}
     </Alert>

@@ -1,19 +1,37 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { logDebug } from '@/utils/debug';
 import { toast } from '@/components/ui/use-toast';
 
 interface NetworkStatusOptions {
   showToasts?: boolean;
   onStatusChange?: (status: 'online' | 'offline') => void;
+  testEndpoint?: string;
+  testInterval?: number;
 }
 
 export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
-  const { showToasts = true, onStatusChange } = options;
+  const { 
+    showToasts = true, 
+    onStatusChange,
+    testEndpoint = 'https://ceeoxorrfduotwfgmegx.supabase.co/rest/v1/',
+    testInterval = 30000 // Default to 30 seconds to avoid excessive requests
+  } = options;
   
   const [status, setStatus] = useState<'online' | 'offline'>(
     navigator.onLine ? 'online' : 'offline'
   );
+  
+  const [lastTestedAt, setLastTestedAt] = useState<number | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [testResults, setTestResults] = useState<{
+    success: boolean;
+    timestamp: number;
+    error?: Error;
+  } | null>(null);
+  
+  const pendingTestRef = useRef<boolean>(false);
+  const throttleTimeoutRef = useRef<number | null>(null);
   
   const handleOnline = useCallback(() => {
     setStatus('online');
@@ -51,9 +69,20 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
     }
   }, [showToasts, onStatusChange]);
   
-  // Test network connectivity to a specific endpoint
-  const testConnection = useCallback(async (url = 'https://ceeoxorrfduotwfgmegx.supabase.co/rest/v1/') => {
+  // Test network connectivity to a specific endpoint with throttling
+  const testConnection = useCallback(async (url = testEndpoint) => {
     if (!navigator.onLine) return false;
+    if (pendingTestRef.current) return null; // Already testing
+    
+    // Throttle test requests to prevent resource exhaustion
+    const now = Date.now();
+    if (lastTestedAt && now - lastTestedAt < 5000) {
+      logDebug('Connection test throttled - too frequent requests', null, 'warn');
+      return null; // Return null to indicate throttled request
+    }
+    
+    pendingTestRef.current = true;
+    setIsTestingConnection(true);
     
     try {
       logDebug(`Testing connection to ${url}`, null, 'debug');
@@ -69,13 +98,43 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
       clearTimeout(timeoutId);
       
       const isConnected = response.ok;
+      const timestamp = Date.now();
+      setLastTestedAt(timestamp);
+      
+      const result = { success: isConnected, timestamp };
+      setTestResults(result);
+      
       logDebug(`Connection test result: ${isConnected ? 'Connected' : 'Failed'}`, null, 'debug');
       return isConnected;
     } catch (error) {
+      const timestamp = Date.now();
+      setLastTestedAt(timestamp);
+      
+      const result = { 
+        success: false, 
+        timestamp,
+        error: error instanceof Error ? error : new Error(String(error))
+      };
+      setTestResults(result);
+      
       logDebug('Connection test error', error, 'error');
       return false;
+    } finally {
+      pendingTestRef.current = false;
+      setIsTestingConnection(false);
     }
-  }, []);
+  }, [testEndpoint, lastTestedAt]);
+  
+  const throttledTestConnection = useCallback(() => {
+    if (throttleTimeoutRef.current) {
+      clearTimeout(throttleTimeoutRef.current);
+    }
+    
+    throttleTimeoutRef.current = window.setTimeout(() => {
+      testConnection();
+      throttleTimeoutRef.current = null;
+    }, 1000) as unknown as number;
+  }, [testConnection]);
   
   useEffect(() => {
     window.addEventListener('online', handleOnline);
@@ -84,20 +143,38 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
     // Log initial network status
     logDebug(`Initial network status: ${status}`, null, 'info');
     
-    // Initial connection test
-    testConnection();
+    // Initial connection test with delay to avoid immediate testing
+    const initialTestTimeout = setTimeout(() => {
+      testConnection();
+    }, 2000);
+    
+    // Set up periodic testing if specified
+    let intervalId: number | undefined;
+    if (testInterval > 0) {
+      intervalId = window.setInterval(() => {
+        if (!pendingTestRef.current && navigator.onLine) {
+          testConnection();
+        }
+      }, testInterval) as unknown as number;
+    }
     
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearTimeout(initialTestTimeout);
+      if (intervalId) clearInterval(intervalId);
+      if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current);
     };
-  }, [status, handleOnline, handleOffline, testConnection]);
+  }, [handleOnline, handleOffline, testConnection, testInterval, status]);
   
   return {
     status,
     isOnline: status === 'online',
     isOffline: status === 'offline',
-    testConnection
+    testConnection: throttledTestConnection,
+    isTestingConnection,
+    lastTestedAt,
+    testResults
   };
 };
 
