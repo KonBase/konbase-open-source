@@ -39,7 +39,7 @@ const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, updateProfile } = useUserProfile();
-  const { signOut } = useAuth();
+  const { logout } = useAuth();
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
@@ -61,7 +61,7 @@ const Settings = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await logout();
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",

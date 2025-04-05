@@ -29,7 +29,7 @@ export function RoleGuard({
   fallbackPath = '/unauthorized',
   enforceTwoFactor = false
 }: RoleGuardProps) {
-  const { userProfile, hasRole, loading, isAuthenticated } = useAuth();
+  const { userProfile, hasRole, isLoading, isAuthenticated } = useAuth();
   const [checking, setChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
@@ -40,7 +40,7 @@ export function RoleGuard({
     const checkAccess = async () => {
       setChecking(true);
       
-      if (loading) return;
+      if (isLoading) return;
 
       // Debug output to verify role checking
       console.log('Checking role access:', {
@@ -107,9 +107,9 @@ export function RoleGuard({
     };
     
     checkAccess();
-  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, isAuthenticated]);
+  }, [isLoading, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, isAuthenticated]);
   
-  if (loading || checking) {
+  if (isLoading || checking) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner className="h-8 w-8" />

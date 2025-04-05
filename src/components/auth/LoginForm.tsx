@@ -21,7 +21,7 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const emailVerificationNeeded = location.state?.emailVerification;
@@ -56,7 +56,7 @@ const LoginForm = () => {
       }
       
       // If email is verified, proceed with normal login flow
-      await signIn(email, password);
+      await login(email, password);
       
       toast({
         title: 'Login successful',

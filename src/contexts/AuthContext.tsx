@@ -1,11 +1,12 @@
+
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Session } from '@supabase/supabase-js';
-import { User } from '@/types/user';
+import { User, UserRoleType, USER_ROLES } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
-import { UserRoleType } from '@/types/user';
+import { Permission } from '@/types/index';
 
 // Define the shape of the user profile object
 export interface UserProfile {
@@ -38,15 +39,19 @@ export interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   login: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
   loginWithGoogle: () => Promise<void>;
   loginWithDiscord: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<{ data: any; error: any }>;
   logout: () => Promise<void>;
+  signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ data: any; error: any }>;
   updatePassword: (password: string) => Promise<{ data: any; error: any }>;
   updateProfile: (profile: UserProfileUpdate) => Promise<void>;
   hasRole: (role: UserRoleType) => boolean;
-  refreshUserProfile: () => Promise<UserProfile | null>; // Add this line
+  hasPermission: (requiredRole: UserRoleType) => boolean;
+  loading: boolean;
+  refreshUserProfile: () => Promise<UserProfile | null>;
 }
 
 // Create the context with a default value of null
@@ -120,7 +125,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (profile) {
         logDebug(`User profile loaded`, { id: profile.id, role: profile.role }, 'info');
-        setUserProfile(profile);
+        // Make sure the role is of type UserRoleType
+        const typedProfile: UserProfile = {
+          ...profile,
+          role: profile.role as UserRoleType
+        };
+        setUserProfile(typedProfile);
       } else {
         logDebug(`No profile found for user ${userId}`, null, 'warn');
         setUserProfile(null);
@@ -155,6 +165,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   };
+  
+  // Add signIn as an alias for login
+  const signIn = login;
   
   const loginWithGoogle = async () => {
     setIsLoading(true);
@@ -263,6 +276,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
   
+  // Add signOut as an alias for logout
+  const signOut = logout;
+  
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     try {
@@ -351,6 +367,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return userProfile?.role === role;
   };
   
+  // Add hasPermission function to check if user has sufficient role level
+  const hasPermission = (requiredRole: UserRoleType): boolean => {
+    if (!userProfile) return false;
+    
+    const userRoleLevel = USER_ROLES[userProfile.role]?.level || 0;
+    const requiredRoleLevel = USER_ROLES[requiredRole]?.level || 100;
+    
+    return userRoleLevel >= requiredRoleLevel;
+  };
+  
   // Add this function to the component
   const refreshUserProfile = async (): Promise<UserProfile | null> => {
     if (!session?.user) return null;
@@ -366,8 +392,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (profile) {
         logDebug(`User profile refreshed`, { id: profile.id, role: profile.role }, 'info');
-        setUserProfile(profile);
-        return profile;
+        // Make sure the role is of type UserRoleType
+        const typedProfile: UserProfile = {
+          ...profile,
+          role: profile.role as UserRoleType
+        };
+        setUserProfile(typedProfile);
+        return typedProfile;
       }
       
       return null;
@@ -383,18 +414,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       value={{
         isAuthenticated: !!session,
         isLoading,
-        user: session?.user || null,
+        loading: isLoading, // Add loading as an alias for isLoading
+        user: session?.user as User || null,
         userProfile,
         login,
+        signIn,
         loginWithGoogle,
         loginWithDiscord,
         register,
         logout,
+        signOut,
         resetPassword,
         updatePassword,
         updateProfile,
         hasRole,
-        refreshUserProfile, // Add this line
+        hasPermission,
+        refreshUserProfile,
       }}
     >
       {children}
