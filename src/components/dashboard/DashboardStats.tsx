@@ -2,6 +2,7 @@
 import React from 'react';
 import { Package, FileBox, MapPin, Calendar } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DashboardStatsProps {
   stats: {
@@ -18,13 +19,8 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, isLoading }) => 
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <StatCard
-              title="Loading..."
-              value=""
-              icon={<div className="h-4 w-4 bg-muted rounded" />}
-              description={<div className="h-4 w-24 bg-muted rounded" />}
-            />
+          <div key={i} className="h-24 rounded-lg">
+            <Skeleton className="h-full w-full" />
           </div>
         ))}
       </div>

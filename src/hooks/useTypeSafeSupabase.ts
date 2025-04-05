@@ -20,7 +20,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
       'Content-Type': 'application/json',
     },
     fetch: (url, options) => {
-      // Add a custom fetch with timeout
+      // Add a custom fetch with timeout and retry
       const timeoutId = setTimeout(() => {
         logDebug(`Request to ${url} is taking too long`, null, 'warn');
       }, 5000); // Log warning after 5 seconds
@@ -37,6 +37,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
         logDebug(`Error fetching ${url}: ${error.message}`, error, 'error');
         throw error;
       });
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
     },
   },
 });
@@ -110,7 +115,7 @@ export const useTypeSafeSupabase = () => {
         logDebug(`Supabase error in safeSelect for ${table}:`, result.error, 'error');
         
         // For service unavailable errors, provide a more specific error
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable')) {
+        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
           return { 
             data: null, 
             error: { 
@@ -120,6 +125,8 @@ export const useTypeSafeSupabase = () => {
             }
           };
         }
+        
+        return result;
       }
       
       return result;
@@ -153,7 +160,7 @@ export const useTypeSafeSupabase = () => {
         logDebug(`Supabase error in safeUpdate for ${table}:`, result.error, 'error');
         
         // Handle specific service unavailable errors
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable')) {
+        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
           return { 
             data: null, 
             error: { 
@@ -163,6 +170,8 @@ export const useTypeSafeSupabase = () => {
             }
           };
         }
+        
+        return result;
       }
       
       return result;
@@ -178,7 +187,7 @@ export const useTypeSafeSupabase = () => {
       };
     }
   };
-  
+
   // Helper function for safe DELETE operations with enhanced error handling
   const safeDelete = async (
     table: TableNames,
@@ -194,7 +203,7 @@ export const useTypeSafeSupabase = () => {
         logDebug(`Supabase error in safeDelete for ${table}:`, result.error, 'error');
         
         // Handle specific service unavailable errors
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable')) {
+        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
           return { 
             data: null, 
             error: { 
@@ -204,6 +213,8 @@ export const useTypeSafeSupabase = () => {
             }
           };
         }
+        
+        return result;
       }
       
       return result;
@@ -233,7 +244,7 @@ export const useTypeSafeSupabase = () => {
         logDebug(`Supabase error in safeInsert for ${table}:`, result.error, 'error');
         
         // Handle specific service unavailable errors
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable')) {
+        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
           return { 
             data: null, 
             error: { 
@@ -243,9 +254,8 @@ export const useTypeSafeSupabase = () => {
             }
           };
         }
-        
-        throw result.error;
       }
+      
       return result;
     } catch (error) {
       logDebug(`Error in safeInsert for ${table}:`, error, 'error');

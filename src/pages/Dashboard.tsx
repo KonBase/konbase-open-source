@@ -15,13 +15,14 @@ import ConventionManagementSection from '@/components/dashboard/ConventionManage
 import CommunicationSection from '@/components/dashboard/CommunicationSection';
 import LocationManagerView from '@/components/dashboard/LocationManagerView';
 import { toast } from '@/components/ui/use-toast';
+import { Spinner } from '@/components/ui/spinner';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { safeSelect } = useTypeSafeSupabase();
+  const { safeSelect, supabase } = useTypeSafeSupabase();
   
   const [stats, setStats] = useState({
     itemsCount: 0,
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Handle redirect from setupWizard if there's a 'completed' query param
@@ -47,11 +49,17 @@ const Dashboard = () => {
     }
   }, [location, navigate]);
 
+  // Separate effect for fetching stats to avoid dependencies issues
   useEffect(() => {
     const fetchDashboardStats = async () => {
-      if (!currentAssociation || !user) return;
+      if (!currentAssociation || !user) {
+        setIsLoading(false);
+        return;
+      }
       
       setIsLoading(true);
+      setError(null);
+      
       try {
         // Using a more resilient approach with safeSelect and parallel requests
         const [
@@ -112,6 +120,7 @@ const Dashboard = () => {
         }
       } catch (error) {
         logDebug('Error fetching dashboard stats:', error, 'error');
+        setError('Unable to load dashboard data. Please try again.');
         // We still want to show the dashboard even if stats fail to load
         // Only retry a few times to avoid infinite loops
         if (retryCount < 3) {
@@ -125,63 +134,52 @@ const Dashboard = () => {
     };
 
     fetchDashboardStats();
-    
-    // Set up subscription for notifications - fixing the async issue
-    let channelCleanup: (() => void) | null = null;
-    
-    if (user) {
-      const { supabase } = useTypeSafeSupabase();
-      
-      try {
-        const channel = supabase
-          .channel('notifications-changes-dashboard')
-          .on(
-            'postgres_changes',
-            {
-              event: '*', 
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${user.id}`
-            },
-            () => {
-              // On notification change, just update the unread count
-              safeSelect('notifications', '*', {
-                column: 'user_id',
-                value: user.id
-              }).then(({ data }) => {
-                if (data) {
-                  const unreadCount = data.filter(n => !n.read).length;
-                  setUnreadNotifications(unreadCount);
-                }
-              }).catch(error => {
-                logDebug('Error updating notification count:', error, 'error');
-              });
-            }
-          )
-          .subscribe((status) => {
-            logDebug(`Notification subscription status: ${status}`, null, 'info');
-          });
-          
-        // Store the cleanup function to be called on unmount
-        channelCleanup = () => {
-          supabase.removeChannel(channel);
-        };
-      } catch (error) {
-        logDebug('Error setting up notifications subscription:', error, 'error');
-      }
-    }
-        
-    return () => {
-      if (channelCleanup) {
-        channelCleanup();
-      }
-    };
   }, [currentAssociation, user, retryCount]);
+  
+  // Separate effect for notification subscription
+  useEffect(() => {
+    if (!user) return;
+    
+    // Set up real-time notifications subscription
+    const channel = supabase
+      .channel('notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', 
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          // On notification change, just update the unread count
+          safeSelect('notifications', '*', {
+            column: 'user_id',
+            value: user.id
+          }).then(({ data }) => {
+            if (data) {
+              const unreadCount = data.filter(n => !n.read).length;
+              setUnreadNotifications(unreadCount);
+            }
+          }).catch(error => {
+            logDebug('Error updating notification count:', error, 'error');
+          });
+        }
+      )
+      .subscribe((status) => {
+        logDebug(`Notification subscription status: ${status}`, null, 'info');
+      });
+    
+    // Return cleanup function
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase, safeSelect]);
   
   if (associationLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-screen">
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -196,6 +194,20 @@ const Dashboard = () => {
         onBack={() => setShowLocationManager(false)} 
         currentAssociation={currentAssociation} 
       />
+    );
+  }
+
+  if (error && !isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <div className="text-destructive text-xl">{error}</div>
+        <button 
+          onClick={() => setRetryCount(prev => prev + 1)}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Retry
+        </button>
+      </div>
     );
   }
 
