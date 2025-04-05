@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { User, UserRoleType } from '@/types/user';
+import { UserRoleType } from '@/types/user';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define the profile type with the expected fields
@@ -44,7 +44,8 @@ export const useUserProfile = () => {
         throw error;
       }
 
-      setProfile(data);
+      // Ensure the data is properly typed
+      setProfile(data as UserProfile);
     } catch (err) {
       console.error('Error fetching profile:', err);
       setError(err instanceof Error ? err : new Error('Unknown error occurred'));
@@ -73,8 +74,9 @@ export const useUserProfile = () => {
         throw error;
       }
 
-      setProfile((prev) => prev ? { ...prev, ...data } : data);
-      return { ...data, success: true, error: null };
+      // Ensure proper typing with UserProfile
+      setProfile(prev => prev ? { ...prev, ...(data as UserProfile) } : (data as UserProfile));
+      return { ...(data as UserProfile), success: true, error: null };
     } catch (err) {
       console.error('Error updating profile:', err);
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
@@ -100,6 +102,6 @@ export const useUserProfile = () => {
     updateProfile,
     updateProfileImage,
     refreshProfile: fetchProfile,
-    user // Add user to the return value to fix TypeScript errors
+    user
   };
 };
