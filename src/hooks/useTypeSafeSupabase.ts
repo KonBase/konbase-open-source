@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/database.types';
 
@@ -46,7 +45,7 @@ export type TableNames =
 
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
-  // Helper function for safe SELECT operations
+  // Helper function for safe SELECT operations - no generic type parameter
   const safeSelect = async (
     table: TableNames,
     columns: string = '*',
@@ -118,7 +117,7 @@ export const useTypeSafeSupabase = () => {
     }
   };
   
-  // Helper function for safe INSERT operations - simplify types to avoid excessive depth
+  // Helper function for safe INSERT operations - simplified to avoid excessive type depth
   const safeInsert = async (
     table: TableNames,
     data: Record<string, unknown> | Record<string, unknown>[]

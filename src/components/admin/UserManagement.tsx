@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -45,7 +46,8 @@ export function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await safeSelect<UserProfile>(
+      // Removed the type parameter from safeSelect
+      const { data, error } = await safeSelect(
         'profiles',
         'id, email, name, role, association_id, created_at'
       );
