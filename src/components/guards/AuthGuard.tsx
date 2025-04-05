@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
 
@@ -12,7 +12,7 @@ interface AuthGuardProps {
 }
 
 const AuthGuard = ({ children }: AuthGuardProps) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, userProfile } = useAuth();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -74,6 +74,12 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       }
     }
   }, [isLoading, isAuthenticated, user, toast]);
+
+  // Check if user has "guest" role and redirect to setup page
+  if (!isLoading && !isChecking && isAuthenticated && userProfile?.role === 'guest') {
+    logDebug('Redirecting guest user to setup page', { userId: user?.id, role: userProfile?.role }, 'info');
+    return <Navigate to="/setup" state={{ from: location }} replace />;
+  }
 
   if (isLoading || isChecking) {
     return (

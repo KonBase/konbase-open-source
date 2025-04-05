@@ -21,6 +21,7 @@ import Settings from './pages/settings/Settings';
 import NotFound from './pages/NotFound';
 import Unauthorized from './pages/error/Unauthorized';
 import AdminPanel from './pages/admin/AdminPanel';
+import SetupWizard from './pages/setup/SetupWizard';
 
 // Association Pages
 import AssociationProfile from './pages/association/AssociationProfile';
@@ -121,6 +122,11 @@ const App = () => {
                   
                   {/* Special routes */}
                   <Route path="/reset-password" element={<ResetPassword />} />
+                </Route>
+                
+                {/* Setup route - accessible to authenticated users */}
+                <Route element={<AuthGuard><MainLayout /></AuthGuard>}>
+                  <Route path="/setup" element={<SetupWizard />} />
                 </Route>
                 
                 {/* Protected routes with main layout */}

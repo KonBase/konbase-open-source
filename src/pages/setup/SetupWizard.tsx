@@ -11,13 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Users, Building, Loader2 } from 'lucide-react';
+import { Plus, Users, Building, Loader2, Key } from 'lucide-react';
+import { logDebug, handleError } from '@/utils/debug';
 
 const SetupWizard = () => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
+  const [isProcessingInvite, setIsProcessingInvite] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -26,6 +28,7 @@ const SetupWizard = () => {
     website: '',
     address: ''
   });
+  const [invitationCode, setInvitationCode] = useState('');
   const [userAssociations, setUserAssociations] = useState<any[]>([]);
   
   useEffect(() => {
@@ -100,10 +103,13 @@ const SetupWizard = () => {
         description: `${data.name} has been created successfully`
       });
       
-      // Update user profile with the association ID
+      // Update user profile with the association ID and role
       await supabase
         .from('profiles')
-        .update({ association_id: data.id })
+        .update({ 
+          association_id: data.id,
+          role: 'admin' // Promote from guest to admin
+        })
         .eq('id', user?.id);
       
       navigate('/dashboard');
@@ -121,11 +127,23 @@ const SetupWizard = () => {
   
   const handleJoinAssociation = async (associationId: string) => {
     try {
-      // Update user profile with the association ID
+      // Update user profile with the association ID and role
       await supabase
         .from('profiles')
-        .update({ association_id: associationId })
+        .update({ 
+          association_id: associationId,
+          role: 'member' // Promote from guest to member
+        })
         .eq('id', user?.id);
+      
+      // Add user as member to association
+      await supabase
+        .from('association_members')
+        .insert({
+          user_id: user?.id,
+          association_id: associationId,
+          role: 'member'
+        });
       
       toast({
         title: 'Association Joined',
@@ -143,27 +161,205 @@ const SetupWizard = () => {
     }
   };
   
+  const handleInvitationCode = async () => {
+    if (!invitationCode.trim()) {
+      toast({
+        title: 'Missing Code',
+        description: 'Please enter an invitation code',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setIsProcessingInvite(true);
+    
+    try {
+      // Check if code exists in association_invitations
+      const { data: invitation, error: invitationError } = await supabase
+        .from('association_invitations')
+        .select('*')
+        .eq('code', invitationCode.trim())
+        .single();
+      
+      if (invitationError || !invitation) {
+        toast({
+          title: 'Invalid Invitation Code',
+          description: 'The code you entered is invalid or has expired',
+          variant: 'destructive'
+        });
+        setIsProcessingInvite(false);
+        return;
+      }
+      
+      // Check if code is expired
+      if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
+        toast({
+          title: 'Expired Invitation Code',
+          description: 'This invitation code has expired',
+          variant: 'destructive'
+        });
+        setIsProcessingInvite(false);
+        return;
+      }
+      
+      // Use invitation role or default to member
+      const memberRole = invitation.role || 'member';
+      
+      // Add user to association with the role from the invitation
+      await supabase
+        .from('association_members')
+        .insert({
+          user_id: user?.id,
+          association_id: invitation.association_id,
+          role: memberRole
+        });
+      
+      // Update user profile with the association ID and role
+      await supabase
+        .from('profiles')
+        .update({ 
+          association_id: invitation.association_id,
+          role: memberRole // Set role from invitation
+        })
+        .eq('id', user?.id);
+      
+      // Get association name for the success message
+      const { data: association } = await supabase
+        .from('associations')
+        .select('name')
+        .eq('id', invitation.association_id)
+        .single();
+      
+      toast({
+        title: 'Association Joined',
+        description: `You have successfully joined ${association?.name || 'the association'} as a ${memberRole}`
+      });
+      
+      navigate('/dashboard');
+    } catch (error: any) {
+      handleError(error, 'SetupWizard.handleInvitationCode');
+      toast({
+        title: 'Failed to Process Invitation',
+        description: error.message || 'An error occurred while processing your invitation',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsProcessingInvite(false);
+    }
+  };
+  
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold">Welcome to KonBase</h1>
         <p className="text-muted-foreground">
-          Let's set up your association to get started
+          {userProfile?.role === 'guest' 
+            ? "You need to join or create an association to continue" 
+            : "Let's set up your association to get started"}
         </p>
       </div>
       
-      <Tabs defaultValue="create" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full">
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Create New Association
+      <Tabs defaultValue="invitation" className="w-full">
+        <TabsList className="grid grid-cols-3 w-full">
+          <TabsTrigger value="invitation" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            Use Invitation Code
           </TabsTrigger>
           <TabsTrigger value="join" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Join Existing Association
           </TabsTrigger>
+          <TabsTrigger value="create" className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Create New Association
+          </TabsTrigger>
         </TabsList>
+
+        {/* Invitation Code Tab */}
+        <TabsContent value="invitation" className="mt-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Enter the invitation code you received to join an association.
+                </p>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="invitationCode">Invitation Code</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="invitationCode"
+                      value={invitationCode}
+                      onChange={(e) => setInvitationCode(e.target.value)}
+                      placeholder="Enter your invitation code"
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleInvitationCode}
+                      disabled={isProcessingInvite || !invitationCode.trim()}
+                    >
+                      {isProcessingInvite ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        'Join'
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The invitation code determines which association you join and your role within it.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
+        {/* Join Existing Tab */}
+        <TabsContent value="join" className="mt-6">
+          <Card>
+            <CardContent className="pt-6">
+              {userAssociations && userAssociations.length > 0 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Select an association to join:
+                  </p>
+                  {userAssociations.map(association => (
+                    <Card key={association.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleJoinAssociation(association.id)}>
+                      <CardContent className="flex items-center gap-4 py-4">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Building className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{association.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {association.description || 'No description provided'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Associations Found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    You haven't been invited to any existing associations yet.
+                  </p>
+                  <p className="text-sm">
+                    You can create your own association using the "Create New Association" tab
+                    or use an invitation code if you have one.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Create New Tab */}
         <TabsContent value="create" className="mt-6">
           <Card>
             <CardContent className="pt-6">
@@ -259,55 +455,6 @@ const SetupWizard = () => {
                   )}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="join" className="mt-6">
-          <Card>
-            <CardContent className="pt-6">
-              {userAssociations && userAssociations.length > 0 ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Select an association to join:
-                  </p>
-                  {userAssociations.map(association => (
-                    <Card key={association.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleJoinAssociation(association.id)}>
-                      <CardContent className="flex items-center gap-4 py-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Building className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{association.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {association.description || 'No description provided'}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No Associations Found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    You haven't been invited to any existing associations yet.
-                  </p>
-                  <p className="text-sm">
-                    You can create your own association using the "Create New Association" tab
-                    or ask an administrator to invite you to their organization.
-                  </p>
-                </div>
-              )}
-              
-              <div className="w-full border-t mt-6 pt-4">
-                <p className="text-sm text-muted-foreground mb-2">Have an invitation code?</p>
-                <div className="flex gap-2">
-                  <Input placeholder="Enter invitation code" className="flex-1" />
-                  <Button variant="outline">Join</Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
