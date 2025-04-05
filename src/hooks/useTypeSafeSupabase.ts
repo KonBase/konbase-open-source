@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/lib/database.types';
 
 // Use direct values from the Supabase project
 const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
@@ -19,7 +19,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
 // Type for our Supabase client
 export type TypeSafeSupabaseClient = typeof supabase;
 
-// Define the table names explicitly from Database type
+// Define the table names explicitly as a union type
 type TableNames = keyof Database['public']['Tables'];
 
 // Create a hook for safe Supabase operations
@@ -96,10 +96,10 @@ export const useTypeSafeSupabase = () => {
     }
   };
   
-  // Helper function for safe INSERT operations
-  const safeInsert = async <T extends TableNames>(
-    table: T,
-    data: Database['public']['Tables'][T]['Insert'] | Database['public']['Tables'][T]['Insert'][]
+  // Helper function for safe INSERT operations - simplify the types to avoid excessive depth
+  const safeInsert = async (
+    table: TableNames,
+    data: Record<string, any> | Record<string, any>[]
   ) => {
     try {
       const result = await supabase.from(table).insert(data);
