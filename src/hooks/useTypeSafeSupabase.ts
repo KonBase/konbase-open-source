@@ -27,21 +27,24 @@ type TableNames =
   | 'requirements'
   | 'association_invitations';
 
+// Define a generic type for query options to avoid deep type instantiation
+interface QueryOptions {
+  column?: string;
+  value?: any;
+  limit?: number;
+  order?: {
+    column: string;
+    ascending?: boolean;
+  };
+}
+
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
   // Helper function for safe SELECT operations
   const safeSelect = async <T>(
     table: TableNames,
     columns: string = '*',
-    queryOptions?: { 
-      column?: string; 
-      value?: any; 
-      limit?: number; 
-      order?: { 
-        column: string; 
-        ascending?: boolean 
-      } 
-    }
+    queryOptions?: QueryOptions
   ) => {
     try {
       let query = supabase.from(table).select(columns);
