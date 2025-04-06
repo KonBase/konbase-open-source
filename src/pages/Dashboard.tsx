@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
@@ -28,7 +27,7 @@ interface AuditLog {
 }
 
 const Dashboard = () => {
-  const { currentAssociation, isLoading: associationLoading, error: associationError } = useAssociation();
+  const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const { user } = useAuth();
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<any>(null);
@@ -40,19 +39,16 @@ const Dashboard = () => {
     testEndpoint: 'https://www.google.com'
   });
   
-  // Log current state for debugging
   useEffect(() => {
     logDebug('Dashboard component state', {
       associationLoading,
-      associationError,
       user: user?.id,
       associationId: currentAssociation?.id,
       networkStatus: networkStatus.status,
       retryCount
     }, 'info');
-  }, [associationLoading, associationError, user, currentAssociation, networkStatus.status, retryCount]);
+  }, [associationLoading, user, currentAssociation, networkStatus.status, retryCount]);
   
-  // Use the enhanced query hook to efficiently fetch additional data
   const { 
     data: recentActivity, 
     isLoading: isLoadingActivity,
@@ -65,7 +61,6 @@ const Dashboard = () => {
       
       logDebug(`Fetching recent activity for association ${currentAssociation.id}`, null, 'info');
       
-      // Example query - adjust based on your schema
       return await supabase
         .from('audit_logs')
         .select('*')
@@ -76,7 +71,7 @@ const Dashboard = () => {
     },
     {
       enabled: !!currentAssociation?.id,
-      staleTime: 30000, // Cache data for 30 seconds
+      staleTime: 30000,
       onError: (error) => {
         logDebug('Error fetching recent activity', error, 'error');
         setLastError(error);
@@ -94,10 +89,8 @@ const Dashboard = () => {
     setIsDebugMode(prev => !prev);
   }, []);
 
-  // Centralized error handler
-  const error = associationError || activityError;
+  const error = activityError;
   
-  // Show loading state when data is being fetched
   if (associationLoading) {
     return (
       <div className="container mx-auto py-6">
@@ -119,7 +112,6 @@ const Dashboard = () => {
     );
   }
 
-  // Handle errors
   if (error) {
     return (
       <div className="container mx-auto py-6 space-y-4">
@@ -162,12 +154,10 @@ const Dashboard = () => {
     );
   }
 
-  // This calculation needs to be done after the loading check
-  const isHome = true; // We're on the dashboard home page
+  const isHome = true;
 
   const showLocationManager = () => {
     console.log('Location manager should open');
-    // Implementation would go here
   };
 
   return (
@@ -179,7 +169,6 @@ const Dashboard = () => {
           isHome={isHome} 
         />
 
-        {/* Main Dashboard Content */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
           <ErrorBoundary>
             <Card>
@@ -258,7 +247,6 @@ const Dashboard = () => {
           </ErrorBoundary>
         </div>
         
-        {/* Management Sections */}
         <ErrorBoundary>
           <AssociationManagementSection onShowLocationManager={showLocationManager} />
         </ErrorBoundary>
@@ -271,14 +259,12 @@ const Dashboard = () => {
           <CommunicationSection unreadNotifications={0} />
         </ErrorBoundary>
         
-        {/* Association Members Section */}
         <ErrorBoundary>
           <div className="py-6">
             <MemberManager minimal />
           </div>
         </ErrorBoundary>
         
-        {/* Debug Panel - Only shown in debug mode */}
         <div className="mt-8">
           <button 
             onClick={toggleDebugMode} 
