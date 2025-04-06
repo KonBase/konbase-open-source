@@ -67,7 +67,7 @@ export function useInventoryItems() {
         description: item.description,
         serialNumber: item.serial_number,
         barcode: item.barcode,
-        condition: item.condition,
+        condition: item.condition || 'unknown', // Ensure condition is never null or empty
         categoryId: item.category_id,
         locationId: item.location_id,
         isConsumable: item.is_consumable,
