@@ -15,23 +15,6 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-<<<<<<< HEAD
-interface SetupStepProps {
-  onSuccess?: () => void;
-}
-
-const SetupStep: React.FC<SetupStepProps> = ({ onSuccess, ...props }) => {
-  const handleComplete = () => {
-    if (onSuccess) onSuccess();
-  };
-
-  return (
-    <div>
-      {/* Add your rendering logic here */}
-    </div>
-  );
-};
-=======
 function AssociationFormWrapper() {
   const navigate = useNavigate();
   const { toast } = useToast();
