@@ -1,21 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/lib/database.types';
+import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
-
-// Define a simplified version of the Database type to avoid deep recursion
-type SimplifiedDatabase = {
-  public: {
-    Tables: Record<string, any>;
-    Views: Record<string, any>;
-    Functions: Record<string, any>;
-    Enums: Record<string, any>;
-  };
-};
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export interface SupabaseQueryOptions {
   column?: string;
@@ -28,22 +14,6 @@ export interface SupabaseQueryOptions {
 }
 
 export function useTypeSafeSupabase() {
-  const [supabase, setSupabase] = useState<SupabaseClient<SimplifiedDatabase> | null>(null);
-  
-  useEffect(() => {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Supabase environment variables not set');
-      return;
-    }
-    
-    const client = createClient<SimplifiedDatabase>(supabaseUrl, supabaseAnonKey);
-    setSupabase(client);
-    
-    return () => {
-      // No cleanup needed for Supabase client
-    };
-  }, []);
-
   /**
    * Safe select operation with error handling
    */
@@ -52,8 +22,6 @@ export function useTypeSafeSupabase() {
     columns: string = '*',
     options?: SupabaseQueryOptions
   ) => {
-    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
-    
     try {
       let query = supabase.from(table).select(columns);
       
@@ -88,8 +56,6 @@ export function useTypeSafeSupabase() {
     table: string,
     values: Record<string, any>
   ) => {
-    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
-    
     try {
       const { data, error } = await supabase.from(table).insert(values).select();
       
@@ -110,8 +76,6 @@ export function useTypeSafeSupabase() {
     values: Record<string, any>,
     filter: { column: string; value: any }
   ) => {
-    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
-    
     try {
       const { data, error } = await supabase
         .from(table)
@@ -135,8 +99,6 @@ export function useTypeSafeSupabase() {
     table: string,
     filter: { column: string; value: any }
   ) => {
-    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
-    
     try {
       const { data, error } = await supabase
         .from(table)

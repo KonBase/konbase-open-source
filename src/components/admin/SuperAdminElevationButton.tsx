@@ -53,9 +53,9 @@ export function SuperAdminElevationButton() {
       
       setIsDialogOpen(false);
       
-      // Refresh the page to update permissions
-      window.location.reload();
-    } catch (error) {
+      // Refresh the page to update permissions, but add a query param to show a success message
+      window.location.href = '/admin?elevation=success';
+    } catch (error: any) {
       console.error('Error during elevation:', error);
       toast({
         title: 'Elevation Failed',
@@ -69,7 +69,7 @@ export function SuperAdminElevationButton() {
 
   return (
     <>
-      <Button variant="destructive" onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
+      <Button variant="destructive" onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto whitespace-nowrap">
         <ShieldAlert className="mr-2 h-4 w-4" />
         Elevate to Super Admin
       </Button>
@@ -92,6 +92,7 @@ export function SuperAdminElevationButton() {
                 value={securityCode}
                 onChange={(e) => setSecurityCode(e.target.value)}
                 className="font-mono"
+                autoComplete="off"
               />
             </div>
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">

@@ -49,33 +49,39 @@ export function AuditLogViewer() {
       
       setTotalPages(Math.ceil((count || 0) / perPage));
       
-      // Get logs with user information
-      const { data, error } = await supabase
+      // Get logs with user information - fixed the join query
+      const { data: auditLogsData, error: logsError } = await supabase
         .from('audit_logs')
-        .select(`
-          *,
-          profiles:user_id (name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .range((page - 1) * perPage, page * perPage - 1);
       
-      if (error) throw error;
+      if (logsError) throw logsError;
       
-      // Format the logs with user information
-      const formattedLogs: AuditLog[] = data.map(log => {
-        const profileData = log.profiles as any;
-        return {
-          id: log.id,
-          action: log.action,
-          entity: log.entity,
-          entity_id: log.entity_id,
-          user_id: log.user_id,
-          changes: log.changes,
-          created_at: log.created_at,
-          ip_address: log.ip_address,
-          user_name: profileData?.name || 'Unknown User'
-        };
-      });
+      // Separately fetch user profiles for each log to avoid the relationship error
+      const formattedLogs: AuditLog[] = await Promise.all(
+        auditLogsData.map(async (log) => {
+          let userName = 'Unknown User';
+          
+          // Get user profile info if user_id exists
+          if (log.user_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name, email')
+              .eq('id', log.user_id)
+              .single();
+              
+            if (profileData) {
+              userName = profileData.name || profileData.email || 'Unknown User';
+            }
+          }
+          
+          return {
+            ...log,
+            user_name: userName
+          };
+        })
+      );
       
       setLogs(formattedLogs);
     } catch (error: any) {

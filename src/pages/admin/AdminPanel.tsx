@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserManagement } from '@/components/admin/UserManagement';
@@ -10,15 +10,35 @@ import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { SuperAdminElevationButton } from '@/components/admin/SuperAdminElevationButton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('users');
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
+  const { toast } = useToast();
   
   // Determine if the user has access to specific admin sections
   const canAccessSettings = hasRole('super_admin');
   const canAccessAuditLogs = hasRole('super_admin');
   const isSystemAdmin = hasRole('system_admin') && !hasRole('super_admin');
+  
+  // Effect to check for elevation success on page load (useful after page refreshes)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const elevationSuccess = urlParams.get('elevation');
+    
+    if (elevationSuccess === 'success') {
+      toast({
+        title: 'Super Admin Access Granted',
+        description: 'You now have super admin privileges',
+        variant: 'default',
+      });
+      
+      // Remove the query parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [toast]);
   
   return (
     <RoleGuard allowedRoles={['system_admin', 'super_admin']}>
