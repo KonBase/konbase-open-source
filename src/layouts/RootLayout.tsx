@@ -15,7 +15,8 @@ export default function RootLayout() {
   const location = useLocation();
   const { status, isOffline } = useNetworkStatus({
     showToasts: false,
-    testInterval: 60000 // Check connection every minute
+    testInterval: 60000, // Check connection every minute
+    testEndpoint: 'https://www.google.com' // Use a reliable public endpoint
   });
 
   // Add effect to show offline status

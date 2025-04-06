@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { logDebug } from '@/utils/debug';
 import { toast } from '@/components/ui/use-toast';
@@ -13,7 +14,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
   const { 
     showToasts = true, 
     onStatusChange,
-    testEndpoint = 'https://ceeoxorrfduotwfgmegx.supabase.co/rest/v1/',
+    testEndpoint = 'https://www.google.com',
     testInterval = 30000 // Default to 30 seconds to avoid excessive requests
   } = options;
   
@@ -88,6 +89,8 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
+      // Use a public endpoint like Google instead of Supabase REST API
+      // which requires authentication
       const response = await fetch(testEndpoint, { 
         method: 'HEAD',
         signal: controller.signal,
