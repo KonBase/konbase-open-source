@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
-import { Copy, Check, Loader2 } from 'lucide-react';
+import { Copy, Check, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import QRCode from 'qrcode';
 import { logDebug } from '@/utils/debug';
+import { isDebugModeEnabled } from '@/utils/debug';
 
 interface TwoFactorSetupProps {
   onVerified: (secret: string) => void;
@@ -30,6 +31,9 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showDebugInfo, setShowDebugInfo] = useState(isDebugModeEnabled());
   
   const { toast } = useToast();
 
@@ -37,11 +41,16 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
     try {
       setIsGenerating(true);
       setErrorMessage(null);
+      setSetupError(null);
+      setDebugInfo(null);
+      
+      logDebug("Starting 2FA setup", null, 'info');
       
       const { data, error } = await supabase.functions.invoke('generate-totp-secret');
       
       if (error) {
         logDebug("Error generating TOTP secret:", error, 'error');
+        setSetupError(`Error contacting server: ${error.message}`);
         throw error;
       }
       
@@ -49,13 +58,14 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
         const { secret, keyUri } = data;
         setSecret(secret);
         
-        logDebug('TOTP secret generated successfully', { secret, keyUri }, 'info');
+        logDebug('TOTP secret generated successfully', { secretLength: secret.length, keyUri }, 'info');
         
         try {
           const qrCodeImage = await QRCode.toDataURL(keyUri);
           setQrCode(qrCodeImage);
         } catch (err) {
-          console.error('Error generating QR code:', err);
+          logDebug('Error generating QR code:', err, 'error');
+          setSetupError('Failed to generate QR code. Please use the manual code instead.');
           toast({
             variant: "destructive",
             title: "Error generating QR code",
@@ -63,9 +73,10 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error setting up 2FA:', error);
-      setErrorMessage('Failed to set up 2FA. Please try again.');
+      setSetupError(`Failed to set up 2FA: ${error.message}`);
+      setErrorMessage(`Failed to set up 2FA. ${error.message}`);
       toast({
         variant: "destructive",
         title: "Error setting up 2FA",
@@ -104,13 +115,14 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
     try {
       setIsVerifying(true);
       setErrorMessage(null);
+      setSetupError(null);
       setVerificationAttempts(prev => prev + 1);
       
       // Clean up token input
-      const cleanToken = verificationCode.trim();
+      const cleanToken = verificationCode.trim().replace(/\s/g, '');
       
       logDebug("Verifying TOTP", { 
-        secret, 
+        secretLength: secret.length, 
         token: cleanToken, 
         tokenLength: cleanToken.length,
         attempt: verificationAttempts + 1
@@ -124,11 +136,15 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       });
       
       if (error) {
-        console.error("Verification API error:", error);
+        logDebug("Verification API error:", error, 'error');
+        setSetupError(`Verification API error: ${error.message}`);
         throw error;
       }
       
       logDebug("TOTP verification response", { data }, 'info');
+      
+      // Store server response for debugging
+      setDebugInfo(data);
       
       if (data && data.verified) {
         logDebug("TOTP verification successful", null, 'info');
@@ -140,16 +156,18 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
         });
       } else {
         setVerificationCode('');
+        setSetupError(`Verification failed. Please try a new code. ${data?.error || ''}`);
         toast({
           variant: "destructive",
           title: "Verification failed",
           description: "The verification code is incorrect or has expired. Please try again.",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying 2FA code:', error);
       setVerificationCode('');
-      setErrorMessage('Failed to verify code. Please try again with a new code.');
+      setSetupError(`Verification error: ${error.message}`);
+      setErrorMessage(`Failed to verify code. Please try again with a new code.`);
       toast({
         variant: "destructive",
         title: "Error verifying code",
@@ -167,6 +185,10 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
     }
   };
 
+  const toggleDebugInfo = () => {
+    setShowDebugInfo(prev => !prev);
+  };
+
   // Auto-start the setup process when the component mounts
   useEffect(() => {
     if (!qrCode && !secret && !isGenerating) {
@@ -182,14 +204,37 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
+      
+      {setupError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Setup Error
+          </AlertTitle>
+          <AlertDescription>{setupError}</AlertDescription>
+        </Alert>
+      )}
+      
       {qrCode ? (
         <>
           <div className="mb-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground">
+                Scan this QR code with your authenticator app
+              </p>
+              <Button variant="outline" size="sm" onClick={startSetup} disabled={isGenerating}>
+                <RefreshCw className="h-3 w-3 mr-2" />
+                Regenerate
+              </Button>
+            </div>
             <div className="flex justify-center mb-4">
-              <img src={qrCode} alt="QR Code for 2FA" className="border p-2 rounded-md" width="200" height="200" />
+              <img 
+                src={qrCode} 
+                alt="QR Code for 2FA" 
+                className="border p-4 rounded-md" 
+                width="200" 
+                height="200" 
+              />
             </div>
             <div className="flex flex-col space-y-2">
               <p className="text-sm text-muted-foreground">
@@ -225,6 +270,26 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
               />
             </div>
           </div>
+          
+          {isDebugModeEnabled() && (
+            <div className="mt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={toggleDebugInfo} 
+                className="text-xs"
+              >
+                {showDebugInfo ? "Hide Debug Info" : "Show Debug Info"}
+              </Button>
+              
+              {showDebugInfo && debugInfo && (
+                <div className="mt-2 p-2 bg-muted rounded-md text-xs font-mono overflow-x-auto">
+                  <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={onCancel}>
               Cancel
@@ -252,9 +317,21 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
               <span>Generating setup...</span>
             </div>
           ) : (
-            <Button onClick={startSetup} disabled={isGenerating}>
-              Retry Setup
-            </Button>
+            <div className="space-y-4">
+              <Alert variant="warning" className="mb-4">
+                <AlertTitle>Setup failed</AlertTitle>
+                <AlertDescription>
+                  {setupError || "Could not generate 2FA setup. Please try again."}
+                </AlertDescription>
+              </Alert>
+              <Button 
+                onClick={startSetup} 
+                disabled={isGenerating}
+                className="mx-auto block"
+              >
+                Retry Setup
+              </Button>
+            </div>
           )}
         </div>
       )}

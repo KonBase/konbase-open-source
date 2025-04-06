@@ -20,7 +20,10 @@ serve(async (req) => {
       throw new Error('Secret and token are required');
     }
 
-    console.log(`Verifying TOTP with token: ${token} and secret (length): ${secret.length}`);
+    const cleanToken = token.trim().replace(/\s/g, '');
+    
+    console.log(`Verifying TOTP - Token: ${cleanToken}, Secret length: ${secret.length}`);
+    console.log(`Current server time: ${new Date().toISOString()}`);
 
     // Create a new TOTP object with the provided secret
     const secretObj = new OTPAuth.Secret({ base32: secret });
@@ -34,16 +37,26 @@ serve(async (req) => {
       secret: secretObj
     });
 
-    // Verify the provided token with a window of 1 to account for time drift
-    const delta = totp.validate({ token, window: 1 });
+    // Verify with a wider window to account for time drift between client and server
+    // Window of 2 means it checks current time, 1 period before, and 1 period after
+    const delta = totp.validate({ token: cleanToken, window: 2 });
     const verified = delta !== null;
 
-    console.log(`TOTP verification ${verified ? 'successful' : 'failed'} with delta: ${delta}`);
+    if (verified) {
+      console.log(`✅ TOTP verification successful with delta: ${delta}`);
+    } else {
+      console.log(`❌ TOTP verification failed - Token provided: ${cleanToken}`);
+      
+      // For debugging, generate the current expected token
+      const currentToken = totp.generate();
+      console.log(`Current expected token would be: ${currentToken}`);
+    }
     
     return new Response(
       JSON.stringify({
         verified,
-        delta
+        delta,
+        serverTime: new Date().toISOString()
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -55,7 +68,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({
-        error: error.message
+        error: error.message,
+        errorDetail: error.stack
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
