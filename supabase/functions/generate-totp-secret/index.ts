@@ -1,67 +1,64 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import * as base32 from "https://deno.land/std@0.190.0/encoding/base32.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import * as OTPAuth from 'https://esm.sh/otpauth@9.2.1';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Create a Supabase client with the Auth context of the logged-in user
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
-
-    // Get the user from the request
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Get the current user from the authorization header
+    const authHeader = req.headers.get('authorization') || '';
+    if (!authHeader) {
+      throw new Error('Authorization header is required');
     }
 
-    // Generate a random secret
-    const buffer = new Uint8Array(20);
-    crypto.getRandomValues(buffer);
-    const secret = base32.encode(buffer).replace(/=/g, "").substring(0, 32);
+    // Generate a new TOTP secret
+    const secret = OTPAuth.Secret.generate(32);
+    
+    // Create a new TOTP object
+    const totp = new OTPAuth.TOTP({
+      issuer: 'KonBase',
+      label: 'KonBase Account',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret
+    });
 
-    // Create the issuer and URI for scanning
-    const issuer = "KonBase";
-    const account = user.email || user.id;
-    const keyUri = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
+    // Generate the provisioning URI for QR code
+    const keyUri = totp.toString();
 
+    console.log('TOTP secret generated successfully');
+    
     return new Response(
-      JSON.stringify({ 
-        secret,
+      JSON.stringify({
+        secret: secret.base32,
         keyUri
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
     );
   } catch (error) {
-    console.error("Error processing request:", error);
+    console.error('Error generating TOTP secret:', error.message);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        error: error.message
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      }
     );
   }
 });

@@ -1,140 +1,128 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Create a Supabase client with the Auth context of the logged-in user
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    // Get the request body
+    const { secret, recoveryKeys } = await req.json();
+    
+    if (!secret || !recoveryKeys || !Array.isArray(recoveryKeys) || recoveryKeys.length === 0) {
+      throw new Error('Secret and recovery keys are required');
+    }
+
+    // Get the JWT from the authorization header
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+
+    if (!token) {
+      throw new Error('Authorization token is required');
+    }
+
+    // Initialize the Supabase client with the service role key to bypass RLS
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
+        auth: {
+          persistSession: false,
+        }
       }
     );
 
-    // Get the user from the request
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Use the JWT to get the user ID
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !userData) {
+      throw new Error(userError?.message || 'Failed to get user data');
     }
 
-    // Get secret and recovery keys from request
-    const { secret, recoveryKeys } = await req.json();
+    const userId = userData.user.id;
 
-    // Validate input
-    if (!secret || !recoveryKeys || !Array.isArray(recoveryKeys) || recoveryKeys.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Invalid input" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`Setting up 2FA for user: ${user.id}`);
-    console.log(`Secret length: ${secret.length}, Recovery keys count: ${recoveryKeys.length}`);
-
-    try {
-      // First check if user_2fa table exists by querying its structure
-      const { error: tableCheckError } = await supabaseClient
-        .from('user_2fa')
-        .select('user_id')
-        .limit(1);
-        
-      if (tableCheckError) {
-        console.error("Table check error:", tableCheckError);
-        return new Response(
-          JSON.stringify({ error: "Database schema error: user_2fa table may not exist" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    } catch (schemaError) {
-      console.error("Schema validation error:", schemaError);
-    }
-
-    // Store 2FA information
-    const { error: insertError } = await supabaseClient
+    // Check if the user already has 2FA enabled
+    const { data: existing2FA, error: existingError } = await supabaseAdmin
       .from('user_2fa')
-      .upsert({
-        user_id: user.id,
-        totp_secret: secret,
-        recovery_keys: recoveryKeys,
-        used_recovery_keys: [],
-        last_used_at: new Date().toISOString()
-      });
-      
-    if (insertError) {
-      console.error("Error storing user 2FA data:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to store 2FA data", details: insertError }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new Error(`Error checking existing 2FA: ${existingError.message}`);
     }
 
-    console.log("2FA data stored successfully, updating profile");
+    // If 2FA is already set up for this user, update it, otherwise insert a new record
+    let dbOperation;
+    if (existing2FA) {
+      dbOperation = supabaseAdmin
+        .from('user_2fa')
+        .update({
+          totp_secret: secret,
+          recovery_keys: recoveryKeys,
+          used_recovery_keys: [],
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+    } else {
+      dbOperation = supabaseAdmin
+        .from('user_2fa')
+        .insert({
+          user_id: userId,
+          totp_secret: secret,
+          recovery_keys: recoveryKeys,
+          used_recovery_keys: []
+        });
+    }
 
-    // Update user profile to enable 2FA
-    const { error: updateError } = await supabaseClient
+    const { error: saveError } = await dbOperation;
+    
+    if (saveError) {
+      throw new Error(`Error saving 2FA data: ${saveError.message}`);
+    }
+
+    // Update the user's profile to indicate 2FA is enabled
+    const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ two_factor_enabled: true })
-      .eq('id', user.id);
-      
-    if (updateError) {
-      console.error("Error updating user profile:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to update profile", details: updateError }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      .eq('id', userId);
+
+    if (profileError) {
+      throw new Error(`Error updating profile: ${profileError.message}`);
     }
 
-    console.log("Profile updated successfully, adding audit log");
-
-    // Add an audit log
-    const { error: auditError } = await supabaseClient
-      .from('audit_logs')
-      .insert({
-        user_id: user.id,
-        action: 'enable_2fa',
-        entity: 'user_2fa',
-        entity_id: user.id,
-        changes: { two_factor_enabled: true }
-      });
-      
-    if (auditError) {
-      console.log("Non-critical error adding audit log:", auditError);
-      // Don't return error for audit log failures
-    }
-
-    console.log("2FA setup completed successfully for user:", user.id);
-
+    console.log('2FA setup completed successfully for user:', userId);
+    
     return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: true,
+        message: '2FA has been successfully enabled'
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
     );
   } catch (error) {
-    console.error("Error processing request:", error);
+    console.error('Error completing 2FA setup:', error.message);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      }
     );
   }
 });

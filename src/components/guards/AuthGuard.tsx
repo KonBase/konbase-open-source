@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
 import { saveCurrentPath, getLastVisitedPath } from '@/utils/session-utils';
 import { UserRoleType } from '@/types/user';
+import { useAssociation } from '@/contexts/AssociationContext';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -16,11 +16,45 @@ interface AuthGuardProps {
 
 const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
   const { isAuthenticated, isLoading, user, userProfile, hasRole } = useAuth();
+  const { currentAssociation, userAssociations, setCurrentAssociation, isLoading: associationLoading } = useAssociation();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [hasRequiredRole, setHasRequiredRole] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const selectFirstAssociationForAdmins = async () => {
+      if (
+        !associationLoading && 
+        userProfile && 
+        (userProfile.role === 'system_admin' || userProfile.role === 'super_admin') && 
+        !currentAssociation && 
+        userAssociations && 
+        userAssociations.length > 0
+      ) {
+        logDebug('Auto-selecting first association for admin user', { 
+          role: userProfile.role, 
+          associationName: userAssociations[0].name 
+        }, 'info');
+        
+        setCurrentAssociation(userAssociations[0]);
+      }
+    };
+
+    if (isAuthenticated && !isLoading && !isChecking && userProfile) {
+      selectFirstAssociationForAdmins();
+    }
+  }, [
+    userProfile, 
+    isAuthenticated, 
+    isLoading, 
+    isChecking, 
+    associationLoading, 
+    currentAssociation, 
+    userAssociations, 
+    setCurrentAssociation
+  ]);
 
   useEffect(() => {
     const checkEmailVerification = async () => {
@@ -40,7 +74,6 @@ const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
           return;
         }
         
-        // Check if email is verified from metadata
         const isVerified = data?.user?.email_confirmed_at || 
                           data?.user?.user_metadata?.email_verified || 
                           false;
@@ -61,7 +94,6 @@ const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
             variant: "destructive"
           });
           
-          // Sign out user with unverified email
           try {
             await supabase.auth.signOut();
             logDebug('Signed out unverified user', { email: user.email }, 'info');
@@ -76,14 +108,12 @@ const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
       }
     };
     
-    // Check if user has the required role
     const checkRoleAccess = () => {
       if (!userProfile || !requiredRoles || requiredRoles.length === 0) {
         setHasRequiredRole(true);
         return;
       }
 
-      // Check if user has any of the required roles
       const hasAccess = requiredRoles.some(role => hasRole(role));
       setHasRequiredRole(hasAccess);
 
@@ -101,7 +131,6 @@ const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
       }
     };
     
-    // Only check email verification if the user is logged in
     if (!isLoading) {
       logDebug('Auth state check complete', { isAuthenticated, userId: user?.id }, 'info');
       if (isAuthenticated && user) {
@@ -113,19 +142,14 @@ const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
     }
   }, [isLoading, isAuthenticated, user, toast, userProfile, requiredRoles, hasRole]);
 
-  // Save current path when location changes for authenticated users
   useEffect(() => {
     if (isAuthenticated && !isLoading && !isChecking && user) {
       saveCurrentPath(location.pathname);
     }
   }, [location.pathname, isAuthenticated, isLoading, isChecking, user]);
 
-  // Check if we're on the setup page - this prevents the infinite redirection loop
   const isSetupPage = location.pathname === '/setup';
 
-  // Check if user has "guest" role and redirect to setup page
-  // This is not in the check email verification flow because we want to redirect guests
-  // even if they are already email verified
   if (!isLoading && !isChecking && isAuthenticated && userProfile?.role === 'guest' && !isSetupPage) {
     logDebug('Redirecting guest user to setup page', { userId: user?.id, role: userProfile?.role }, 'info');
     return <Navigate to="/setup" state={{ from: location }} replace />;
@@ -141,7 +165,6 @@ const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
 
   if (!isAuthenticated) {
     logDebug('Redirecting unauthenticated user to login', { from: location.pathname }, 'info');
-    // Save the intended destination if it's not a public route
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 

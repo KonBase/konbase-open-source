@@ -1,1 +1,36 @@
+
 project_id = "ecvsnnfdaqjnbcpvxlly"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "https://api.supabase.com"
+
+[functions]
+[functions.generate-totp-secret]
+verify_jwt = true
+
+[functions.verify-totp]
+verify_jwt = true
+
+[functions.complete-2fa-setup]
+verify_jwt = true
+
+[functions.disable-2fa]
+verify_jwt = true
+
+[functions.generate-recovery-keys]
+verify_jwt = true
