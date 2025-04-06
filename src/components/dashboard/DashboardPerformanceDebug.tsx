@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { RefreshCw, Wifi, Database, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PerformanceMetrics from '@/utils/debug/performance-metrics';
 import { logDebug } from '@/utils/debug';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardPerformanceDebugProps {
   isVisible: boolean;
@@ -79,7 +79,7 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
     
     try {
       const start = performance.now();
-      await fetch('https://ceeoxorrfduotwfgmegx.supabase.co', { 
+      await fetch('https://ecvsnnfdaqjnbcpvxlly.supabase.co', { 
         method: 'HEAD',
         cache: 'no-cache',
         mode: 'no-cors' 

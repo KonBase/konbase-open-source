@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+cd c:\Users\Artur\Documents\konbase-1 && echo "-- Fix for infinite recursion in association_members policy
+DROP POLICY IF EXISTS \"Members can view their association members\" ON public.association_members;
+
+-- Replace it with a new policy that avoids the circular reference
+CREATE POLICY \"Members can view their association members\" 
+  ON public.association_members
+  FOR SELECT
+  USING (
+    user_id = auth.uid() OR
+    association_id IN (
+      SELECT association_id FROM public.profiles
+      WHERE id = auth.uid() AND association_id IS NOT NULL
+    )
+  );" > supabase/migrations/20250406_fix_association_members_policy.sql

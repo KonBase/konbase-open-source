@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -81,6 +80,17 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         });
 
       if (memberError) throw memberError;
+
+      // Update the user's profile to have admin role and link to association
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          role: 'admin',
+          association_id: associationData.id 
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
 
       // Create audit log entry
       await supabase.from('audit_logs').insert({
