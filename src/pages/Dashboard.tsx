@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
 import { useAssociation } from '@/contexts/AssociationContext';
@@ -7,11 +7,17 @@ import MemberManager from '@/components/association/MemberManager';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/lib/supabase';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
-import { Spinner } from '@/components/ui/spinner';
+import { Spinner, LoadingError } from '@/components/ui/spinner';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import CommunicationSection from '@/components/dashboard/CommunicationSection';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { logDebug } from '@/utils/debug';
+import DebugPanel from '@/utils/debug-panel';
+import useNetworkStatus from '@/hooks/useNetworkStatus';
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface AuditLog {
   id: string;
@@ -22,14 +28,43 @@ interface AuditLog {
 }
 
 const Dashboard = () => {
-  const { currentAssociation, isLoading: associationLoading } = useAssociation();
+  const { currentAssociation, isLoading: associationLoading, error: associationError } = useAssociation();
   const { user } = useAuth();
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState<any>(null);
+  const [isDebugMode, setIsDebugMode] = useState(false);
+  
+  const networkStatus = useNetworkStatus({
+    showToasts: true,
+    testInterval: 30000,
+    testEndpoint: 'https://www.google.com'
+  });
+  
+  // Log current state for debugging
+  useEffect(() => {
+    logDebug('Dashboard component state', {
+      associationLoading,
+      associationError,
+      user: user?.id,
+      associationId: currentAssociation?.id,
+      networkStatus: networkStatus.status,
+      retryCount
+    }, 'info');
+  }, [associationLoading, associationError, user, currentAssociation, networkStatus.status, retryCount]);
   
   // Use the enhanced query hook to efficiently fetch additional data
-  const { data: recentActivity, isLoading: isLoadingActivity } = useSupabaseQuery<AuditLog[]>(
-    ['recent-activity', currentAssociation?.id],
+  const { 
+    data: recentActivity, 
+    isLoading: isLoadingActivity,
+    error: activityError,
+    refetch: refetchActivity
+  } = useSupabaseQuery<AuditLog[]>(
+    ['recent-activity', currentAssociation?.id, retryCount],
     async () => {
       if (!currentAssociation?.id) return { data: [], error: null };
+      
+      logDebug(`Fetching recent activity for association ${currentAssociation.id}`, null, 'info');
+      
       // Example query - adjust based on your schema
       return await supabase
         .from('audit_logs')
@@ -41,15 +76,88 @@ const Dashboard = () => {
     },
     {
       enabled: !!currentAssociation?.id,
-      staleTime: 30000 // Cache data for 30 seconds
+      staleTime: 30000, // Cache data for 30 seconds
+      onError: (error) => {
+        logDebug('Error fetching recent activity', error, 'error');
+        setLastError(error);
+      }
     }
   );
 
+  const handleRetry = useCallback(() => {
+    logDebug('Manually retrying data fetch', null, 'info');
+    setRetryCount(count => count + 1);
+    refetchActivity();
+  }, [refetchActivity]);
+
+  const toggleDebugMode = useCallback(() => {
+    setIsDebugMode(prev => !prev);
+  }, []);
+
+  // Centralized error handler
+  const error = associationError || activityError;
+  
   // Show loading state when data is being fetched
   if (associationLoading) {
     return (
       <div className="container mx-auto py-6">
         <DashboardSkeleton />
+        {isDebugMode && (
+          <DebugPanel 
+            networkStatus={networkStatus.status}
+            testConnection={networkStatus.testConnection}
+            isTestingConnection={networkStatus.isTestingConnection}
+            lastTestedAt={networkStatus.lastTestedAt}
+            testResults={networkStatus.testResults}
+            userData={{ 
+              userId: user?.id,
+              associationId: currentAssociation?.id
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Handle errors
+  if (error) {
+    return (
+      <div className="container mx-auto py-6 space-y-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error loading dashboard</AlertTitle>
+          <AlertDescription>
+            There was a problem loading your dashboard data. Please try again.
+          </AlertDescription>
+        </Alert>
+        
+        <LoadingError 
+          error={error} 
+          retry={handleRetry} 
+        />
+        
+        <button 
+          onClick={toggleDebugMode} 
+          className="text-xs text-muted-foreground underline"
+        >
+          {isDebugMode ? 'Hide' : 'Show'} Debug Information
+        </button>
+        
+        {isDebugMode && (
+          <DebugPanel 
+            networkStatus={networkStatus.status}
+            testConnection={networkStatus.testConnection}
+            isTestingConnection={networkStatus.isTestingConnection}
+            lastTestedAt={networkStatus.lastTestedAt}
+            testResults={networkStatus.testResults}
+            userData={{ 
+              userId: user?.id,
+              associationId: currentAssociation?.id
+            }}
+            errorData={error}
+            onRetry={handleRetry}
+          />
+        )}
       </div>
     );
   }
@@ -73,76 +181,130 @@ const Dashboard = () => {
 
         {/* Main Dashboard Content */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
-          <Card>
-            <CardHeader>
-              <CardTitle>Association Overview</CardTitle>
-              <CardDescription>Current status of your association</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {currentAssociation ? (
-                  <>
-                    <p><span className="font-medium">Name:</span> {currentAssociation.name}</p>
-                    <p><span className="font-medium">Email:</span> {currentAssociation.contactEmail || 'Not provided'}</p>
-                    {currentAssociation.description && (
-                      <p><span className="font-medium">Description:</span> {currentAssociation.description}</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Manage your association details, members and equipment</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <ErrorBoundary>
+            <Card>
+              <CardHeader>
+                <CardTitle>Association Overview</CardTitle>
+                <CardDescription>Current status of your association</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {currentAssociation ? (
+                    <>
+                      <p><span className="font-medium">Name:</span> {currentAssociation.name}</p>
+                      <p><span className="font-medium">Email:</span> {currentAssociation.contactEmail || 'Not provided'}</p>
+                      {currentAssociation.description && (
+                        <p><span className="font-medium">Description:</span> {currentAssociation.description}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Manage your association details, members and equipment</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </ErrorBoundary>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest actions and events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {isLoadingActivity ? (
-                  <div className="flex justify-center">
-                    <Spinner size="sm" />
-                  </div>
-                ) : recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
-                  <ul className="space-y-2">
-                    {recentActivity.map((activity) => (
-                      <li key={activity.id} className="text-sm">
-                        <span className="font-medium">{activity.action}</span>: {activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No recent activities to display</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <ErrorBoundary>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Latest actions and events</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {isLoadingActivity ? (
+                    <div className="flex justify-center">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
+                    <ul className="space-y-2">
+                      {recentActivity.map((activity) => (
+                        <li key={activity.id} className="text-sm">
+                          <span className="font-medium">{activity.action}</span>: {activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No recent activities to display</p>
+                  )}
+                  
+                  {activityError && (
+                    <button 
+                      onClick={handleRetry}
+                      className="text-xs text-primary underline"
+                    >
+                      Error loading activities. Click to retry.
+                    </button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </ErrorBoundary>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks for fast access</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Quick action buttons will go here */}
-                <p className="text-sm text-muted-foreground">Access your most common tasks quickly</p>
-              </div>
-            </CardContent>
-          </Card>
+          <ErrorBoundary>
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Common tasks for fast access</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Quick action buttons will go here */}
+                  <p className="text-sm text-muted-foreground">Access your most common tasks quickly</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ErrorBoundary>
         </div>
         
         {/* Management Sections */}
-        <AssociationManagementSection onShowLocationManager={showLocationManager} />
-        <ConventionManagementSection />
-        <CommunicationSection unreadNotifications={0} />
+        <ErrorBoundary>
+          <AssociationManagementSection onShowLocationManager={showLocationManager} />
+        </ErrorBoundary>
+        
+        <ErrorBoundary>
+          <ConventionManagementSection />
+        </ErrorBoundary>
+        
+        <ErrorBoundary>
+          <CommunicationSection unreadNotifications={0} />
+        </ErrorBoundary>
         
         {/* Association Members Section */}
-        <div className="py-6">
-          <MemberManager minimal />
+        <ErrorBoundary>
+          <div className="py-6">
+            <MemberManager minimal />
+          </div>
+        </ErrorBoundary>
+        
+        {/* Debug Panel - Only shown in debug mode */}
+        <div className="mt-8">
+          <button 
+            onClick={toggleDebugMode} 
+            className="text-xs text-muted-foreground underline"
+          >
+            {isDebugMode ? 'Hide' : 'Show'} Debug Information
+          </button>
+          
+          {isDebugMode && (
+            <DebugPanel 
+              networkStatus={networkStatus.status}
+              testConnection={networkStatus.testConnection}
+              isTestingConnection={networkStatus.isTestingConnection}
+              lastTestedAt={networkStatus.lastTestedAt}
+              testResults={networkStatus.testResults}
+              userData={{ 
+                userId: user?.id,
+                associationId: currentAssociation?.id
+              }}
+              errorData={lastError}
+              onRetry={handleRetry}
+              requestInfo={{
+                retryCount,
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
