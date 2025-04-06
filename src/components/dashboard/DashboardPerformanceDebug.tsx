@@ -5,7 +5,7 @@ import { RefreshCw, Wifi, Database, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PerformanceMetrics from '@/utils/debug/performance-metrics';
 import { logDebug } from '@/utils/debug';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 
 interface DashboardPerformanceDebugProps {
   isVisible: boolean;
@@ -40,7 +40,6 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
   const [supabaseLatency, setSupabaseLatency] = useState<number | null>(null);
   const [hasWarnings, setHasWarnings] = useState(false);
   
-  // Calculate query time if available
   const queryTime = requestInfo?.requestTimestamp && requestInfo?.responseTimestamp
     ? requestInfo.responseTimestamp - requestInfo.requestTimestamp
     : null;

@@ -47,7 +47,6 @@ if (typeof window !== 'undefined') {
 // Get constants from the client
 const { SUPABASE_URL } = (() => {
   // Access the Supabase URL directly from the integrations file
-  // We're importing from @/integrations/supabase/client.ts which has the URL defined
   return {
     SUPABASE_URL: "https://ecvsnnfdaqjnbcpvxlly.supabase.co"
   };

@@ -14,7 +14,7 @@ const SetupStep: React.FC<SetupStepProps> = ({
 
   return (
     <div>
-      {/* Your existing component rendering logic */}
+      <button onClick={handleComplete}>Complete Setup</button>
     </div>
   );
 };

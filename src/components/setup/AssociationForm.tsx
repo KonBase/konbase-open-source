@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -54,21 +55,28 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
 
     setIsSubmitting(true);
     try {
-      // Insert the new association
+      // Insert the new association with safer error handling
       const { data: associationData, error: associationError } = await supabase
         .from('associations')
         .insert({
           name: values.name,
-          description: values.description,
+          description: values.description || null,
           contact_email: values.contact_email,
-          contact_phone: values.contact_phone,
-          website: values.website,
-          address: values.address,
+          contact_phone: values.contact_phone || null,
+          website: values.website || null,
+          address: values.address || null,
         })
         .select()
         .single();
 
-      if (associationError) throw associationError;
+      if (associationError) {
+        console.error('Error creating association:', associationError);
+        throw associationError;
+      }
+
+      if (!associationData || !associationData.id) {
+        throw new Error('No association data returned from server');
+      }
 
       // Add the current user as an admin member of the association
       const { error: memberError } = await supabase
@@ -79,7 +87,10 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
           role: 'admin',
         });
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('Error adding member to association:', memberError);
+        throw memberError;
+      }
 
       // Update the user's profile to have admin role and link to association
       const { error: profileError } = await supabase
@@ -90,7 +101,10 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         })
         .eq('id', user.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error updating user profile:', profileError);
+        throw profileError;
+      }
 
       // Create audit log entry
       await supabase.from('audit_logs').insert({
