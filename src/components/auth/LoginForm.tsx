@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { logDebug, handleError } from '@/utils/debug';
+import { getLastVisitedPath } from '@/utils/session-utils';
 
 const LoginForm = () => {
   const location = useLocation();
@@ -63,8 +64,9 @@ const LoginForm = () => {
         description: 'Welcome back to KonBase!',
       });
       
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Redirect to last visited path or the page they were trying to access
+      const from = location.state?.from || getLastVisitedPath();
+      navigate(from);
     } catch (error: any) {
       handleError(error, 'LoginForm.handleSubmit');
       toast({

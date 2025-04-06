@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,29 +23,35 @@ const MainLayout: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, navigate, location.pathname, isPublicPage]);
 
+  // Add meta viewport tag dynamically to ensure proper mobile display
+  useEffect(() => {
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      document.head.appendChild(meta);
+    }
+  }, []);
+
   // Show loading state
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // For profile and settings pages, just render the Outlet without header
-  if (isHeaderDisabledPage) {
-    return <Outlet />;
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden bg-background flex-col">
-      {isAuthenticated && <Header />}
-      
-      <main className="flex-1 overflow-auto p-4 md:p-6">
-        <Outlet />
+    <div className="flex min-h-screen flex-col">
+      {!isHeaderDisabledPage && <Header />}
+      <main className="flex-1">
+        <div className="container px-4 py-4 md:px-6 md:py-6">
+          <Outlet />
+        </div>
       </main>
-      
-      {isAuthenticated && <DashboardFooter />}
+      <DashboardFooter />
     </div>
   );
 };

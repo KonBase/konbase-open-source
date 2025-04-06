@@ -1,24 +1,36 @@
-
-import { Heart } from 'lucide-react';
+import React from 'react';
 import { Link } from 'react-router-dom';
+import { useMobileDetect } from '@/hooks/useMobileDetect';
 
-const DashboardFooter = () => {
-  const currentYear = new Date().getFullYear();
+const DashboardFooter: React.FC = () => {
+  const { isMobile } = useMobileDetect();
   
   return (
-    <footer className="mt-auto py-4 border-t text-sm text-center text-muted-foreground">
-      <p>
-        Copyright &copy; {currentYear} KonBase | Built with{" "}
-        <Heart className="inline h-4 w-4 text-red-500" /> by the{" "}
-        <a 
-          href="https://github.com/KonBase" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="underline hover:text-primary"
-        >
-          KonBase Community
-        </a>
-      </p>
+    <footer className="border-t py-4 bg-background">
+      <div className="container flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-center gap-2 text-sm text-muted-foreground">
+          <div>© {new Date().getFullYear()} KonBase</div>
+          {!isMobile && <span className="hidden md:inline">·</span>}
+          <div>Open Source Supply Chain Management</div>
+        </div>
+        
+        <div className={`flex gap-4 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+          <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+            Terms
+          </Link>
+          <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+            Privacy
+          </Link>
+          <a 
+            href="https://github.com/KonBase/KonBase" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            GitHub
+          </a>
+        </div>
+      </div>
     </footer>
   );
 };

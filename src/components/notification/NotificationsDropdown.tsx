@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
 import { logDebug } from '@/utils/debug';
+import { cn } from '@/utils/classnames';
 
 export function NotificationsDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -211,6 +212,7 @@ export function NotificationsDropdown() {
   };
   
   const unreadCount = notifications.filter(n => !n.read).length;
+  const isMobile = window.innerWidth < 768; // Simple mobile detection
   
   return (
     <DropdownMenu>
@@ -224,7 +226,7 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className={cn("w-80", isMobile && "w-[calc(100vw-40px)] max-w-[350px]")}>
         <DropdownMenuLabel className="flex justify-between items-center">
           <span>Notifications</span>
           {unreadCount > 0 && (
@@ -239,7 +241,7 @@ export function NotificationsDropdown() {
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup className="max-h-[400px] overflow-y-auto">
+        <DropdownMenuGroup className={cn("overflow-y-auto", isMobile ? "max-h-[50vh]" : "max-h-[400px]")}>
           {loading ? (
             <div className="p-4 text-center">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>

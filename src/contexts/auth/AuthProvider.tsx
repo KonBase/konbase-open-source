@@ -5,6 +5,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { toast } from '@/components/ui/use-toast';
 import { USER_ROLES, UserRoleType } from '@/types/user';
 import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
+import { saveSessionData, clearSessionData, getSavedSessionData } from '@/utils/session-utils';
 
 // Create the context with a default undefined value
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -109,6 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: profile?.email || supabaseUser.email || "",
       };
       
+      // Save session data for recovery
+      saveSessionData(session);
+      
       // Update all state at once
       setState({
         session,
@@ -189,6 +193,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear saved session data
+      clearSessionData();
       
       // Auth state change listener will handle state updates
     } catch (error: any) {

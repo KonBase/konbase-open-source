@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +5,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
+import { saveCurrentPath, getLastVisitedPath } from '@/utils/session-utils';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -83,6 +83,13 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     }
   }, [isLoading, isAuthenticated, user, toast]);
 
+  // Save current path when location changes for authenticated users
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && !isChecking && user) {
+      saveCurrentPath(location.pathname);
+    }
+  }, [location.pathname, isAuthenticated, isLoading, isChecking, user]);
+
   // Check if we're on the setup page - this prevents the infinite redirection loop
   const isSetupPage = location.pathname === '/setup';
 
@@ -104,8 +111,8 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
 
   if (!isAuthenticated) {
     logDebug('Redirecting unauthenticated user to login', { from: location.pathname }, 'info');
-    // Use replace to avoid back button issues
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Save the intended destination if it's not a public route
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   if (!isEmailVerified) {

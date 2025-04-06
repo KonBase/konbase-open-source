@@ -5,6 +5,7 @@ import { AssociationProvider } from './contexts/AssociationContext';
 import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SessionRecovery } from '@/components/SessionRecovery';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -136,6 +137,7 @@ const App = () => {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <AssociationProvider>
+              <SessionRecovery />
               <RouterProvider router={router} />
               <Toaster />
             </AssociationProvider>

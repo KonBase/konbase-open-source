@@ -1,12 +1,13 @@
-
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from '@/contexts/AuthContext';
+import { getLastVisitedPath } from '@/utils/session-utils';
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -14,7 +15,18 @@ const NotFound = () => {
       "404 Error: User attempted to access non-existent route:",
       location.pathname
     );
-  }, [location.pathname]);
+    
+    // If authenticated, try to redirect to last visited path 
+    if (isAuthenticated) {
+      const lastPath = getLastVisitedPath();
+      if (lastPath && lastPath !== location.pathname && lastPath !== '/404') {
+        console.log("Redirecting to last visited path:", lastPath);
+        setTimeout(() => {
+          navigate(lastPath, { replace: true });
+        }, 100);
+      }
+    }
+  }, [location.pathname, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4">

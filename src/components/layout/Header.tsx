@@ -1,9 +1,8 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, Settings, Shield, LogOut, Building2, ArrowLeft } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { User, Settings, Shield, Building2, ArrowLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,43 +10,36 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import { NotificationsDropdown } from '@/components/notification/NotificationsDropdown';
 import { AssociationSelector } from '@/components/admin/AssociationSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import LogoutButton from '../auth/LogoutButton';
+import { MobileNav } from '@/components/ui/MobileNav';
 
 export function Header() {
-  const { user, hasRole } = useAuth();
-  const { profile } = useUserProfile();
+  const { user, isAdmin } = useAuth();
   const { currentAssociation } = useAssociation();
   const location = useLocation();
+  const { profile } = useUserProfile();
   
-  // Extract user display values with fallbacks
-  const userName = user?.name || profile?.name || 'User';
-  const userEmail = user?.email || profile?.email || '';
-  const userInitial = userName && userName.length > 0 ? userName.charAt(0).toUpperCase() : 'U';
-  
-  // Check if we're on a page that's not the dashboard
-  const showBackToDashboard = location.pathname !== '/dashboard' && location.pathname !== '/';
-  
-  // Check if the user has admin role
-  const isAdmin = hasRole('system_admin') || hasRole('super_admin');
-  
+  const showBackToDashboard = location.pathname !== '/dashboard' && 
+                             !location.pathname.startsWith('/settings') && 
+                             !location.pathname.startsWith('/profile');
+
+  const userName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email || '';
+  const userInitial = userName[0]?.toUpperCase() || 'U';
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-      <div className="container flex h-14 items-center px-4">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <div className="md:hidden mr-2">
+          <MobileNav />
+        </div>
         
-        {/* Association info with back button */}
         {currentAssociation && (
           <div className="flex items-center gap-2 flex-1">
             {showBackToDashboard && (
@@ -66,13 +58,17 @@ export function Header() {
         
         <div className="flex justify-end items-center gap-4">
           {/* Association Selector */}
-          <AssociationSelector />
+          <div className="hidden md:block">
+            <AssociationSelector />
+          </div>
           
           {/* Notifications */}
           <NotificationsDropdown />
           
-          {/* Theme toggle */}
-          <ThemeToggle />
+          {/* Theme toggle - hide on mobile as it's in the mobile menu */}
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
           
           {/* User menu */}
           <DropdownMenu>
@@ -83,7 +79,7 @@ export function Header() {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{userName}</p>
