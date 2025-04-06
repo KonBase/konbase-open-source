@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -8,8 +7,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/auth';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Association name must be at least 2 characters.' }),
@@ -55,7 +54,6 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
 
     setIsSubmitting(true);
     try {
-      // Insert the new association with safer error handling
       const { data: associationData, error: associationError } = await supabase
         .from('associations')
         .insert({
@@ -78,7 +76,6 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         throw new Error('No association data returned from server');
       }
 
-      // Add the current user as an admin member of the association
       const { error: memberError } = await supabase
         .from('association_members')
         .insert({
@@ -92,7 +89,6 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         throw memberError;
       }
 
-      // Update the user's profile to have admin role and link to association
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -106,7 +102,6 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         throw profileError;
       }
 
-      // Create audit log entry
       await supabase.from('audit_logs').insert({
         action: 'create_association',
         entity: 'associations',
@@ -120,7 +115,6 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         description: `${values.name} has been successfully created.`,
       });
 
-      // Call the success callback if provided
       if (onSuccess) onSuccess();
     } catch (error: any) {
       console.error('Error creating association:', error);

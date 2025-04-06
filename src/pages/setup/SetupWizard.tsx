@@ -15,21 +15,6 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-function AssociationFormWrapper() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  const handleSuccess = () => {
-    toast({
-      title: "Association created",
-      description: "Your association has been created successfully. You'll be redirected to the dashboard."
-    });
-    navigate('/dashboard');
-  };
-
-  return <AssociationForm onSuccess={handleSuccess} />;
-}
-
 const SetupWizard = () => {
   const navigate = useNavigate();
   const { currentAssociation, isLoading } = useAssociation();
@@ -195,7 +180,7 @@ const SetupWizard = () => {
                 <CardTitle>Create New Association</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <AssociationFormWrapper />
+                <AssociationForm onSuccess={handleAssociationCreated} />
               </CardContent>
             </Card>
           </TabsContent>
