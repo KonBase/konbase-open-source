@@ -50,6 +50,27 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Setting up 2FA for user: ${user.id}`);
+    console.log(`Secret length: ${secret.length}, Recovery keys count: ${recoveryKeys.length}`);
+
+    try {
+      // First check if user_2fa table exists by querying its structure
+      const { error: tableCheckError } = await supabaseClient
+        .from('user_2fa')
+        .select('user_id')
+        .limit(1);
+        
+      if (tableCheckError) {
+        console.error("Table check error:", tableCheckError);
+        return new Response(
+          JSON.stringify({ error: "Database schema error: user_2fa table may not exist" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } catch (schemaError) {
+      console.error("Schema validation error:", schemaError);
+    }
+
     // Store 2FA information
     const { error: insertError } = await supabaseClient
       .from('user_2fa')
@@ -64,10 +85,12 @@ serve(async (req) => {
     if (insertError) {
       console.error("Error storing user 2FA data:", insertError);
       return new Response(
-        JSON.stringify({ error: "Failed to store 2FA data" }),
+        JSON.stringify({ error: "Failed to store 2FA data", details: insertError }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("2FA data stored successfully, updating profile");
 
     // Update user profile to enable 2FA
     const { error: updateError } = await supabaseClient
@@ -78,13 +101,15 @@ serve(async (req) => {
     if (updateError) {
       console.error("Error updating user profile:", updateError);
       return new Response(
-        JSON.stringify({ error: "Failed to update profile" }),
+        JSON.stringify({ error: "Failed to update profile", details: updateError }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log("Profile updated successfully, adding audit log");
+
     // Add an audit log
-    await supabaseClient
+    const { error: auditError } = await supabaseClient
       .from('audit_logs')
       .insert({
         user_id: user.id,
@@ -93,6 +118,13 @@ serve(async (req) => {
         entity_id: user.id,
         changes: { two_factor_enabled: true }
       });
+      
+    if (auditError) {
+      console.log("Non-critical error adding audit log:", auditError);
+      // Don't return error for audit log failures
+    }
+
+    console.log("2FA setup completed successfully for user:", user.id);
 
     return new Response(
       JSON.stringify({ success: true }),

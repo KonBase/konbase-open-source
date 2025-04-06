@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { logDebug } from '@/utils/debug';
 
 interface RecoveryKeyManagerProps {
   secret: string;
@@ -39,6 +40,8 @@ const RecoveryKeyManager: React.FC<RecoveryKeyManagerProps> = ({
       setIsGeneratingKeys(true);
       setErrorMessage(null);
       
+      logDebug('Generating recovery keys', null, 'info');
+      
       const { data, error } = await supabase.functions.invoke('generate-recovery-keys', {
         body: { count: 8 }
       });
@@ -47,10 +50,12 @@ const RecoveryKeyManager: React.FC<RecoveryKeyManagerProps> = ({
       
       if (data && data.keys) {
         setRecoveryKeys(data.keys);
+        logDebug('Recovery keys generated successfully', { keyCount: data.keys.length }, 'info');
       }
     } catch (error) {
       console.error('Error generating recovery keys:', error);
       setErrorMessage('Failed to generate recovery keys. Please try again.');
+      logDebug('Error generating recovery keys', error, 'error');
       toast({
         variant: "destructive",
         title: "Error generating recovery keys",
@@ -85,15 +90,25 @@ const RecoveryKeyManager: React.FC<RecoveryKeyManagerProps> = ({
       setIsEnabling(true);
       setErrorMessage(null);
       
-      const { error } = await supabase.functions.invoke('complete-2fa-setup', {
+      logDebug('Completing 2FA setup', { secretLength: secret.length, recoveryKeysCount: recoveryKeys.length }, 'info');
+      
+      const { data, error } = await supabase.functions.invoke('complete-2fa-setup', {
         body: { 
           secret,
           recoveryKeys
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error from complete-2fa-setup function:', error);
+        throw error;
+      }
       
+      if (data && !data.success) {
+        throw new Error(data.error || 'Unknown error');
+      }
+      
+      logDebug('2FA setup completed successfully', null, 'info');
       onComplete();
       
       toast({
@@ -102,11 +117,21 @@ const RecoveryKeyManager: React.FC<RecoveryKeyManagerProps> = ({
       });
     } catch (error) {
       console.error('Error completing 2FA setup:', error);
-      setErrorMessage('Failed to enable 2FA. Please try again.');
+      logDebug('Error completing 2FA setup', error, 'error');
+      
+      // Try to extract a more specific error message if available
+      let errorMsg = 'Failed to enable 2FA. Please try again.';
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMsg = (error as any).message || (error as any).error || errorMsg;
+      }
+      
+      setErrorMessage(errorMsg);
       toast({
         variant: "destructive",
         title: "Error enabling 2FA",
-        description: "There was a problem enabling 2FA for your account. Please try again.",
+        description: errorMsg,
       });
     } finally {
       setIsEnabling(false);
