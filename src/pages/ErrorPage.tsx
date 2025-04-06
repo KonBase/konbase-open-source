@@ -5,16 +5,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Bug, Home, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { logDebug } from '@/utils/debug';
 
 const ErrorPage: React.FC = () => {
   const error = useRouteError();
   
-  // Log error for debugging
-  React.useEffect(() => {
-    logDebug('Route error encountered', error, 'error');
-  }, [error]);
-
+  // Error details
   let errorMessage = 'An unknown error occurred';
   let errorStack = '';
   let errorCode = null;
@@ -33,10 +28,10 @@ const ErrorPage: React.FC = () => {
   } else if (error && typeof error === 'object') {
     // Vite or other object-based error
     if ('message' in error) {
-      errorMessage = String(error.message);
+      errorMessage = String((error as any).message);
     }
     if ('stack' in error) {
-      errorStack = String(error.stack);
+      errorStack = String((error as any).stack);
     }
   }
 

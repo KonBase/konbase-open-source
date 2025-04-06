@@ -14,7 +14,7 @@ import ErrorPage from './pages/ErrorPage';
 import Home from './pages/Index';
 
 // Layouts
-import RootLayout from './components/layout/RootLayout';
+import RootLayout from './layouts/RootLayout';
 
 // Core application with simplified routing
 const router = createBrowserRouter([
