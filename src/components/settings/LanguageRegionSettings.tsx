@@ -11,15 +11,13 @@ import { dateFormats, timeFormats } from '@/utils/dateTimeUtils';
 import { Globe, CalendarIcon, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const LanguageRegionSettings = () => {
   const { language, setLanguage, dateFormat, setDateFormat, timeFormat, setTimeFormat } = useTheme();
   const { toast } = useToast();
   const { isMobile } = useResponsive();
   const [isFormSaving, setIsFormSaving] = useState(false);
-  const [isLanguageOpen, setIsLanguageOpen] = useState(true);
-  const [isDateFormatOpen, setIsDateFormatOpen] = useState(true);
-  const [isTimeFormatOpen, setIsTimeFormatOpen] = useState(true);
 
   const savePreferences = async () => {
     setIsFormSaving(true);
@@ -53,108 +51,159 @@ const LanguageRegionSettings = () => {
         <CardDescription>Set your language and regional preferences</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Language Section */}
-        <Collapsible
-          open={isLanguageOpen}
-          onOpenChange={setIsLanguageOpen}
-          className="w-full border rounded-md p-2"
-        >
-          <div className="flex items-center justify-between">
-            <Label htmlFor="language" className="font-medium">Display Language</Label>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="p-1 h-auto">
-                {isLanguageOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          
-          <CollapsibleContent className="pt-2">
-            <Select 
-              value={language} 
-              onValueChange={setLanguage}
-            >
-              <SelectTrigger id="language" className="w-full">
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent>
-                {languages.map((lang) => (
-                  <SelectItem key={lang.code} value={lang.code}>
-                    {lang.name} {lang.nativeName !== lang.name && `(${lang.nativeName})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CollapsibleContent>
-        </Collapsible>
-        
-        {/* Date Format Section */}
-        <Collapsible
-          open={isDateFormatOpen}
-          onOpenChange={setIsDateFormatOpen}
-          className="w-full border rounded-md p-2"
-        >
-          <div className="flex items-center justify-between">
-            <Label htmlFor="date-format" className="font-medium flex items-center gap-1">
-              <CalendarIcon className="h-4 w-4" /> Date Format
-            </Label>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="p-1 h-auto">
-                {isDateFormatOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          
-          <CollapsibleContent className="pt-2">
-            <Select 
-              value={dateFormat} 
-              onValueChange={(value) => setDateFormat(value as any)}
-            >
-              <SelectTrigger id="date-format" className="w-full">
-                <SelectValue placeholder="Select date format" />
-              </SelectTrigger>
-              <SelectContent>
-                {dateFormats.map((format) => (
-                  <SelectItem key={format} value={format}>
-                    {format}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CollapsibleContent>
-        </Collapsible>
-        
-        {/* Time Format Section */}
-        <Collapsible
-          open={isTimeFormatOpen}
-          onOpenChange={setIsTimeFormatOpen}
-          className="w-full border rounded-md p-2"
-        >
-          <div className="flex items-center justify-between">
-            <Label htmlFor="time-format" className="font-medium flex items-center gap-1">
-              <Clock className="h-4 w-4" /> Time Format
-            </Label>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="p-1 h-auto">
-                {isTimeFormatOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          
-          <CollapsibleContent className="pt-2">
-            <Select 
-              value={timeFormat} 
-              onValueChange={(value) => setTimeFormat(value as any)}
-            >
-              <SelectTrigger id="time-format" className="w-full">
-                <SelectValue placeholder="Select time format" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="12">12-hour (AM/PM)</SelectItem>
-                <SelectItem value="24">24-hour</SelectItem>
-              </SelectContent>
-            </Select>
-          </CollapsibleContent>
-        </Collapsible>
+        {isMobile ? (
+          // Mobile view: Use accordion for better mobile UX
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="language">
+              <AccordionTrigger className="py-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span>Display Language</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-3 px-1">
+                <Select 
+                  value={language} 
+                  onValueChange={setLanguage}
+                >
+                  <SelectTrigger id="language" className="w-full">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        {lang.name} {lang.nativeName !== lang.name && `(${lang.nativeName})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="date-format">
+              <AccordionTrigger className="py-3">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  <span>Date Format</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-3 px-1">
+                <Select 
+                  value={dateFormat} 
+                  onValueChange={(value) => setDateFormat(value as any)}
+                >
+                  <SelectTrigger id="date-format" className="w-full">
+                    <SelectValue placeholder="Select date format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dateFormats.map((format) => (
+                      <SelectItem key={format} value={format}>
+                        {format}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="time-format">
+              <AccordionTrigger className="py-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Time Format</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-3 px-1">
+                <Select 
+                  value={timeFormat} 
+                  onValueChange={(value) => setTimeFormat(value as any)}
+                >
+                  <SelectTrigger id="time-format" className="w-full">
+                    <SelectValue placeholder="Select time format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12">12-hour (AM/PM)</SelectItem>
+                    <SelectItem value="24">24-hour</SelectItem>
+                  </SelectContent>
+                </Select>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        ) : (
+          // Desktop view: Use collapsible sections with more space
+          <>
+            <div className="space-y-4">
+              <div className="w-full border rounded-md p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="language" className="font-medium flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    Display Language
+                  </Label>
+                </div>
+                <Select 
+                  value={language} 
+                  onValueChange={setLanguage}
+                >
+                  <SelectTrigger id="language" className="w-full">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        {lang.name} {lang.nativeName !== lang.name && `(${lang.nativeName})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-full border rounded-md p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="date-format" className="font-medium flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Date Format
+                  </Label>
+                </div>
+                <Select 
+                  value={dateFormat} 
+                  onValueChange={(value) => setDateFormat(value as any)}
+                >
+                  <SelectTrigger id="date-format" className="w-full">
+                    <SelectValue placeholder="Select date format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dateFormats.map((format) => (
+                      <SelectItem key={format} value={format}>
+                        {format}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-full border rounded-md p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="time-format" className="font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Time Format
+                  </Label>
+                </div>
+                <Select 
+                  value={timeFormat} 
+                  onValueChange={(value) => setTimeFormat(value as any)}
+                >
+                  <SelectTrigger id="time-format" className="w-full">
+                    <SelectValue placeholder="Select time format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12">12-hour (AM/PM)</SelectItem>
+                    <SelectItem value="24">24-hour</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </>
+        )}
         
         <div className="flex justify-center pt-4">
           <Button 

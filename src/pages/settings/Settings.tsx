@@ -35,6 +35,7 @@ import AccessibilitySettings from '@/components/settings/AccessibilitySettings';
 import LanguageRegionSettings from '@/components/settings/LanguageRegionSettings';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useTranslation } from '@/utils/languageUtils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Settings = () => {
   const { profile, loading, refreshProfile } = useUserProfile();
@@ -45,6 +46,7 @@ const Settings = () => {
   
   const [isFormSaving, setIsFormSaving] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(() => isDebugModeEnabled());
+  const [activeTab, setActiveTab] = useState("account");
   
   const [notifications, setNotifications] = useState({
     email: true,
@@ -110,37 +112,37 @@ const Settings = () => {
       <div className="container mx-auto py-4 md:py-6 px-4 md:px-6 space-y-4 md:space-y-6">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("Settings")}</h1>
         
-        <Tabs defaultValue="account" className="w-full">
-          <div className="overflow-x-auto pb-2">
-            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-3' : 'md:grid-cols-6'} mb-4 min-w-max`}>
-              <TabsTrigger value="account" className="flex items-center gap-2">
+        <Tabs defaultValue="account" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <ScrollArea className="w-full pb-3" orientation="horizontal">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 mb-4 min-w-max">
+              <TabsTrigger value="account" className="flex items-center gap-1 md:gap-2">
                 <User className="h-4 w-4" />
                 <span className={isMobile ? "text-xs" : ""}>{t("Account")}</span>
               </TabsTrigger>
-              <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <TabsTrigger value="appearance" className="flex items-center gap-1 md:gap-2">
                 <Moon className="h-4 w-4" />
                 <span className={isMobile ? "text-xs" : ""}>{t("Appearance")}</span>
               </TabsTrigger>
-              <TabsTrigger value="accessibility" className="flex items-center gap-2">
+              <TabsTrigger value="accessibility" className="flex items-center gap-1 md:gap-2">
                 <Accessibility className="h-4 w-4" />
                 <span className={isMobile ? "text-xs" : ""}>{t("Accessibility")}</span>
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <TabsTrigger value="notifications" className="flex items-center gap-1 md:gap-2">
                 <Bell className="h-4 w-4" />
                 <span className={isMobile ? "text-xs" : ""}>{t("Notifications")}</span>
               </TabsTrigger>
-              <TabsTrigger value="security" className="flex items-center gap-2">
+              <TabsTrigger value="security" className="flex items-center gap-1 md:gap-2">
                 <Shield className="h-4 w-4" />
                 <span className={isMobile ? "text-xs" : ""}>{t("Security")}</span>
               </TabsTrigger>
-              <TabsTrigger value="language" className="flex items-center gap-2">
+              <TabsTrigger value="language" className="flex items-center gap-1 md:gap-2">
                 <Globe className="h-4 w-4" />
                 <span className={isMobile ? "text-xs" : ""}>{t("Language")}</span>
               </TabsTrigger>
             </TabsList>
-          </div>
+          </ScrollArea>
           
-          <TabsContent value="account">
+          <TabsContent value="account" className="mt-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -196,7 +198,7 @@ const Settings = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="appearance">
+          <TabsContent value="appearance" className="mt-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -211,27 +213,27 @@ const Settings = () => {
                   <div className="grid grid-cols-3 gap-2">
                     <Button 
                       variant={theme === 'light' ? 'default' : 'outline'} 
-                      className="flex flex-col items-center justify-center gap-1 h-20 md:h-24"
+                      className="flex flex-col items-center justify-center gap-1 p-2 h-20"
                       onClick={() => setTheme('light')}
                     >
-                      <Sun className="h-5 w-5 md:h-6 md:w-6" />
-                      <span className={isMobile ? "text-xs" : ""}>{t("Light")}</span>
+                      <Sun className="h-5 w-5" />
+                      <span className="text-xs md:text-sm">{t("Light")}</span>
                     </Button>
                     <Button 
                       variant={theme === 'dark' ? 'default' : 'outline'} 
-                      className="flex flex-col items-center justify-center gap-1 h-20 md:h-24"
+                      className="flex flex-col items-center justify-center gap-1 p-2 h-20"
                       onClick={() => setTheme('dark')}
                     >
-                      <Moon className="h-5 w-5 md:h-6 md:w-6" />
-                      <span className={isMobile ? "text-xs" : ""}>{t("Dark")}</span>
+                      <Moon className="h-5 w-5" />
+                      <span className="text-xs md:text-sm">{t("Dark")}</span>
                     </Button>
                     <Button 
                       variant={theme === 'system' ? 'default' : 'outline'} 
-                      className="flex flex-col items-center justify-center gap-1 h-20 md:h-24"
+                      className="flex flex-col items-center justify-center gap-1 p-2 h-20"
                       onClick={() => setTheme('system')}
                     >
-                      <Laptop className="h-5 w-5 md:h-6 md:w-6" />
-                      <span className={isMobile ? "text-xs" : ""}>{t("System")}</span>
+                      <Laptop className="h-5 w-5" />
+                      <span className="text-xs md:text-sm">{t("System")}</span>
                     </Button>
                   </div>
                 </div>
@@ -239,11 +241,11 @@ const Settings = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="accessibility">
+          <TabsContent value="accessibility" className="mt-2">
             <AccessibilitySettings />
           </TabsContent>
           
-          <TabsContent value="notifications">
+          <TabsContent value="notifications" className="mt-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -253,7 +255,7 @@ const Settings = () => {
                 <CardDescription>{t("Configure how you receive notifications")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <Label htmlFor="email-notifications">{t("Email Notifications")}</Label>
                     <p className="text-sm text-muted-foreground">
@@ -267,7 +269,7 @@ const Settings = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <Label htmlFor="push-notifications">{t("Push Notifications")}</Label>
                     <p className="text-sm text-muted-foreground">
@@ -284,7 +286,7 @@ const Settings = () => {
                 <Separator />
                 <h3 className="text-sm font-medium pt-2">{t("Notification Categories")}</h3>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <Label className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
@@ -300,7 +302,7 @@ const Settings = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <Label htmlFor="convention-reminders">{t("Convention Reminders")}</Label>
                     <p className="text-sm text-muted-foreground">
@@ -314,7 +316,7 @@ const Settings = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <Label htmlFor="inventory-alerts">{t("Inventory Alerts")}</Label>
                     <p className="text-sm text-muted-foreground">
@@ -328,7 +330,7 @@ const Settings = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <Label htmlFor="app-updates">{t("Product Updates")}</Label>
                     <p className="text-sm text-muted-foreground">
@@ -342,14 +344,14 @@ const Settings = () => {
                   />
                 </div>
                 
-                <Button className={isMobile ? "w-full" : ""}>
+                <Button className="w-full md:w-auto">
                   {t("Save Notification Settings")}
                 </Button>
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="security">
+          <TabsContent value="security" className="mt-2">
             <div className="grid gap-4 md:gap-6">
               <TwoFactorAuth />
               
@@ -375,7 +377,7 @@ const Settings = () => {
                     <Input id="confirm-password" type="password" />
                   </div>
                   
-                  <Button className={isMobile ? "w-full" : ""}>
+                  <Button className="w-full md:w-auto">
                     {t("Update Password")}
                   </Button>
                 </CardContent>
@@ -391,22 +393,22 @@ const Settings = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">{t("Current Device")}</p>
                         <p className="text-xs text-muted-foreground">{t("Chrome on Windows • Active now")}</p>
                       </div>
-                      <span className="text-xs bg-primary/10 text-primary rounded px-2 py-1">{t("Current")}</span>
+                      <span className="text-xs bg-primary/10 text-primary rounded px-2 py-1 w-fit">{t("Current")}</span>
                     </div>
                     
                     <Separator />
                     
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">{t("Mobile App")}</p>
                         <p className="text-xs text-muted-foreground">{t("iOS • Last active 2 days ago")}</p>
                       </div>
-                      <Button variant="ghost" size="sm">{t("Sign out")}</Button>
+                      <Button variant="ghost" size="sm" className="w-fit">{t("Sign out")}</Button>
                     </div>
                     
                     <Button variant="outline" className="w-full">{t("Sign out of all devices")}</Button>
@@ -416,7 +418,7 @@ const Settings = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="language">
+          <TabsContent value="language" className="mt-2">
             <LanguageRegionSettings />
           </TabsContent>
         </Tabs>
