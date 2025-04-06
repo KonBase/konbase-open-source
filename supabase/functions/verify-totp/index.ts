@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { TOTP } from "https://deno.land/x/totp@1.0.1/mod.ts";
+import * as OTPAuth from "https://esm.sh/otpauth@9.2.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,13 +52,21 @@ serve(async (req) => {
     }
 
     try {
-      // Create TOTP instance with the provided secret
-      const totp = new TOTP(secret);
+      // Create TOTP instance with the provided secret using OTPAuth library
+      const totp = new OTPAuth.TOTP({
+        issuer: "KonBase",
+        label: user.email || user.id,
+        algorithm: "SHA1",
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(secret)
+      });
       
-      // Verify token
-      const verified = totp.verify(token);
+      // Verify token - delta 1 allows for 30 seconds before/after
+      const delta = totp.validate({ token, window: 1 });
+      const verified = delta !== null;
       
-      console.log("TOTP verification result:", verified);
+      console.log(`TOTP verification for user ${user.id}: ${verified ? 'successful' : 'failed'}`);
       
       return new Response(
         JSON.stringify({ verified }),

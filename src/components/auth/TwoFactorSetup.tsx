@@ -8,6 +8,7 @@ import { Copy, Check, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import QRCode from 'qrcode';
+import { logDebug } from '@/utils/debug';
 
 interface TwoFactorSetupProps {
   onVerified: (secret: string) => void;
@@ -28,6 +29,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [verificationAttempts, setVerificationAttempts] = useState(0);
   
   const { toast } = useToast();
 
@@ -46,6 +48,8 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       if (data && data.secret) {
         const { secret, keyUri } = data;
         setSecret(secret);
+        
+        logDebug('TOTP secret generated successfully', { secret }, 'info');
         
         try {
           const qrCodeImage = await QRCode.toDataURL(keyUri);
@@ -100,8 +104,9 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
     try {
       setIsVerifying(true);
       setErrorMessage(null);
+      setVerificationAttempts(prev => prev + 1);
       
-      console.log("Verifying TOTP with secret:", secret, "and token:", verificationCode);
+      logDebug("Verifying TOTP", { secret, token: verificationCode, attempt: verificationAttempts + 1 }, 'info');
       
       const { data, error } = await supabase.functions.invoke('verify-totp', {
         body: { 
@@ -115,7 +120,10 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
         throw error;
       }
       
+      logDebug("TOTP verification response", { data }, 'info');
+      
       if (data && data.verified) {
+        logDebug("TOTP verification successful", null, 'info');
         onVerified(secret);
         
         toast({
@@ -123,6 +131,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
           description: "Your verification code is correct. Please save your recovery keys.",
         });
       } else {
+        setVerificationCode('');
         toast({
           variant: "destructive",
           title: "Verification failed",
@@ -131,6 +140,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       }
     } catch (error) {
       console.error('Error verifying 2FA code:', error);
+      setVerificationCode('');
       setErrorMessage('Failed to verify code. Please try again with a new code.');
       toast({
         variant: "destructive",
@@ -142,12 +152,12 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
     }
   };
 
-  // Handle OTP input completion
-  useEffect(() => {
+  // Only auto-verify when manually submitted, not on every change
+  const handleManualVerify = () => {
     if (verificationCode.length === 6 && secret) {
       verifyAndEnable();
     }
-  }, [verificationCode]);
+  };
 
   return (
     <div className="space-y-4">
@@ -204,7 +214,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button onClick={verifyAndEnable} disabled={verificationCode.length !== 6 || isVerifying}>
+            <Button onClick={handleManualVerify} disabled={verificationCode.length !== 6 || isVerifying}>
               {isVerifying ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
