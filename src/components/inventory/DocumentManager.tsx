@@ -57,6 +57,7 @@ interface Document {
   uploaded_by: string;
   created_at: string;
   updated_at: string;
+  item_name?: string;
 }
 
 interface Item {
@@ -113,7 +114,7 @@ const DocumentManager = () => {
       
       const formattedDocuments: Document[] = data.map(doc => ({
         ...doc,
-        item_name: doc.items.name
+        item_name: doc.items?.name
       }));
       
       setDocuments(formattedDocuments);
