@@ -2,9 +2,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
+import { useState, useCallback } from 'react';
 
 // Implement a custom hook for fetching dashboard activity data
-export const useDashboardActivity = () => {
+export const useDashboardActivity = (currentAssociation: any) => {
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState<any>(null);
+  const [requestTimestamp, setRequestTimestamp] = useState<number | null>(null);
+  const [responseTimestamp, setResponseTimestamp] = useState<number | null>(null);
+
   // Query to fetch recent activity data
   const { 
     data: activityData, 
@@ -12,33 +18,51 @@ export const useDashboardActivity = () => {
     isLoading: activityLoading, 
     refetch: refetchActivity 
   } = useQuery({
-    queryKey: ['dashboard-activity'],
+    queryKey: ['dashboard-activity', currentAssociation?.id],
     queryFn: async () => {
       try {
         // Log the query start
-        logDebug('Fetching dashboard activity', null, 'info');
+        setRequestTimestamp(Date.now());
+        logDebug('Fetching dashboard activity', {associationId: currentAssociation?.id}, 'info');
+        
+        // Skip query if no association is selected
+        if (!currentAssociation?.id) {
+          logDebug('No association selected, skipping activity fetch', null, 'info');
+          return [];
+        }
         
         // Fetch recent activity data (last 30 days)
         const { data: activityData, error: activityError } = await supabase
           .from('audit_logs')
           .select('*')
+          .eq('entity', 'association')
+          .eq('entity_id', currentAssociation.id)
           .order('created_at', { ascending: false })
           .limit(10);
         
-        if (activityError) throw activityError;
+        setResponseTimestamp(Date.now());
+        
+        if (activityError) {
+          setLastError(activityError);
+          throw activityError;
+        }
         
         return activityData;
       } catch (error) {
+        setResponseTimestamp(Date.now());
+        setLastError(error);
         handleError(error, 'useDashboardActivity.fetchActivity');
         throw error;
       }
     },
     staleTime: 60000, // 1 minute
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    enabled: !!currentAssociation?.id,
+    retry: 1, // Limit retries to prevent excessive queries
   });
   
   // Safe getter for activity data with error checking
-  const safeRecentActivity = () => {
+  const safeRecentActivity = useCallback(() => {
     if (activityError) {
       logDebug('Error fetching recent activity', activityError, 'error');
       return [];
@@ -50,12 +74,31 @@ export const useDashboardActivity = () => {
     }
     
     return [];
-  };
+  }, [activityData, activityError]);
+  
+  // Function to handle retry with tracking
+  const handleRetry = useCallback(() => {
+    logDebug('Manually retrying activity fetch', {retryCount: retryCount + 1}, 'info');
+    setRetryCount(prev => prev + 1);
+    setRequestTimestamp(Date.now());
+    setResponseTimestamp(null);
+    return refetchActivity();
+  }, [refetchActivity, retryCount]);
   
   return {
-    activityData: safeRecentActivity(),
+    activityData,
     activityError,
     activityLoading,
-    refetchActivity
+    refetchActivity,
+    handleRetry,
+    retryCount,
+    lastError,
+    safeRecentActivity,
+    isLoadingActivity: activityLoading,
+    requestInfo: {
+      requestTimestamp,
+      responseTimestamp,
+      retryCount
+    }
   };
 };

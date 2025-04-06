@@ -32,6 +32,11 @@ interface DashboardContentProps {
   networkStatus: any;
   lastError: any;
   retryCount: number;
+  loadTime?: number;
+  requestInfo?: {
+    requestTimestamp?: number | null;
+    responseTimestamp?: number | null;
+  };
 }
 
 const DashboardContent: React.FC<DashboardContentProps> = ({
@@ -46,7 +51,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   toggleDebugMode,
   networkStatus,
   lastError,
-  retryCount
+  retryCount,
+  loadTime,
+  requestInfo
 }) => {
   const isHome = true;
 
@@ -96,6 +103,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           lastError={lastError}
           handleRetry={handleRetry}
           retryCount={retryCount}
+          loadTime={loadTime}
+          requestInfo={requestInfo}
         />
       </div>
     </div>
