@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
 import { useState, useCallback } from 'react';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 // Implement a custom hook for fetching dashboard activity data
 export const useDashboardActivity = (currentAssociation: any) => {
@@ -10,6 +11,10 @@ export const useDashboardActivity = (currentAssociation: any) => {
   const [lastError, setLastError] = useState<any>(null);
   const [requestTimestamp, setRequestTimestamp] = useState<number | null>(null);
   const [responseTimestamp, setResponseTimestamp] = useState<number | null>(null);
+  const { profile } = useUserProfile();
+  
+  // Is the user an admin
+  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin';
 
   // Query to fetch recent activity data
   const { 
@@ -32,13 +37,15 @@ export const useDashboardActivity = (currentAssociation: any) => {
         }
         
         // Fetch recent activity data (last 30 days)
-        const { data: activityData, error: activityError } = await supabase
+        let query = supabase
           .from('audit_logs')
           .select('*')
           .eq('entity', 'association')
           .eq('entity_id', currentAssociation.id)
           .order('created_at', { ascending: false })
           .limit(10);
+        
+        const { data: activityData, error: activityError } = await query;
         
         setResponseTimestamp(Date.now());
         
@@ -56,7 +63,7 @@ export const useDashboardActivity = (currentAssociation: any) => {
       }
     },
     staleTime: 60000, // 1 minute
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: isAdmin, // Only auto-refresh for admins
     enabled: !!currentAssociation?.id,
     retry: 1, // Limit retries to prevent excessive queries
   });

@@ -11,6 +11,8 @@ import DashboardDebugPanel from '@/components/dashboard/DashboardDebugPanel';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
 import { useAssociationMembers } from '@/hooks/useAssociationMembers';
+import { useToast } from '@/components/ui/use-toast';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface AuditLog {
   id: string;
@@ -58,13 +60,26 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
 }) => {
   const isHome = true;
   const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(currentAssociation?.id || '');
-
+  const { toast } = useToast();
+  const { profile } = useUserProfile();
+  
   // Fetch members when the component mounts or when the association changes
   useEffect(() => {
     if (currentAssociation?.id) {
       fetchMembers();
     }
   }, [currentAssociation?.id, fetchMembers]);
+
+  // Show a toast when in debug mode to indicate loading time
+  useEffect(() => {
+    if (isDebugMode && loadTime && loadTime > 0) {
+      toast({
+        title: "Dashboard loaded",
+        description: `Loading time: ${loadTime}ms`,
+        variant: "default",
+      });
+    }
+  }, [isDebugMode, loadTime, toast]);
 
   return (
     <div className="min-h-screen bg-background">

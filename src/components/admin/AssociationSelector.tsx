@@ -31,8 +31,9 @@ export function AssociationSelector() {
   const [adminAssociations, setAdminAssociations] = useState<Association[]>([]);
   const navigate = useNavigate();
   
+  // Only fetch admin associations if the user has the appropriate role
   useEffect(() => {
-    if (profile?.role === 'super_admin' || profile?.role === 'system_admin' || profile?.role === 'admin') {
+    if (profile?.role === 'super_admin' || profile?.role === 'system_admin') {
       fetchAdminAssociations();
     }
   }, [profile]);
@@ -82,13 +83,12 @@ export function AssociationSelector() {
   // Ensure userAssociations is always an array (default to empty array if undefined)
   const safeUserAssociations = userAssociations || [];
   
-  // Combine user associations and admin associations for super admins/admins
-  const displayedAssociations = (profile?.role === 'super_admin' || profile?.role === 'system_admin' || profile?.role === 'admin') 
+  // Combine user associations and admin associations for super admins
+  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin';
+  const displayedAssociations = isAdmin 
     ? [...safeUserAssociations, ...adminAssociations] 
     : safeUserAssociations;
     
-  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin' || profile?.role === 'admin';
-  
   const handleSelectAssociation = (association: Association) => {
     try {
       setCurrentAssociation(association);
