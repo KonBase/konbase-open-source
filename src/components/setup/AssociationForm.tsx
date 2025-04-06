@@ -1,61 +1,118 @@
 
-import React from 'react';
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useAssociation } from '@/contexts/AssociationContext';
-import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/auth';
 
-// Schema for association creation form
-const associationSchema = z.object({
-  name: z.string().min(3, { message: 'Association name must be at least 3 characters' }),
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Association name must be at least 2 characters.' }),
   description: z.string().optional(),
-  contactEmail: z.string().email({ message: 'Please enter a valid email address' }),
-  contactPhone: z.string().optional(),
-  website: z.string().url({ message: 'Please enter a valid URL' }).optional().or(z.literal('')),
+  contact_email: z.string().email({ message: 'Please enter a valid email address.' }),
+  contact_phone: z.string().optional(),
+  website: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   address: z.string().optional(),
 });
 
-type AssociationFormValues = z.infer<typeof associationSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
-export interface AssociationFormProps {
-  onSuccess?: () => Promise<void> | void;
+interface AssociationFormProps {
+  onSuccess?: () => void;
 }
 
-const AssociationForm: React.FC<AssociationFormProps> = ({ onSuccess }) => {
-  const { createAssociation, isLoading } = useAssociation();
-  
-  const form = useForm<AssociationFormValues>({
-    resolver: zodResolver(associationSchema),
+const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       description: '',
-      contactEmail: '',
-      contactPhone: '',
+      contact_email: user?.email || '',
+      contact_phone: '',
       website: '',
       address: '',
     },
   });
 
-  const onSubmit = async (values: AssociationFormValues) => {
+  const handleSubmit = async (values: FormValues) => {
+    if (!user) {
+      toast({
+        title: 'Authentication error',
+        description: 'You must be logged in to create an association.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const newAssociation = await createAssociation(values);
-      
-      if (newAssociation && onSuccess) {
-        await onSuccess();
-      }
-    } catch (error) {
-      console.error('Failed to create association:', error);
+      // Insert the new association
+      const { data: associationData, error: associationError } = await supabase
+        .from('associations')
+        .insert({
+          name: values.name,
+          description: values.description,
+          contact_email: values.contact_email,
+          contact_phone: values.contact_phone,
+          website: values.website,
+          address: values.address,
+        })
+        .select()
+        .single();
+
+      if (associationError) throw associationError;
+
+      // Add the current user as an admin member of the association
+      const { error: memberError } = await supabase
+        .from('association_members')
+        .insert({
+          association_id: associationData.id,
+          user_id: user.id,
+          role: 'admin',
+        });
+
+      if (memberError) throw memberError;
+
+      // Create audit log entry
+      await supabase.from('audit_logs').insert({
+        action: 'create_association',
+        entity: 'associations',
+        entity_id: associationData.id,
+        user_id: user.id,
+        changes: values,
+      });
+
+      toast({
+        title: 'Association created',
+        description: `${values.name} has been successfully created.`,
+      });
+
+      // Call the success callback if provided
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      console.error('Error creating association:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create association. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -69,7 +126,7 @@ const AssociationForm: React.FC<AssociationFormProps> = ({ onSuccess }) => {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="description"
@@ -77,78 +134,79 @@ const AssociationForm: React.FC<AssociationFormProps> = ({ onSuccess }) => {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="Describe your association" {...field} />
+                <Textarea
+                  placeholder="Briefly describe your association"
+                  className="resize-none"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        
-        <FormField
-          control={form.control}
-          name="contactEmail"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Contact Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="contact@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="contactPhone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Contact Phone (optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="+1 123 456 7890" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="website"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Website (optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Address (optional)</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Address" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating...
-            </>
-          ) : (
-            'Create Association'
-          )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="contact_email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contact Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="contact@example.com" type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="contact_phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contact Phone (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="+1 (555) 123-4567" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="website"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Website (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="https://example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Address (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="123 Main St, City, Country" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating...' : 'Create Association'}
         </Button>
       </form>
     </Form>

@@ -8,16 +8,22 @@ import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
 import AssociationForm from '@/components/setup/AssociationForm';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function AssociationFormWrapper() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const handleSuccess = () => {
-    // Implement the success handler logic here
-    // For example: setStep(step + 1);
+    toast({
+      title: "Association created",
+      description: "Your association has been created successfully. You'll be redirected to the dashboard."
+    });
+    navigate('/dashboard');
   };
 
   return <AssociationForm onSuccess={handleSuccess} />;

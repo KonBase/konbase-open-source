@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -40,34 +39,21 @@ export const useAssociationMembers = (associationId: string) => {
       logDebug('Fetching association members', { associationId });
       
       const { data, error } = await supabase
-        .from('association_members')
-        .select(`
-          id, 
-          user_id, 
-          association_id, 
-          role, 
-          created_at,
-          profiles:user_id(id, name, email, profile_image)
-        `)
+        .from('members_with_profiles') // Using the view we created
+        .select('*')
         .eq('association_id', associationId);
         
       if (error) throw error;
       
       // Transform the data to match our interface
       const transformedMembers = data.map(member => {
-        // Handle profile data safely
-        let profile: ProfileData | undefined = undefined;
-        
-        if (member.profiles) {
-          // Ensure profiles is treated as an object, not an array
-          const profileData = member.profiles as any;
-          profile = {
-            id: profileData.id || '',
-            name: profileData.name || '',
-            email: profileData.email || '',
-            profile_image: profileData.profile_image,
-          };
-        }
+        // Create profile data from the view data
+        const profile: ProfileData = {
+          id: member.user_id,
+          name: member.name || '',
+          email: member.email || '',
+          profile_image: member.profile_image,
+        };
         
         return {
           id: member.id,
