@@ -9,7 +9,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       profiles: {
@@ -428,6 +428,80 @@ export type Database = {
           }
         ]
       }
+      equipment_sets: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          association_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          association_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          association_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_sets_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      equipment_set_items: {
+        Row: {
+          id: string
+          set_id: string
+          item_id: string
+          quantity: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          set_id: string
+          item_id: string
+          quantity: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          set_id?: string
+          item_id?: string
+          quantity?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_set_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_set_items_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_sets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       items: {
         Row: {
           id: string
@@ -612,80 +686,6 @@ export type Database = {
           }
         ]
       }
-      equipment_sets: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          association_id: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          association_id: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          association_id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "equipment_sets_association_id_fkey"
-            columns: ["association_id"]
-            isOneToOne: false
-            referencedRelation: "associations"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      equipment_set_items: {
-        Row: {
-          id: string
-          set_id: string
-          item_id: string
-          quantity: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          set_id: string
-          item_id: string
-          quantity: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          set_id?: string
-          item_id?: string
-          quantity?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "equipment_set_items_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "equipment_set_items_set_id_fkey"
-            columns: ["set_id"]
-            isOneToOne: false
-            referencedRelation: "equipment_sets"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       notifications: {
         Row: {
           id: string
@@ -772,5 +772,5 @@ export type Database = {
   }
 }
 
-// Fix the export conflict
+// Use a named export to avoid conflicts
 export type { Database }
