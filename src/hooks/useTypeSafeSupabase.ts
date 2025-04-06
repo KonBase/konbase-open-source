@@ -2,8 +2,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
+import { Database } from '@/lib/database.types';
+import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
-export interface SupabaseQueryOptions {
+// Define available tables from our database schema to provide better type safety
+type Tables = keyof Database['public']['Tables'];
+
+export interface SupabaseQueryOptions<T extends Tables> {
   column?: string;
   value?: any;
   order?: {
@@ -17,10 +22,10 @@ export function useTypeSafeSupabase() {
   /**
    * Safe select operation with error handling
    */
-  const safeSelect = async (
-    table: string,
+  const safeSelect = async <T extends Tables>(
+    table: T,
     columns: string = '*',
-    options?: SupabaseQueryOptions
+    options?: SupabaseQueryOptions<T>
   ) => {
     try {
       let query = supabase.from(table).select(columns);
@@ -52,9 +57,9 @@ export function useTypeSafeSupabase() {
   /**
    * Safe insert operation with error handling
    */
-  const safeInsert = async (
-    table: string,
-    values: Record<string, any>
+  const safeInsert = async <T extends Tables>(
+    table: T,
+    values: Database['public']['Tables'][T]['Insert']
   ) => {
     try {
       const { data, error } = await supabase.from(table).insert(values).select();
@@ -71,9 +76,9 @@ export function useTypeSafeSupabase() {
   /**
    * Safe update operation with error handling
    */
-  const safeUpdate = async (
-    table: string,
-    values: Record<string, any>,
+  const safeUpdate = async <T extends Tables>(
+    table: T,
+    values: Database['public']['Tables'][T]['Update'],
     filter: { column: string; value: any }
   ) => {
     try {
@@ -95,8 +100,8 @@ export function useTypeSafeSupabase() {
   /**
    * Safe delete operation with error handling
    */
-  const safeDelete = async (
-    table: string,
+  const safeDelete = async <T extends Tables>(
+    table: T,
     filter: { column: string; value: any }
   ) => {
     try {
