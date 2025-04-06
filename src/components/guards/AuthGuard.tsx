@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,16 +7,19 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
 import { saveCurrentPath, getLastVisitedPath } from '@/utils/session-utils';
+import { UserRoleType } from '@/types/user';
 
 interface AuthGuardProps {
   children: React.ReactNode;
+  requiredRoles?: UserRoleType[];
 }
 
-const AuthGuard = ({ children }: AuthGuardProps) => {
-  const { isAuthenticated, isLoading, user, userProfile } = useAuth();
+const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
+  const { isAuthenticated, isLoading, user, userProfile, hasRole } = useAuth();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [hasRequiredRole, setHasRequiredRole] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,16 +76,42 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
       }
     };
     
+    // Check if user has the required role
+    const checkRoleAccess = () => {
+      if (!userProfile || !requiredRoles || requiredRoles.length === 0) {
+        setHasRequiredRole(true);
+        return;
+      }
+
+      // Check if user has any of the required roles
+      const hasAccess = requiredRoles.some(role => hasRole(role));
+      setHasRequiredRole(hasAccess);
+
+      if (!hasAccess) {
+        logDebug('Access denied - insufficient role', { 
+          userRole: userProfile.role,
+          requiredRoles 
+        }, 'warn');
+        
+        toast({
+          title: "Access Denied",
+          description: "You don't have sufficient permissions to access this area.",
+          variant: "destructive"
+        });
+      }
+    };
+    
     // Only check email verification if the user is logged in
     if (!isLoading) {
       logDebug('Auth state check complete', { isAuthenticated, userId: user?.id }, 'info');
       if (isAuthenticated && user) {
         checkEmailVerification();
+        checkRoleAccess();
       } else {
         setIsChecking(false);
       }
     }
-  }, [isLoading, isAuthenticated, user, toast]);
+  }, [isLoading, isAuthenticated, user, toast, userProfile, requiredRoles, hasRole]);
 
   // Save current path when location changes for authenticated users
   useEffect(() => {
@@ -120,7 +150,16 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Navigate to="/login" state={{ emailVerification: true }} replace />;
   }
 
-  logDebug('User authenticated and email verified, rendering protected content', { userId: user?.id }, 'info');
+  if (!hasRequiredRole && requiredRoles && requiredRoles.length > 0) {
+    logDebug('Redirecting user due to insufficient role', { 
+      userRole: userProfile?.role,
+      requiredRoles
+    }, 'info');
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  logDebug('User authenticated, email verified, and has required role - rendering protected content', 
+    { userId: user?.id, role: userProfile?.role }, 'info');
   return <>{children}</>;
 };
 

@@ -1,3 +1,4 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Key, Plus, Copy } from 'lucide-react';
@@ -6,11 +7,10 @@ import { useNavigate } from 'react-router-dom';
 import SetupHeader from '@/components/setup/SetupHeader';
 import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
 import AssociationForm from '@/components/setup/AssociationForm';
-import SetupStep from '@/components/setup/SetupStep';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -129,7 +129,7 @@ const SetupWizard = () => {
     setSetupCompleted(true);
   };
 
-  const handleSetupStepComplete = () => {
+  const handleContinueToDashboard = () => {
     setSetupCompleted(true);
   };
   
@@ -201,10 +201,15 @@ const SetupWizard = () => {
           </TabsContent>
         </Tabs>
       )}
-      <SetupStep 
-        onSuccess={handleSetupStepComplete}
-        className="mt-6"
-      />
+      <div className="mt-6">
+        <Button 
+          variant="outline" 
+          onClick={handleContinueToDashboard}
+          className="mt-4"
+        >
+          Complete Setup
+        </Button>
+      </div>
     </div>
   );
 };
