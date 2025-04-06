@@ -8,12 +8,13 @@ import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
 import AssociationForm from '@/components/setup/AssociationForm';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+<<<<<<< HEAD
 interface SetupStepProps {
   onSuccess?: () => void;
 }
@@ -29,6 +30,22 @@ const SetupStep: React.FC<SetupStepProps> = ({ onSuccess, ...props }) => {
     </div>
   );
 };
+=======
+function AssociationFormWrapper() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const handleSuccess = () => {
+    toast({
+      title: "Association created",
+      description: "Your association has been created successfully. You'll be redirected to the dashboard."
+    });
+    navigate('/dashboard');
+  };
+
+  return <AssociationForm onSuccess={handleSuccess} />;
+}
+>>>>>>> f321c7f6ea0d5776311e5460b58ce3793162401b
 
 const SetupWizard = () => {
   const navigate = useNavigate();
@@ -37,8 +54,8 @@ const SetupWizard = () => {
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
+  const { toast } = useToast();
   
-  // Redirect if user already has an association or when setup is completed
   useEffect(() => {
     if (!isLoading && (currentAssociation || setupCompleted)) {
       toast({
@@ -47,16 +64,14 @@ const SetupWizard = () => {
       });
       navigate('/dashboard');
     }
-  }, [currentAssociation, isLoading, setupCompleted, navigate]);
+  }, [currentAssociation, isLoading, setupCompleted, navigate, toast]);
   
-  // Update user role to 'admin' when creating an association
   const updateUserRole = async () => {
     if (!user) return;
     
     try {
       setIsUpdatingRole(true);
       
-      // First update the profile table
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ role: 'admin' })
@@ -64,7 +79,6 @@ const SetupWizard = () => {
         
       if (profileError) throw profileError;
       
-      // Create audit log for the role update
       await supabase
         .from('audit_logs')
         .insert({
@@ -84,22 +98,19 @@ const SetupWizard = () => {
     }
   };
 
-  // Generate invitation code for others to join
   const generateInvitationCode = async () => {
     if (!currentAssociation || !user) return;
 
     try {
-      // Generate a random code
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Save it to the database
       const { error } = await supabase
         .from('association_invitations')
         .insert({
           code,
           association_id: currentAssociation.id,
           role: 'member',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         });
       
       if (error) throw error;
@@ -126,7 +137,6 @@ const SetupWizard = () => {
     }
   };
   
-  // Handlers for successful setup
   const handleAssociationCreated = async () => {
     await updateUserRole();
     setSetupCompleted(true);
@@ -181,7 +191,6 @@ const SetupWizard = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Invitation Code Tab */}
           <TabsContent value="invitation" className="mt-6">
             <Card>
               <CardHeader>
@@ -193,17 +202,13 @@ const SetupWizard = () => {
             </Card>
           </TabsContent>
           
-          {/* Create New Tab */}
           <TabsContent value="create" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Create New Association</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <AssociationForm onSuccess={async () => {
-                  await handleAssociationCreated();
-                  await generateInvitationCode();
-                }} />
+                <AssociationFormWrapper />
               </CardContent>
             </Card>
           </TabsContent>

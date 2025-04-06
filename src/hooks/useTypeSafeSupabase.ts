@@ -1,218 +1,164 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/lib/database.types';
-import { logDebug, handleError } from '@/utils/debug';
+import { useState, useEffect } from 'react';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/lib/database.types';
+import { handleError, logDebug } from '@/utils/debug';
 
-// Type for our Supabase client
-export type TypeSafeSupabaseClient = typeof supabase;
+// Define a simplified version of the Database type to avoid deep recursion
+type SimplifiedDatabase = {
+  public: {
+    Tables: Record<string, any>;
+    Views: Record<string, any>;
+    Functions: Record<string, any>;
+    Enums: Record<string, any>;
+  };
+};
 
-// Define the table names explicitly as a union type of all available tables
-export type TableNames = keyof Database['public']['Tables'];
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create a hook for safe Supabase operations
-export const useTypeSafeSupabase = () => {
-  // Helper function for safe SELECT operations with proper typing
-  const safeSelect = async <T = any>(
-    table: TableNames,
-    columns: string = '*',
-    queryOptions?: { 
-      column?: string; 
-      value?: any; 
-      limit?: number; 
-      order?: { 
-        column: string; 
-        ascending?: boolean 
-      } 
+export interface SupabaseQueryOptions {
+  column?: string;
+  value?: any;
+  order?: {
+    column: string;
+    ascending?: boolean;
+  };
+  limit?: number;
+}
+
+export function useTypeSafeSupabase() {
+  const [supabase, setSupabase] = useState<SupabaseClient<SimplifiedDatabase> | null>(null);
+  
+  useEffect(() => {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase environment variables not set');
+      return;
     }
+    
+    const client = createClient<SimplifiedDatabase>(supabaseUrl, supabaseAnonKey);
+    setSupabase(client);
+    
+    return () => {
+      // No cleanup needed for Supabase client
+    };
+  }, []);
+
+  /**
+   * Safe select operation with error handling
+   */
+  const safeSelect = async (
+    table: string,
+    columns: string = '*',
+    options?: SupabaseQueryOptions
   ) => {
+    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
+    
     try {
       let query = supabase.from(table).select(columns);
       
-      if (queryOptions?.column && queryOptions?.value !== undefined) {
-        query = query.eq(queryOptions.column, queryOptions.value);
+      if (options?.column && options?.value !== undefined) {
+        query = query.eq(options.column, options.value);
       }
       
-      if (queryOptions?.limit) {
-        query = query.limit(queryOptions.limit);
+      if (options?.order) {
+        const { column, ascending = true } = options.order;
+        query = query.order(column, { ascending });
       }
       
-      if (queryOptions?.order) {
-        query = query.order(
-          queryOptions.order.column, 
-          { ascending: queryOptions.order.ascending ?? true }
-        );
+      if (options?.limit) {
+        query = query.limit(options.limit);
       }
       
-      const result = await query;
+      const { data, error } = await query;
       
-      if (result.error) {
-        // Log the specific error for debugging
-        logDebug(`Supabase error in safeSelect for ${table}:`, result.error, 'error');
-        
-        // For service unavailable errors, provide a more specific error
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Supabase service temporarily unavailable. Please try again later.',
-              code: '503',
-              details: result.error.message
-            }
-          };
-        }
-        
-        return result;
-      }
+      if (error) throw error;
       
-      return result;
+      return { data, error: null };
     } catch (error) {
-      // Handle network errors like timeouts or connection failures
-      logDebug(`Error in safeSelect for ${table}:`, error, 'error');
-      return { 
-        data: null, 
-        error: { 
-          message: 'Network or service error. Please check your connection and try again.',
-          details: error instanceof Error ? error.message : String(error),
-          originalError: error
-        } 
-      };
+      handleError(error, `safeSelect.${table}`);
+      return { data: null, error };
     }
   };
 
-  // Helper function for safe UPDATE operations with enhanced error handling
-  const safeUpdate = async <T = any>(
-    table: TableNames,
-    updateData: Record<string, unknown>,
-    condition: { column: string; value: any }
+  /**
+   * Safe insert operation with error handling
+   */
+  const safeInsert = async (
+    table: string,
+    values: Record<string, any>
   ) => {
+    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
+    
     try {
-      const result = await supabase
+      const { data, error } = await supabase.from(table).insert(values).select();
+      
+      if (error) throw error;
+      
+      return { data, error: null };
+    } catch (error) {
+      handleError(error, `safeInsert.${table}`);
+      return { data: null, error };
+    }
+  };
+
+  /**
+   * Safe update operation with error handling
+   */
+  const safeUpdate = async (
+    table: string,
+    values: Record<string, any>,
+    filter: { column: string; value: any }
+  ) => {
+    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
+    
+    try {
+      const { data, error } = await supabase
         .from(table)
-        .update(updateData)
-        .eq(condition.column, condition.value);
+        .update(values)
+        .eq(filter.column, filter.value)
+        .select();
       
-      if (result.error) {
-        logDebug(`Supabase error in safeUpdate for ${table}:`, result.error, 'error');
-        
-        // Handle specific service unavailable errors
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Supabase service temporarily unavailable. Please try again later.',
-              code: '503',
-              details: result.error.message
-            }
-          };
-        }
-        
-        return result;
-      }
+      if (error) throw error;
       
-      return result;
+      return { data, error: null };
     } catch (error) {
-      logDebug(`Error in safeUpdate for ${table}:`, error, 'error');
-      return { 
-        data: null, 
-        error: { 
-          message: 'Network or service error. Please check your connection and try again.',
-          details: error instanceof Error ? error.message : String(error),
-          originalError: error
-        } 
-      };
+      handleError(error, `safeUpdate.${table}`);
+      return { data: null, error };
     }
   };
 
-  // Helper function for safe DELETE operations with enhanced error handling
-  const safeDelete = async <T = any>(
-    table: TableNames,
-    condition: { column: string; value: any }
+  /**
+   * Safe delete operation with error handling
+   */
+  const safeDelete = async (
+    table: string,
+    filter: { column: string; value: any }
   ) => {
+    if (!supabase) return { data: null, error: new Error('Supabase client not initialized') };
+    
     try {
-      const result = await supabase
+      const { data, error } = await supabase
         .from(table)
         .delete()
-        .eq(condition.column, condition.value);
+        .eq(filter.column, filter.value);
       
-      if (result.error) {
-        logDebug(`Supabase error in safeDelete for ${table}:`, result.error, 'error');
-        
-        // Handle specific service unavailable errors
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Supabase service temporarily unavailable. Please try again later.',
-              code: '503',
-              details: result.error.message
-            }
-          };
-        }
-        
-        return result;
-      }
+      if (error) throw error;
       
-      return result;
+      return { data, error: null };
     } catch (error) {
-      logDebug(`Error in safeDelete for ${table}:`, error, 'error');
-      return { 
-        data: null, 
-        error: { 
-          message: 'Network or service error. Please check your connection and try again.',
-          details: error instanceof Error ? error.message : String(error),
-          originalError: error
-        } 
-      };
-    }
-  };
-  
-  // Helper function for safe INSERT operations with enhanced error handling
-  const safeInsert = async <T = any>(
-    table: TableNames,
-    data: Record<string, unknown> | Record<string, unknown>[]
-  ) => {
-    try {
-      // Handle the insert operation
-      const result = await supabase.from(table).insert(data as any);
-      
-      if (result.error) {
-        logDebug(`Supabase error in safeInsert for ${table}:`, result.error, 'error');
-        
-        // Handle specific service unavailable errors
-        if (result.error.code === '503' || result.error.message?.includes('Service Unavailable') || result.error.message?.includes('Failed to fetch')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Supabase service temporarily unavailable. Please try again later.',
-              code: '503',
-              details: result.error.message
-            }
-          };
-        }
-      }
-      
-      return result;
-    } catch (error) {
-      logDebug(`Error in safeInsert for ${table}:`, error, 'error');
-      return { 
-        data: null, 
-        error: { 
-          message: 'Network or service error. Please check your connection and try again.',
-          details: error instanceof Error ? error.message : String(error),
-          originalError: error
-        } 
-      };
+      handleError(error, `safeDelete.${table}`);
+      return { data: null, error };
     }
   };
 
   return {
     supabase,
     safeSelect,
+    safeInsert,
     safeUpdate,
-    safeDelete,
-    safeInsert
+    safeDelete
   };
-};
+}
 
-// For backward compatibility
-export default supabase;
+export default useTypeSafeSupabase;

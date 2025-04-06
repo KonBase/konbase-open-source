@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
@@ -10,6 +10,7 @@ import MemberManager from '@/components/association/MemberManager';
 import DashboardDebugPanel from '@/components/dashboard/DashboardDebugPanel';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
+import { useAssociationMembers } from '@/hooks/useAssociationMembers';
 
 interface AuditLog {
   id: string;
@@ -56,6 +57,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   requestInfo
 }) => {
   const isHome = true;
+  const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(currentAssociation?.id || '');
+
+  // Fetch members when the component mounts or when the association changes
+  useEffect(() => {
+    if (currentAssociation?.id) {
+      fetchMembers();
+    }
+  }, [currentAssociation?.id, fetchMembers]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,7 +99,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         
         <ErrorBoundary>
           <div className="py-6">
-            <MemberManager minimal />
+            <MemberManager 
+              associationId={currentAssociation?.id || ''}
+              members={members}
+              loading={loading}
+              onUpdateRole={updateMemberRole}
+              onRemoveMember={removeMember}
+              minimal={true}
+            />
           </div>
         </ErrorBoundary>
         

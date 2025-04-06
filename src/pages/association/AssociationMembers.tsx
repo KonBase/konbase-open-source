@@ -1,409 +1,227 @@
 
-import React, { useEffect, useState } from 'react';
-import { useAssociation } from '@/contexts/AssociationContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/lib/supabase';
+import { useAssociationMembers, AssociationMember, ProfileData } from '@/hooks/useAssociationMembers';
+import { UserRoleType, USER_ROLES } from '@/types/user';
 import { useAuth } from '@/contexts/AuthContext';
-import { CopyIcon, PlusIcon, TrashIcon, UserPlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  profileImage?: string | null;
-}
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { UsersRound, UserRoundCog, UserRoundX, UserRoundPlus } from 'lucide-react';
 
 const AssociationMembers = () => {
-  const { currentAssociation } = useAssociation();
-  const { hasPermission } = useAuth();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [invitationEmail, setInvitationEmail] = useState('');
-  const [invitationRole, setInvitationRole] = useState('member');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isInviting, setIsInviting] = useState(false);
-  
+  const { id } = useParams<{ id: string }>();
+  const associationId = id || '';
+  const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(associationId);
+  const { user, hasRole } = useAuth();
+  const { toast } = useToast();
+  const [selectedMember, setSelectedMember] = useState<AssociationMember | null>(null);
+  const [newRole, setNewRole] = useState<UserRoleType | ''>('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const isAdmin = hasRole('admin');
+
   useEffect(() => {
-    const fetchMembers = async () => {
-      if (!currentAssociation) return;
-      
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('association_members')
-          .select(`
-            user_id,
-            role,
-            profiles:user_id (
-              id, 
-              name, 
-              email,
-              profile_image
-            )
-          `)
-          .eq('association_id', currentAssociation.id);
-        
-        if (error) throw error;
-        
-        const formattedMembers = data.map(item => ({
-          id: item.profiles.id,
-          name: item.profiles.name,
-          email: item.profiles.email,
-          role: item.role,
-          profileImage: item.profiles.profile_image
-        }));
-        
-        setMembers(formattedMembers);
-      } catch (error) {
-        console.error("Error fetching members:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load association members.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchMembers();
-  }, [currentAssociation]);
+  }, [fetchMembers]);
 
-  const handleInviteMember = async () => {
-    if (!invitationEmail || !currentAssociation) return;
+  // Format member data for display
+  const getMemberDisplayData = (member: AssociationMember) => {
+    const profile = member.profile as ProfileData;
+    return {
+      id: profile?.id || member.user_id,
+      name: profile?.name || 'Unknown User',
+      email: profile?.email || 'No email',
+      role: member.role,
+      roleDisplay: USER_ROLES[member.role]?.name || member.role,
+      profileImage: profile?.profile_image,
+    };
+  };
+
+  const handleRoleChange = async () => {
+    if (!selectedMember || !newRole) return;
     
-    setIsInviting(true);
-    try {
-      // In a real implementation, this would send an email with invitation
-      // For now, we'll just create a placeholder member
-      const { data: existingUser, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', invitationEmail)
-        .single();
-      
-      if (userError && userError.code !== 'PGRST116') {
-        throw userError;
-      }
-      
-      if (!existingUser) {
-        // In a real implementation, this would create an invitation record
-        toast({
-          title: "User Not Found",
-          description: "No user with that email address found in the system.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Check if user is already a member
-      const { data: existingMember, error: memberError } = await supabase
-        .from('association_members')
-        .select('*')
-        .eq('association_id', currentAssociation.id)
-        .eq('user_id', existingUser.id)
-        .maybeSingle();
-        
-      if (memberError) throw memberError;
-      
-      if (existingMember) {
-        toast({
-          title: "Already a Member",
-          description: "This user is already a member of your association.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Add the user to the association_members table
-      const { error: insertError } = await supabase
-        .from('association_members')
-        .insert({
-          association_id: currentAssociation.id,
-          user_id: existingUser.id,
-          role: invitationRole
-        });
-        
-      if (insertError) throw insertError;
-      
-      // Get user details to add to the UI
-      const { data: userData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, name, email, profile_image')
-        .eq('id', existingUser.id)
-        .single();
-        
-      if (profileError) throw profileError;
-      
-      // Add the new member to the list
-      setMembers(prev => [...prev, {
-        id: userData.id,
-        name: userData.name,
-        email: userData.email,
-        role: invitationRole,
-        profileImage: userData.profile_image
-      }]);
-      
-      toast({
-        title: "Member Added",
-        description: "Successfully added member to your association.",
-      });
-      
-      setIsDialogOpen(false);
-      setInvitationEmail('');
-      setInvitationRole('member');
-    } catch (error) {
-      console.error("Error inviting member:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add member to association.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsInviting(false);
+    const result = await updateMemberRole(selectedMember.id, newRole as UserRoleType);
+    if (result.success) {
+      setDialogOpen(false);
+      setNewRole('');
+      setSelectedMember(null);
     }
   };
 
-  const updateMemberRole = async (memberId: string, newRole: string) => {
-    if (!currentAssociation) return;
+  const handleRemoveMember = async () => {
+    if (!selectedMember) return;
     
-    try {
-      const { error } = await supabase
-        .from('association_members')
-        .update({ role: newRole })
-        .eq('association_id', currentAssociation.id)
-        .eq('user_id', memberId);
-        
-      if (error) throw error;
-      
-      // Update the local state
-      setMembers(prev => 
-        prev.map(member => 
-          member.id === memberId ? { ...member, role: newRole } : member
-        )
-      );
-      
-      toast({
-        title: "Role Updated",
-        description: "Member's role has been updated successfully.",
-      });
-    } catch (error) {
-      console.error("Error updating role:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update member's role.",
-        variant: "destructive"
-      });
+    const result = await removeMember(selectedMember.id);
+    if (result.success) {
+      setRemoveDialogOpen(false);
+      setSelectedMember(null);
     }
   };
 
-  const removeMember = async (memberId: string) => {
-    if (!currentAssociation) return;
-    
-    try {
-      const { error } = await supabase
-        .from('association_members')
-        .delete()
-        .eq('association_id', currentAssociation.id)
-        .eq('user_id', memberId);
-        
-      if (error) throw error;
-      
-      // Update the local state
-      setMembers(prev => prev.filter(member => member.id !== memberId));
-      
-      toast({
-        title: "Member Removed",
-        description: "Member has been removed from your association.",
-      });
-    } catch (error) {
-      console.error("Error removing member:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove member.",
-        variant: "destructive"
-      });
-    }
+  const openRoleDialog = (member: AssociationMember) => {
+    setSelectedMember(member);
+    setNewRole(member.role);
+    setDialogOpen(true);
   };
 
-  if (!currentAssociation) {
+  const openRemoveDialog = (member: AssociationMember) => {
+    setSelectedMember(member);
+    setRemoveDialogOpen(true);
+  };
+
+  // Generate initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-4 p-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>No Association Found</CardTitle>
-            <CardDescription>You need to set up your association first</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">To get started with EventNexus, you need to create or join an association.</p>
-            <Button asChild>
-              <Link to="/setup">Set Up Association</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-64">
+        <Spinner className="h-8 w-8" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Association Members</h1>
-          <p className="text-muted-foreground">Manage members and permissions for your association.</p>
-        </div>
-        {hasPermission('manager') && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Member
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Member</DialogTitle>
-                <DialogDescription>
-                  Enter the email address of the user you want to add to your association.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="member@example.com"
-                    value={invitationEmail}
-                    onChange={(e) => setInvitationEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={invitationRole} onValueChange={setInvitationRole}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="member">Member</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      {hasPermission('admin') && (
-                        <SelectItem value="admin">Admin</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleInviteMember} 
-                  disabled={!invitationEmail || isInviting}
-                >
-                  {isInviting ? "Adding..." : "Add Member"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-      
+    <div className="container mx-auto p-4">
       <Card>
-        <CardContent className="pt-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-          ) : members.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-muted-foreground">No members found in this association.</p>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-2xl">Association Members</CardTitle>
+          {isAdmin && (
+            <Button variant="outline" size="sm">
+              <UserRoundPlus className="mr-2 h-4 w-4" />
+              Invite Member
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {members.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <UsersRound className="mx-auto mb-4 h-12 w-12 opacity-30" />
+              <p>No members found</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  {hasPermission('manager') && <TableHead className="text-right">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          {member.profileImage ? (
-                            <img 
-                              src={member.profileImage} 
-                              alt={member.name} 
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-xs font-medium">
-                              {member.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        <span>{member.name}</span>
+            <div className="space-y-4">
+              {members.map(member => {
+                const memberData = getMemberDisplayData(member);
+                const isSelf = user?.id === memberData.id;
+                
+                return (
+                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center space-x-4">
+                      <Avatar>
+                        <AvatarImage src={memberData.profileImage || undefined} />
+                        <AvatarFallback>{getInitials(memberData.name)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{memberData.name} {isSelf && <Badge variant="outline">You</Badge>}</p>
+                        <p className="text-sm text-muted-foreground">{memberData.email}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>{member.email}</TableCell>
-                    <TableCell>
-                      {hasPermission('manager') ? (
-                        <Select 
-                          defaultValue={member.role} 
-                          onValueChange={(value) => updateMemberRole(member.id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="manager">Manager</SelectItem>
-                            {hasPermission('admin') && (
-                              <SelectItem value="admin">Admin</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className="capitalize">{member.role}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={memberData.role === 'admin' ? "default" : "secondary"}>
+                        {memberData.roleDisplay}
+                      </Badge>
+                      {isAdmin && !isSelf && (
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openRoleDialog(member)}
+                            title="Change role"
+                          >
+                            <UserRoundCog className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openRemoveDialog(member)}
+                            title="Remove member"
+                          >
+                            <UserRoundX className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
-                    </TableCell>
-                    {hasPermission('manager') && (
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => removeMember(member.id)}
-                          className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Change Role Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Member Role</DialogTitle>
+            <DialogDescription>
+              Update the role for {selectedMember?.profile?.name || 'this member'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="role" className="mb-2 block">Role</Label>
+            <Select value={newRole} onValueChange={(value) => setNewRole(value as UserRoleType)}>
+              <SelectTrigger id="role">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleRoleChange}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Dialog */}
+      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Member</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove {selectedMember?.profile?.name || 'this member'} from the association?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleRemoveMember}>Remove</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

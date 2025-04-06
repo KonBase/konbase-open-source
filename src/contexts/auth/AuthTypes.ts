@@ -1,8 +1,24 @@
 
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { UserRoleType } from '@/types/user';
 
-// Extended Auth Context state
+export interface AuthUserProfile {
+  id: string;
+  email: string;
+  name: string;
+  profile_image?: string;
+  role: UserRoleType;
+  two_factor_enabled?: boolean;
+  [key: string]: any;
+}
+
+export interface AuthUser extends User {
+  name: string;
+  profileImage?: string;
+  role: UserRoleType;
+  email: string;
+}
+
 export interface AuthState {
   session: Session | null;
   user: AuthUser | null;
@@ -13,40 +29,15 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-// Extended User type with additional properties
-export interface AuthUser extends SupabaseUser {
-  name?: string;
-  profileImage?: string;
-  role?: UserRoleType;
-  email?: string;
-}
-
-// User profile from the database
-export interface AuthUserProfile {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRoleType;
-  association_id?: string;
-  profile_image?: string;
-  two_factor_enabled: boolean;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: any;
-}
-
-// Auth Context methods
-export interface AuthContextMethods {
+export interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'discord') => Promise<void>;
+  hasRole: (role: UserRoleType) => boolean;
   hasPermission: (permission: string) => boolean;
-  hasRole: (requiredRole: UserRoleType) => boolean;
   checkRoleAccess: (role: UserRoleType) => Promise<boolean>;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>; // Alias for signIn
+  logout: () => Promise<void>; // Alias for signOut
   elevateToSuperAdmin: () => Promise<{success: boolean, message: string}>;
 }
-
-// Complete Auth Context type
-export type AuthContextType = AuthState & AuthContextMethods;

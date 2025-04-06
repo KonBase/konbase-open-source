@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Bell, Check } from 'lucide-react';
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
@@ -26,9 +25,8 @@ export function NotificationsDropdown() {
   const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   const { toast } = useToast();
-  const { safeSelect, safeUpdate } = useTypeSafeSupabase();
+  const { safeSelect, safeUpdate, supabase } = useTypeSafeSupabase();
   
-  // Function to fetch notifications with error handling and retry logic
   const fetchNotifications = async () => {
     if (!user) {
       setNotifications([]);
@@ -58,11 +56,10 @@ export function NotificationsDropdown() {
         logDebug('Error fetching notifications:', error, 'error');
         setError('Unable to load notifications. Please try again later.');
         
-        // Only retry a few times to avoid infinite loops
         if (retryCount < 3) {
           setTimeout(() => {
             setRetryCount(prev => prev + 1);
-          }, 3000); // Wait 3 seconds before retrying
+          }, 3000);
         }
       } else {
         setNotifications(data || []);
@@ -79,43 +76,43 @@ export function NotificationsDropdown() {
   useEffect(() => {
     fetchNotifications();
     
-    // Set up real-time subscription for new notifications
     let channel;
     if (user) {
       try {
-        // Use setTimeout to prevent potential auth state issues
         setTimeout(() => {
-          channel = useTypeSafeSupabase().supabase
-            .channel('notifications-changes')
-            .on(
-              'postgres_changes',
-              {
-                event: 'INSERT', 
-                schema: 'public',
-                table: 'notifications',
-                filter: `user_id=eq.${user.id}`
-              },
-              (payload) => {
-                try {
-                  const newNotification = payload.new as Notification;
-                  setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
-                  
-                  toast({
-                    title: newNotification.title,
-                    description: newNotification.message,
-                  });
-                } catch (error) {
-                  logDebug('Error processing notification update:', error, 'error');
+          if (supabase) {
+            channel = supabase
+              .channel('notifications-changes')
+              .on(
+                'postgres_changes',
+                {
+                  event: 'INSERT', 
+                  schema: 'public',
+                  table: 'notifications',
+                  filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                  try {
+                    const newNotification = payload.new as Notification;
+                    setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
+                    
+                    toast({
+                      title: newNotification.title,
+                      description: newNotification.message,
+                    });
+                  } catch (error) {
+                    logDebug('Error processing notification update:', error, 'error');
+                  }
                 }
-              }
-            )
-            .subscribe((status) => {
-              if (status === 'SUBSCRIBED') {
-                logDebug('Successfully subscribed to notifications', null, 'info');
-              } else if (status === 'CHANNEL_ERROR') {
-                logDebug('Error subscribing to notifications', null, 'error');
-              }
-            });
+              )
+              .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                  logDebug('Successfully subscribed to notifications', null, 'info');
+                } else if (status === 'CHANNEL_ERROR') {
+                  logDebug('Error subscribing to notifications', null, 'error');
+                }
+              });
+          }
         }, 0);
       } catch (error) {
         logDebug('Error setting up notification subscription:', error, 'error');
@@ -123,9 +120,9 @@ export function NotificationsDropdown() {
     }
     
     return () => {
-      if (channel) {
+      if (channel && supabase) {
         try {
-          useTypeSafeSupabase().supabase.removeChannel(channel);
+          supabase.removeChannel(channel);
         } catch (error) {
           logDebug('Error removing notification channel:', error, 'error');
         }
@@ -153,7 +150,6 @@ export function NotificationsDropdown() {
         return;
       }
       
-      // Update local state
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === id ? { ...notification, read: true } : notification
@@ -179,8 +175,6 @@ export function NotificationsDropdown() {
         
       if (unreadIds.length === 0) return;
       
-      // Since we can't use .in() with safeUpdate, we'll update notifications one by one
-      // This isn't ideal for performance, but works with our current API
       const updatePromises = unreadIds.map(id => 
         safeUpdate('notifications', { read: true }, { column: 'id', value: id })
       );
@@ -198,7 +192,6 @@ export function NotificationsDropdown() {
           variant: "destructive"
         });
       } else {
-        // Update local state
         setNotifications(prev => 
           prev.map(notification => ({ ...notification, read: true }))
         );

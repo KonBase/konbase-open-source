@@ -77,6 +77,13 @@ export type Database = {
             referencedRelation: "associations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "association_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       associations: {
@@ -709,7 +716,34 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      members_with_profiles: {
+        Row: {
+          association_id: string | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          name: string | null
+          profile_image: string | null
+          role: Database["public"]["Enums"]["user_role_type"] | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_role: {
