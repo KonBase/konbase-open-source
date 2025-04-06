@@ -1,5 +1,6 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { DateFormat, TimeFormat } from "@/utils/dateTimeUtils";
 
 type Theme = "dark" | "light" | "system";
 type TextSize = "default" | "large" | "larger";
@@ -28,6 +29,12 @@ type ThemeProviderState = {
   setReducedMotion: (reduced: boolean) => void;
   screenReader: boolean;
   setScreenReader: (enabled: boolean) => void;
+  language: string;
+  setLanguage: (lang: string) => void;
+  dateFormat: DateFormat;
+  setDateFormat: (format: DateFormat) => void;
+  timeFormat: TimeFormat;
+  setTimeFormat: (format: TimeFormat) => void;
 };
 
 const initialState: ThemeProviderState = {
@@ -45,6 +52,12 @@ const initialState: ThemeProviderState = {
   setReducedMotion: () => null,
   screenReader: false,
   setScreenReader: () => null,
+  language: "en-US",
+  setLanguage: () => null,
+  dateFormat: "MM/DD/YYYY",
+  setDateFormat: () => null,
+  timeFormat: "12",
+  setTimeFormat: () => null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -81,6 +94,18 @@ export function ThemeProvider({
   
   const [screenReader, setScreenReader] = useState<boolean>(
     () => localStorage.getItem(`${storageKey}-screenReader`) === "true"
+  );
+
+  const [language, setLanguage] = useState<string>(
+    () => localStorage.getItem('user-language') || 'en-US'
+  );
+
+  const [dateFormat, setDateFormat] = useState<DateFormat>(
+    () => (localStorage.getItem('date-format') as DateFormat) || 'MM/DD/YYYY'
+  );
+
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>(
+    () => (localStorage.getItem('time-format') as TimeFormat) || '12'
   );
 
   // Apply theme class
@@ -156,6 +181,21 @@ export function ThemeProvider({
     }
   }, [screenReader]);
 
+  // Apply language
+  useEffect(() => {
+    document.documentElement.lang = language.split('-')[0];
+    localStorage.setItem('user-language', language);
+  }, [language]);
+
+  // Save date and time format preferences
+  useEffect(() => {
+    localStorage.setItem('date-format', dateFormat);
+  }, [dateFormat]);
+
+  useEffect(() => {
+    localStorage.setItem('time-format', timeFormat);
+  }, [timeFormat]);
+
   // Save preferences to localStorage
   const savePreference = (key: string, value: string | boolean) => {
     localStorage.setItem(`${storageKey}-${key}`, String(value));
@@ -197,6 +237,12 @@ export function ThemeProvider({
       savePreference("screenReader", enabled);
       setScreenReader(enabled);
     },
+    language,
+    setLanguage,
+    dateFormat,
+    setDateFormat,
+    timeFormat, 
+    setTimeFormat,
   };
 
   return (
