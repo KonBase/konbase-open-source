@@ -9,16 +9,526 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      association_invitations: {
+        Row: {
+          association_id: string
+          code: string
+          created_at: string
+          email: string | null
+          expires_at: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          association_id: string
+          code: string
+          created_at?: string
+          email?: string | null
+          expires_at?: string | null
+          id?: string
+          role?: string
+        }
+        Update: {
+          association_id?: string
+          code?: string
+          created_at?: string
+          email?: string | null
+          expires_at?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_invitations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      association_members: {
+        Row: {
+          association_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role_type"]
+          user_id: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role_type"]
+          user_id: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      associations: {
+        Row: {
+          address: string | null
+          contact_email: string
+          contact_phone: string | null
+          created_at: string
+          description: string | null
+          id: string
+          logo: string | null
+          name: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_email: string
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo?: string | null
+          name: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo?: string | null
+          name?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity: string
+          entity_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity: string
+          entity_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          association_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          association_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_name: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_name: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conventions: {
+        Row: {
+          association_id: string
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          location: string | null
+          name: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          description?: string | null
+          end_date: string
+          id?: string
+          location?: string | null
+          name: string
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          location?: string | null
+          name?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conventions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          association_id: string
+          barcode: string | null
+          category_id: string
+          condition: string
+          created_at: string
+          description: string | null
+          id: string
+          image: string | null
+          is_consumable: boolean
+          location_id: string
+          minimum_quantity: number | null
+          name: string
+          notes: string | null
+          purchase_date: string | null
+          purchase_price: number | null
+          quantity: number
+          serial_number: string | null
+          updated_at: string
+          warranty_expiration: string | null
+        }
+        Insert: {
+          association_id: string
+          barcode?: string | null
+          category_id: string
+          condition?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image?: string | null
+          is_consumable?: boolean
+          location_id: string
+          minimum_quantity?: number | null
+          name: string
+          notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          quantity?: number
+          serial_number?: string | null
+          updated_at?: string
+          warranty_expiration?: string | null
+        }
+        Update: {
+          association_id?: string
+          barcode?: string | null
+          category_id?: string
+          condition?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image?: string | null
+          is_consumable?: boolean
+          location_id?: string
+          minimum_quantity?: number | null
+          name?: string
+          notes?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
+          quantity?: number
+          serial_number?: string | null
+          updated_at?: string
+          warranty_expiration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locations: {
+        Row: {
+          association_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_room: boolean
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_room?: boolean
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_room?: boolean
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          association_id: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          profile_image: string | null
+          role: Database["public"]["Enums"]["user_role_type"]
+          two_factor_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          association_id?: string | null
+          created_at?: string
+          email: string
+          id: string
+          name: string
+          profile_image?: string | null
+          role?: Database["public"]["Enums"]["user_role_type"]
+          two_factor_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          profile_image?: string | null
+          role?: Database["public"]["Enums"]["user_role_type"]
+          two_factor_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_profiles_association"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_2fa: {
+        Row: {
+          created_at: string
+          id: string
+          last_used_at: string | null
+          recovery_keys: string[]
+          totp_secret: string
+          updated_at: string
+          used_recovery_keys: string[] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          recovery_keys: string[]
+          totp_secret: string
+          updated_at?: string
+          used_recovery_keys?: string[] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          recovery_keys?: string[]
+          totp_secret?: string
+          updated_at?: string
+          used_recovery_keys?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: {
+          user_id: string
+        }
+        Returns: string
+      }
+      has_elevated_admin_role: {
+        Args: {
+          user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_member_of_association: {
+        Args: {
+          user_id: string
+          assoc_id: string
+        }
+        Returns: boolean
+      }
+      is_system_or_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role_type:
+        | "super_admin"
+        | "system_admin"
+        | "admin"
+        | "manager"
+        | "member"
+        | "guest"
     }
     CompositeTypes: {
       [_ in never]: never

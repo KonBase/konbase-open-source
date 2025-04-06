@@ -1,60 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../integrations/supabase/types';
-import { logDebug, handleError } from '@/utils/debug';
 
-// Use direct values from the Supabase project
-const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
+// Re-export the Supabase client from the integrations folder
+export { supabase } from '@/integrations/supabase/client';
+
+import { logDebug, handleError } from '@/utils/debug';
+import { supabase } from '@/integrations/supabase/client';
 
 // Enhanced error handling and diagnostic logging
 const logSupabaseActivity = (operation: string, details: any = null, level: 'info' | 'warn' | 'error' = 'info') => {
   logDebug(`Supabase [${operation}]`, details, level);
 };
-
-// Create a stable Supabase client instance with consistent configuration and improved error handling
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: localStorage,
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    fetch: (url, options) => {
-      // Add a custom fetch with timeout and retry
-      const timeoutId = setTimeout(() => {
-        logDebug(`Request to ${url} is taking too long`, null, 'warn');
-      }, 5000); // Log warning after 5 seconds
-      
-      return fetch(url, {
-        ...options,
-        // Adding some resilience for intermittent network issues
-        cache: 'no-cache',
-      }).then(response => {
-        clearTimeout(timeoutId);
-        if (!response.ok) {
-          logDebug(`Supabase response not OK: ${response.status} ${response.statusText}`, { url }, 'warn');
-        }
-        return response;
-      }).catch(error => {
-        clearTimeout(timeoutId);
-        logDebug(`Error fetching ${url}: ${error.message}`, error, 'error');
-        throw error;
-      });
-    },
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-  db: {
-    schema: 'public',
-  },
-});
 
 // Add connection status logging
 supabase.auth.onAuthStateChange((event, session) => {
@@ -161,7 +115,6 @@ export const safeSupabaseOperation = async <T>(
 };
 
 export default {
-  supabase,
   getCurrentSession,
   isUserAuthenticated,
   handleSupabaseError,

@@ -1,50 +1,7 @@
 
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/database.types';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { logDebug, handleError } from '@/utils/debug';
-
-// Use direct values from the Supabase project
-const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
-
-// Create the supabase client with better retry and timeout options
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: localStorage,
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    fetch: (url, options) => {
-      // Add a custom fetch with timeout and retry
-      const timeoutId = setTimeout(() => {
-        logDebug(`Request to ${url} is taking too long`, null, 'warn');
-      }, 5000); // Log warning after 5 seconds
-      
-      return fetch(url, {
-        ...options,
-        // Adding some resilience for intermittent network issues
-        cache: 'no-cache',
-      }).then(response => {
-        clearTimeout(timeoutId);
-        return response;
-      }).catch(error => {
-        clearTimeout(timeoutId);
-        logDebug(`Error fetching ${url}: ${error.message}`, error, 'error');
-        throw error;
-      });
-    },
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
 
 // Type for our Supabase client
 export type TypeSafeSupabaseClient = typeof supabase;
