@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import SetupHeader from '@/components/setup/SetupHeader';
 import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
 import AssociationForm from '@/components/setup/AssociationForm';
+import SetupStep from '@/components/setup/SetupStep';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+<<<<<<< HEAD
 interface SetupStepProps {
   onSuccess?: () => void;
 }
@@ -29,7 +31,7 @@ const SetupStep: React.FC<SetupStepProps> = ({ onSuccess, ...props }) => {
     </div>
   );
 };
-
+=======
 function AssociationFormWrapper() {
   const navigate = useNavigate();
   const { toast } = useToast();
