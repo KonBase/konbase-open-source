@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
 import { logDebug, handleError } from '@/utils/debug';
@@ -47,7 +46,7 @@ export const isUsingDefaultCredentials = () => {
 // Helper function to get the current session
 export const getCurrentSession = async () => {
   try {
-    logDebug('Getting current session', null, 'debug');
+    logDebug('Getting current session', null, 'info');
     const { data, error } = await supabase.auth.getSession();
     if (error) {
       handleError(error, 'getCurrentSession');
@@ -65,7 +64,7 @@ export const isUserAuthenticated = async () => {
   try {
     const session = await getCurrentSession();
     const authenticated = !!session;
-    logDebug(`Authentication check: ${authenticated ? 'authenticated' : 'not authenticated'}`, null, 'debug');
+    logDebug(`Authentication check: ${authenticated ? 'authenticated' : 'not authenticated'}`, null, 'info');
     return authenticated;
   } catch (error) {
     handleError(error, 'isUserAuthenticated');

@@ -74,7 +74,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     
     // Only check email verification if the user is logged in
     if (!isLoading) {
-      logDebug('Auth state check complete', { isAuthenticated, userId: user?.id }, 'debug');
+      logDebug('Auth state check complete', { isAuthenticated, userId: user?.id }, 'info');
       if (isAuthenticated && user) {
         checkEmailVerification();
       } else {
@@ -113,7 +113,7 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
     return <Navigate to="/login" state={{ emailVerification: true }} replace />;
   }
 
-  logDebug('User authenticated and email verified, rendering protected content', { userId: user?.id }, 'debug');
+  logDebug('User authenticated and email verified, rendering protected content', { userId: user?.id }, 'info');
   return <>{children}</>;
 };
 

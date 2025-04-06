@@ -27,3 +27,32 @@ export const logDebug = (
     }
   }
 };
+
+/**
+ * Utility function for handling and logging errors
+ */
+export const handleError = (error: any, source: string): string => {
+  const errorMessage = error?.message || String(error) || 'Unknown error';
+  logDebug(`Error in ${source}: ${errorMessage}`, error, 'error');
+  return errorMessage;
+};
+
+/**
+ * Utility function to enable debug mode
+ */
+export const enableDebugMode = (enabled: boolean = true): void => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('konbase-debug-mode', enabled ? 'true' : 'false');
+    logDebug(`Debug mode ${enabled ? 'enabled' : 'disabled'}`, null, 'info');
+  }
+};
+
+/**
+ * Utility function to check if debug mode is enabled
+ */
+export const isDebugModeEnabled = (): boolean => {
+  if (typeof window !== 'undefined') {
+    return window.localStorage.getItem('konbase-debug-mode') === 'true';
+  }
+  return false;
+};

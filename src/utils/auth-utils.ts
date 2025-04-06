@@ -24,7 +24,7 @@ export const fetchUserProfile = async (userId: string) => {
       return null;
     }
     
-    logDebug('User profile fetched successfully', { profileId: data?.id }, 'debug');
+    logDebug('User profile fetched successfully', { profileId: data?.id }, 'info');
     return data;
   } catch (error) {
     handleError(error, 'fetchUserProfile');
@@ -41,7 +41,7 @@ export const fetchUserProfile = async (userId: string) => {
 export const enhanceUserWithProfile = (user: User, profileData: any) => {
   if (!user || !profileData) return user;
   
-  logDebug('Enhancing user with profile data', { userId: user.id }, 'debug');
+  logDebug('Enhancing user with profile data', { userId: user.id }, 'info');
   
   return {
     ...user,
@@ -64,7 +64,7 @@ export const isSessionValid = (session: any) => {
   const expiresAt = session.expires_at || session.expiresAt;
   
   const isValid = expiresAt > now;
-  logDebug('Checking session validity', { isValid, expiresAt, now }, 'debug');
+  logDebug('Checking session validity', { isValid, expiresAt, now }, 'info');
   
   return isValid;
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { logDebug } from '@/utils/debug';
 import { toast } from '@/components/ui/use-toast';
@@ -85,7 +84,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
     setIsTestingConnection(true);
     
     try {
-      logDebug(`Testing connection to ${testEndpoint}`, null, 'debug');
+      logDebug(`Testing connection to ${testEndpoint}`, null, 'info');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
@@ -104,7 +103,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
       const result = { success: isConnected, timestamp };
       setTestResults(result);
       
-      logDebug(`Connection test result: ${isConnected ? 'Connected' : 'Failed'}`, null, 'debug');
+      logDebug(`Connection test result: ${isConnected ? 'Connected' : 'Failed'}`, null, 'info');
       return isConnected;
     } catch (error) {
       const timestamp = Date.now();
