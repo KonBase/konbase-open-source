@@ -4,9 +4,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
 import { useAssociation } from '@/contexts/AssociationContext';
 import MemberManager from '@/components/association/MemberManager';
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { supabase } from '@/lib/supabase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const { currentAssociation } = useAssociation();
+  
+  // Use the enhanced query hook to efficiently fetch additional data
+  const { data: recentActivity, isLoading: isLoadingActivity } = useSupabaseQuery(
+    ['recent-activity', currentAssociation?.id],
+    async () => {
+      if (!currentAssociation?.id) return { data: [], error: null };
+      // Example query - adjust based on your schema
+      return await supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('entity', 'associations')
+        .eq('entity_id', currentAssociation.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+    },
+    {
+      enabled: !!currentAssociation?.id,
+      staleTime: 30000 // Cache data for 30 seconds
+    }
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -27,8 +50,17 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Association info will go here */}
-                <p className="text-sm text-muted-foreground">Manage your association details, members and equipment</p>
+                {currentAssociation ? (
+                  <>
+                    <p><span className="font-medium">Name:</span> {currentAssociation.name}</p>
+                    <p><span className="font-medium">Email:</span> {currentAssociation.contact_email}</p>
+                    {currentAssociation.description && (
+                      <p><span className="font-medium">Description:</span> {currentAssociation.description}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Manage your association details, members and equipment</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -40,8 +72,23 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Recent activity list will go here */}
-                <p className="text-sm text-muted-foreground">No recent activities to display</p>
+                {isLoadingActivity ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-5/6" />
+                  </div>
+                ) : recentActivity && recentActivity.length > 0 ? (
+                  <ul className="space-y-2">
+                    {recentActivity.map((activity: any) => (
+                      <li key={activity.id} className="text-sm">
+                        <span className="font-medium">{activity.action}</span>: {activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No recent activities to display</p>
+                )}
               </div>
             </CardContent>
           </Card>
