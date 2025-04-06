@@ -41,3 +41,6 @@ export function classNames(...args: any[]): string {
 
 // Also export as default for convenience
 export default classNames;
+
+// Re-export cn function from lib/utils
+export { cn } from '@/lib/utils';

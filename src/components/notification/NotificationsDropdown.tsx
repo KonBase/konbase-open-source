@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
 import { logDebug } from '@/utils/debug';
-import { cn } from '@/utils/classnames';
+import { cn } from '@/lib/utils';
 
 export function NotificationsDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
