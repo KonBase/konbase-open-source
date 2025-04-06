@@ -44,11 +44,6 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
       <div className="container flex h-14 items-center px-4">
-        <div className="mr-4 hidden md:flex">
-          <Link to="/dashboard" className="mr-6 flex items-center space-x-2">
-            {/* Removed "EventNexus" text */}
-          </Link>
-        </div>
         
         {/* Association info with back button */}
         {currentAssociation && (
@@ -73,21 +68,6 @@ export function Header() {
           
           {/* Notifications */}
           <NotificationsDropdown />
-          
-          {/* Chat */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" title="Chat">
-                <MessageCircle className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-              <SheetHeader>
-                <SheetTitle>Association Chat</SheetTitle>
-              </SheetHeader>
-              <ChatModule />
-            </SheetContent>
-          </Sheet>
           
           {/* Theme toggle */}
           <ThemeToggle />

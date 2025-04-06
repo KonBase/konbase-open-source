@@ -47,9 +47,6 @@ import ConventionTemplates from './pages/conventions/ConventionTemplates';
 // Report Pages
 import ReportsList from './pages/reports/ReportsList';
 
-// Communication Pages
-import ChatPage from './pages/chat/ChatPage';
-
 // Layouts
 import MainLayout from './components/layout/MainLayout';
 import MainLayoutWrapper from './components/layout/MainLayoutWrapper';

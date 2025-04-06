@@ -105,7 +105,7 @@ const HomeHeader = () => {
                 <NavigationMenuContent>
                   <div className="grid gap-3 p-4 w-[400px] bg-white dark:bg-gray-800 text-foreground">
                     <a 
-                      href="https://github.com/ShiroLuxferre/KonBase" 
+                      href="https://github.com/KonBase/KonBase" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 hover:bg-accent rounded-md"
@@ -151,46 +151,45 @@ const HomeHeader = () => {
               <ThemeToggle />
 
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      {user?.profileImage ? (
-                        <AvatarImage src={user.profileImage} alt={userName} />
-                      ) : (
-                        <AvatarFallback>{userInitial}</AvatarFallback>
-                      )}
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{userName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      Admin Panel
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>{userInitial}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{userName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/admin">
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Admin</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <LogoutButton variant="ghost" size="sm" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
             </div>
           ) : (
             <div className="flex items-center gap-2">

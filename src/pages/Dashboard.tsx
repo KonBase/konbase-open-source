@@ -121,11 +121,6 @@ const Dashboard = () => {
         isHome={isHome} 
       />
 
-      {/* Add DashboardStats component */}
-      <div className="grid grid-cols-12 gap-4">
-        <DashboardStats />
-      </div>
-
       {/* Conditionally render Debug Panel based on debug mode setting */}
       {isDebugEnabled && (
         <DebugPanel 
@@ -147,8 +142,6 @@ const Dashboard = () => {
       {/* Convention Management Module */}
       <ConventionManagementSection />
 
-      {/* Communication Module */}
-      <CommunicationSection unreadNotifications={0} />
     </div>
   );
 };
