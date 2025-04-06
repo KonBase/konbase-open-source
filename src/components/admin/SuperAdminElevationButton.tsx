@@ -13,19 +13,33 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/auth/useAuth';
 
 export function SuperAdminElevationButton() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [securityCode, setSecurityCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { session } = useAuth();
 
   const handleElevation = async () => {
+    if (!securityCode.trim()) {
+      toast({
+        title: 'Security Code Required',
+        description: 'Please enter the security code',
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      // Assume we're calling a Supabase edge function
+      // Call the Supabase edge function with proper authorization
       const { data, error } = await supabase.functions.invoke('elevate-to-super-admin', {
         body: { securityCode },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
       });
 
       if (error) throw new Error(error.message);
@@ -41,7 +55,8 @@ export function SuperAdminElevationButton() {
       
       // Refresh the page to update permissions
       window.location.reload();
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error during elevation:', error);
       toast({
         title: 'Elevation Failed',
         description: error.message || 'An unknown error occurred',
@@ -54,13 +69,13 @@ export function SuperAdminElevationButton() {
 
   return (
     <>
-      <Button variant="destructive" onClick={() => setIsDialogOpen(true)} className="w-full">
+      <Button variant="destructive" onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
         <ShieldAlert className="mr-2 h-4 w-4" />
         Elevate to Super Admin
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Super Admin Elevation</DialogTitle>
             <DialogDescription>
@@ -86,7 +101,11 @@ export function SuperAdminElevationButton() {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+              disabled={isProcessing}
+            >
               Cancel
             </Button>
             <Button 

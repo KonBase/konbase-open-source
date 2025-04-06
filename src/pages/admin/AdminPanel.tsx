@@ -9,6 +9,7 @@ import { SystemSettings } from '@/components/admin/SystemSettings';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { SuperAdminElevationButton } from '@/components/admin/SuperAdminElevationButton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('users');
@@ -21,10 +22,10 @@ export default function AdminPanel() {
   
   return (
     <RoleGuard allowedRoles={['system_admin', 'super_admin']}>
-      <div className="container mx-auto py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+      <div className="container mx-auto py-4 md:py-8 px-2 md:px-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Admin Panel</h1>
             <p className="text-muted-foreground">
               Manage users, associations, and system settings
             </p>
@@ -34,33 +35,35 @@ export default function AdminPanel() {
           {isSystemAdmin && <SuperAdminElevationButton />}
         </div>
         
-        <Card>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:w-[600px]">
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="associations">Associations</TabsTrigger>
-              
-              {/* Only show these tabs to super_admin */}
-              {canAccessAuditLogs && <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>}
-              {canAccessSettings && <TabsTrigger value="settings">Settings</TabsTrigger>}
-            </TabsList>
+        <Card className="overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <ScrollArea className="w-full">
+              <TabsList className="flex w-full justify-start overflow-x-auto px-2 py-1">
+                <TabsTrigger value="users" className="flex-shrink-0">Users</TabsTrigger>
+                <TabsTrigger value="associations" className="flex-shrink-0">Associations</TabsTrigger>
+                
+                {/* Only show these tabs to super_admin */}
+                {canAccessAuditLogs && <TabsTrigger value="audit-logs" className="flex-shrink-0">Audit Logs</TabsTrigger>}
+                {canAccessSettings && <TabsTrigger value="settings" className="flex-shrink-0">Settings</TabsTrigger>}
+              </TabsList>
+            </ScrollArea>
             
-            <TabsContent value="users" className="space-y-4">
+            <TabsContent value="users" className="space-y-4 px-2 md:px-4 pt-4">
               <UserManagement />
             </TabsContent>
             
-            <TabsContent value="associations" className="space-y-4">
+            <TabsContent value="associations" className="space-y-4 px-2 md:px-4 pt-4">
               <AssociationManagement />
             </TabsContent>
             
             {canAccessAuditLogs && (
-              <TabsContent value="audit-logs" className="space-y-4">
+              <TabsContent value="audit-logs" className="space-y-4 px-2 md:px-4 pt-4">
                 <AuditLogViewer />
               </TabsContent>
             )}
             
             {canAccessSettings && (
-              <TabsContent value="settings" className="space-y-4">
+              <TabsContent value="settings" className="space-y-4 px-2 md:px-4 pt-4">
                 <SystemSettings />
               </TabsContent>
             )}

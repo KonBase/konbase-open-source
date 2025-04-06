@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { 
   Select,
   SelectContent,
@@ -8,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { UserRoleType } from '@/types/user';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,27 +101,27 @@ export function UserRoleManager({
 
   // Define which roles the current user can assign
   const getAssignableRoles = (): UserRoleType[] => {
-    if (hasPermission('super_admin')) {
-      return ['member', 'manager', 'admin', 'system_admin', 'super_admin'];
-    } else if (hasPermission('system_admin')) {
-      return ['member', 'manager', 'admin', 'system_admin'];
-    } else if (hasPermission('admin')) {
-      return ['member', 'manager', 'admin'];
+    if (hasPermission('admin:all')) {
+      return ['guest', 'member', 'manager', 'admin', 'system_admin', 'super_admin'];
+    } else if (hasPermission('manage:users')) {
+      return ['guest', 'member', 'manager', 'admin', 'system_admin'];
+    } else if (hasPermission('manage:association')) {
+      return ['guest', 'member', 'manager', 'admin'];
     } else {
-      return ['member', 'manager'];
+      return ['guest', 'member', 'manager'];
     }
   };
 
   const assignableRoles = getAssignableRoles();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center">
       <Select
         value={role}
         onValueChange={(value) => updateUserRole(value as UserRoleType)}
         disabled={isUpdating || userId === user?.id}
       >
-        <SelectTrigger className="w-[130px]">
+        <SelectTrigger className="w-[120px] sm:w-[140px]">
           <SelectValue placeholder="Select role" />
         </SelectTrigger>
         <SelectContent>

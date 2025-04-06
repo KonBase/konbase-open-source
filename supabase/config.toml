@@ -8,29 +8,24 @@ schemas = ["public", "storage", "graphql_public"]
 
 [db]
 port = 54322
-shadow_port = 54320
-major_version = 15
-
-[realtime]
-enabled = true
 
 [studio]
 enabled = true
 port = 54323
-api_url = "https://api.supabase.com"
+api_url = "http://localhost"
 
-[functions]
-[functions.generate-totp-secret]
-verify_jwt = false
+[inbucket]
+enabled = true
+port = 54324
 
-[functions.verify-totp]
-verify_jwt = true
+[storage]
+enabled = true
 
-[functions.complete-2fa-setup]
-verify_jwt = true
+[realtime]
+enabled = true
 
-[functions.disable-2fa]
-verify_jwt = true
+[auth]
+enabled = true
 
-[functions.generate-recovery-keys]
+[functions.elevate-to-super-admin]
 verify_jwt = true
