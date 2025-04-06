@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Key, Plus, Copy } from 'lucide-react';
@@ -202,11 +201,10 @@ const SetupWizard = () => {
           </TabsContent>
         </Tabs>
       )}
-      <SetupStep onSuccess={handleSetupStepComplete}>
-        <div className="mt-4">
-          <Button variant="outline">Continue Setup</Button>
-        </div>
-      </SetupStep>
+      <SetupStep 
+        onSuccess={handleSetupStepComplete}
+        className="mt-6"
+      />
     </div>
   );
 };

@@ -1,23 +1,31 @@
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 
-export interface SetupStepProps {
+export interface SetupStepProps extends React.HTMLAttributes<HTMLDivElement> {
   onSuccess?: () => void;
   children?: React.ReactNode;
 }
 
 const SetupStep: React.FC<SetupStepProps> = ({
   onSuccess,
-  children
+  children,
+  ...props
 }) => {
   const handleComplete = () => {
     if (onSuccess) onSuccess();
   };
 
   return (
-    <div>
+    <div {...props}>
       {children}
-      <button onClick={handleComplete}>Complete Setup</button>
+      <Button 
+        variant="outline" 
+        onClick={handleComplete}
+        className="mt-4"
+      >
+        Complete Setup
+      </Button>
     </div>
   );
 };
