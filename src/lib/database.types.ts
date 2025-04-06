@@ -9,6 +9,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Define the Database type with all tables
 export interface Database {
   public: {
     Tables: {
@@ -771,6 +772,3 @@ export interface Database {
     CompositeTypes: {}
   }
 }
-
-// Use a named export to avoid conflicts
-export type { Database }

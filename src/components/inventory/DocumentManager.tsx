@@ -57,7 +57,6 @@ interface Document {
   uploaded_by: string;
   created_at: string;
   updated_at: string;
-  item_name?: string;
 }
 
 interface Item {
