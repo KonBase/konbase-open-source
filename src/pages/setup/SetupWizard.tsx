@@ -10,11 +10,15 @@ import AssociationForm from '@/components/setup/AssociationForm';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const SetupWizard = () => {
   const navigate = useNavigate();
   const { currentAssociation, isLoading } = useAssociation();
+  const { userProfile, user } = useAuth();
   const [setupCompleted, setSetupCompleted] = useState(false);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   
   // Redirect if user already has an association or when setup is completed
   useEffect(() => {
@@ -27,8 +31,44 @@ const SetupWizard = () => {
     }
   }, [currentAssociation, isLoading, setupCompleted, navigate]);
   
+  // Update user role to 'admin' when creating an association
+  const updateUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      setIsUpdatingRole(true);
+      
+      // First update the profile table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Create audit log for the role update
+      await supabase
+        .from('audit_logs')
+        .insert({
+          action: 'role_update',
+          entity: 'profiles',
+          entity_id: user.id,
+          user_id: user.id,
+          changes: { role: 'admin', previous_role: userProfile?.role || 'guest' }
+        });
+      
+      console.log('User role updated to admin');
+      
+    } catch (error) {
+      console.error('Error updating user role:', error);
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
+  
   // Handlers for successful setup
-  const handleAssociationCreated = () => {
+  const handleAssociationCreated = async () => {
+    await updateUserRole();
     setSetupCompleted(true);
   };
   

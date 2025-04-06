@@ -40,7 +40,7 @@ export const createAssociation = async (associationData: any) => {
     if (error) throw error;
     
     // After successful creation, add the current user as an admin member
-    await supabase
+    const { error: memberError } = await supabase
       .from('association_members')
       .insert({
         user_id: userId,
@@ -48,6 +48,27 @@ export const createAssociation = async (associationData: any) => {
         role: 'admin',
       });
       
+    if (memberError) throw memberError;
+    
+    // Update the user's role in the profiles table to 'admin'
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ role: 'admin', association_id: data.id })
+      .eq('id', userId);
+      
+    if (profileError) throw profileError;
+    
+    // Log this action in audit_logs
+    await supabase
+      .from('audit_logs')
+      .insert({
+        action: 'create_association',
+        entity: 'associations',
+        entity_id: data.id,
+        user_id: userId,
+        changes: { role: 'admin', association_created: true }
+      });
+    
     return { data };
   } catch (error) {
     console.error("Error creating association:", error);
