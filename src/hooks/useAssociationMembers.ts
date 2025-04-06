@@ -1,280 +1,171 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAssociation } from '@/contexts/AssociationContext';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTypeSafeSupabase } from './useTypeSafeSupabase';
+import { useToast } from '@/hooks/use-toast';
+import { UserRoleType } from '@/types/user';
+import { handleError, logDebug } from '@/utils/debug';
 
-export interface AssociationMember {
+export interface ProfileData {
   id: string;
   name: string;
   email: string;
-  role: string;
-  profileImage: string | null;
-  joinedAt: string;
+  profile_image?: string;
 }
 
-export function useAssociationMembers() {
+export interface AssociationMember {
+  id: string;
+  user_id: string;
+  association_id: string;
+  role: UserRoleType;
+  created_at: string;
+  profile?: ProfileData;
+}
+
+/**
+ * Hook to manage association members
+ */
+export const useAssociationMembers = (associationId: string) => {
   const [members, setMembers] = useState<AssociationMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { currentAssociation } = useAssociation();
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { safeSelect, safeDelete } = useTypeSafeSupabase();
 
-  useEffect(() => {
-    if (currentAssociation) {
-      fetchMembers();
-    } else {
-      setMembers([]);
-      setLoading(false);
-    }
-  }, [currentAssociation]);
-
-  const fetchMembers = async () => {
-    if (!currentAssociation) return;
-
+  /**
+   * Fetch all members of an association
+   */
+  const fetchMembers = useCallback(async () => {
+    if (!associationId) return;
+    
     setLoading(true);
     try {
+      logDebug('Fetching association members', { associationId });
+      
       const { data, error } = await supabase
         .from('association_members')
         .select(`
-          user_id,
-          role,
+          id, 
+          user_id, 
+          association_id, 
+          role, 
           created_at,
-          profiles:user_id (
-            id,
-            name,
-            email,
-            profile_image
-          )
+          profiles:user_id(id, name, email, profile_image)
         `)
-        .eq('association_id', currentAssociation.id)
-        .order('created_at');
-
+        .eq('association_id', associationId);
+        
       if (error) throw error;
-
-      const formattedMembers: AssociationMember[] = data.map(member => ({
-        id: member.user_id,
-        name: member.profiles.name,
-        email: member.profiles.email,
-        role: member.role,
-        profileImage: member.profiles.profile_image,
-        joinedAt: member.created_at,
-      }));
-
-      setMembers(formattedMembers);
-    } catch (error: any) {
-      console.error('Error fetching association members:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load association members.',
-        variant: 'destructive'
+      
+      // Transform the data to match our interface
+      const transformedMembers = data.map(member => {
+        // Handle profile data safely
+        let profile: ProfileData | undefined = undefined;
+        
+        if (member.profiles && !('error' in member.profiles)) {
+          profile = {
+            id: member.profiles.id,
+            name: member.profiles.name,
+            email: member.profiles.email,
+            profile_image: member.profiles.profile_image,
+          };
+        }
+        
+        return {
+          id: member.id,
+          user_id: member.user_id,
+          association_id: member.association_id,
+          role: member.role as UserRoleType,
+          created_at: member.created_at,
+          profile
+        };
       });
+      
+      setMembers(transformedMembers);
+    } catch (error) {
+      handleError(error, 'useAssociationMembers.fetchMembers');
     } finally {
       setLoading(false);
     }
-  };
+  }, [associationId]);
 
-  const updateMemberRole = async (memberId: string, role: string) => {
-    if (!currentAssociation) return false;
-
+  /**
+   * Update a member's role
+   */
+  const updateMemberRole = async (memberId: string, role: UserRoleType) => {
     try {
+      logDebug('Updating member role', { memberId, role });
+      
       const { error } = await supabase
         .from('association_members')
         .update({ role })
-        .match({ 
-          association_id: currentAssociation.id, 
-          user_id: memberId 
-        });
-
+        .eq('id', memberId);
+        
       if (error) throw error;
-
+      
       // Update local state
       setMembers(prev => 
         prev.map(member => 
-          member.id === memberId 
-            ? { ...member, role } 
-            : member
+          member.id === memberId ? { ...member, role } : member
         )
       );
-
+      
       toast({
-        title: 'Role Updated',
+        title: 'Role updated',
         description: 'Member role has been updated successfully.',
       });
-
-      return true;
-    } catch (error: any) {
-      console.error('Error updating member role:', error);
+      
+      return { success: true };
+    } catch (error) {
+      handleError(error, 'useAssociationMembers.updateMemberRole');
+      
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to update member role.',
-        variant: 'destructive'
+        title: 'Failed to update role',
+        description: 'There was an error updating the member role.',
+        variant: 'destructive',
       });
-      return false;
+      
+      return { success: false, error };
     }
   };
 
+  /**
+   * Remove a member from the association
+   */
   const removeMember = async (memberId: string) => {
-    if (!currentAssociation) return false;
-    if (memberId === user?.id) {
-      toast({
-        title: 'Error',
-        description: 'You cannot remove yourself from the association.',
-        variant: 'destructive'
-      });
-      return false;
-    }
-
     try {
+      logDebug('Removing member', { memberId });
+      
       const { error } = await supabase
         .from('association_members')
         .delete()
-        .match({ 
-          association_id: currentAssociation.id, 
-          user_id: memberId 
-        });
-
+        .eq('id', memberId);
+        
       if (error) throw error;
-
+      
       // Update local state
       setMembers(prev => prev.filter(member => member.id !== memberId));
-
+      
       toast({
-        title: 'Member Removed',
+        title: 'Member removed',
         description: 'Member has been removed from the association.',
       });
-
-      return true;
-    } catch (error: any) {
-      console.error('Error removing member:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to remove member.',
-        variant: 'destructive'
-      });
-      return false;
-    }
-  };
-
-  const checkInvitationCode = async (code: string): Promise<{valid: boolean, role?: string, email?: string}> => {
-    if (!currentAssociation) {
-      return { valid: false };
-    }
-    
-    try {
-      // Using type-safe select to avoid type issues
-      const { data, error } = await safeSelect('association_invitations', '*', {
-        column: 'code',
-        value: code
-      });
-
-      if (error || !data || data.length === 0) {
-        console.error('Error checking invitation code:', error || 'No data returned');
-        return { valid: false };
-      }
-
-      // Filter for current association
-      const invitation = data.find(inv => inv.association_id === currentAssociation.id);
       
-      if (!invitation) {
-        return { valid: false };
-      }
-      
-      // Check if invitation is expired
-      if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
-        return { valid: false };
-      }
-      
-      return { 
-        valid: true, 
-        role: invitation.role as string,
-        email: invitation.email as string | undefined
-      };
+      return { success: true };
     } catch (error) {
-      console.error('Error checking invitation code:', error);
-      return { valid: false };
-    }
-  };
-
-  const acceptInvitation = async (code: string): Promise<boolean> => {
-    if (!user || !currentAssociation) return false;
-
-    try {
-      // Check invitation validity
-      const inviteCheck = await checkInvitationCode(code);
-      if (!inviteCheck.valid) {
-        toast({
-          title: 'Invalid Invitation',
-          description: 'The invitation code is invalid or expired.',
-          variant: 'destructive'
-        });
-        return false;
-      }
-
-      // Check if user is already a member
-      const { data: existingMember, error: checkError } = await supabase
-        .from('association_members')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .eq('association_id', currentAssociation.id)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
+      handleError(error, 'useAssociationMembers.removeMember');
       
-      if (existingMember) {
-        toast({
-          title: 'Already a Member',
-          description: 'You are already a member of this association.',
-          variant: 'destructive'
-        });
-        return false;
-      }
-
-      // Add user to association
-      const { error: addError } = await supabase
-        .from('association_members')
-        .insert({
-          user_id: user.id,
-          association_id: currentAssociation.id,
-          role: inviteCheck.role || 'member', // Default to member if role is not specified
-        });
-
-      if (addError) throw addError;
-
-      // Delete the used invitation using type-safe delete
-      await safeDelete('association_invitations', {
-        column: 'code',
-        value: code
-      });
-
       toast({
-        title: 'Success',
-        description: 'You have successfully joined the association.',
+        title: 'Failed to remove member',
+        description: 'There was an error removing the member.',
+        variant: 'destructive',
       });
-
-      await fetchMembers();
-      return true;
-    } catch (error: any) {
-      console.error('Error accepting invitation:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to accept invitation.',
-        variant: 'destructive'
-      });
-      return false;
+      
+      return { success: false, error };
     }
   };
 
   return {
     members,
     loading,
-    refreshMembers: fetchMembers,
+    fetchMembers,
     updateMemberRole,
-    removeMember,
-    checkInvitationCode,
-    acceptInvitation
+    removeMember
   };
-}
+};

@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
 import { logDebug, handleError } from '@/utils/debug';
+import { useAuth } from '@/contexts/AuthContext';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -38,6 +39,7 @@ const RegisterForm = () => {
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signInWithOAuth } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -95,22 +97,10 @@ const RegisterForm = () => {
     try {
       setIsGoogleLoading(true);
       logDebug('Google sign up attempt', null, 'info');
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        }
-      });
-      
-      if (error) throw error;
+      await signInWithOAuth('google');
+      // Redirect happens automatically via the OAuth provider
     } catch (error: any) {
       handleError(error, 'RegisterForm.handleGoogleSignUp');
-      toast({
-        title: 'Google sign up failed',
-        description: error.message || 'Could not sign up with Google.',
-        variant: 'destructive',
-      });
       setIsGoogleLoading(false);
     }
   };
@@ -119,23 +109,10 @@ const RegisterForm = () => {
     try {
       setIsDiscordLoading(true);
       logDebug('Discord sign up attempt', null, 'info');
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: {
-          redirectTo: `${window.location.origin}`,
-          scopes: 'identify email',
-        }
-      });
-      
-      if (error) throw error;
+      await signInWithOAuth('discord');
+      // Redirect happens automatically via the OAuth provider
     } catch (error: any) {
       handleError(error, 'RegisterForm.handleDiscordSignUp');
-      toast({
-        title: 'Discord sign up failed',
-        description: error.message || 'Could not sign up with Discord.',
-        variant: 'destructive',
-      });
       setIsDiscordLoading(false);
     }
   };

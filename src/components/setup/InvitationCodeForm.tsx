@@ -1,189 +1,152 @@
 
 import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
+import { Spinner } from '@/components/ui/spinner';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAssociation } from '@/contexts/AssociationContext';
+import { logDebug, handleError } from '@/utils/debug';
+import { UserRoleType } from '@/types/user';
 
-interface InvitationCodeFormProps {
-  onSuccess?: () => void;
-}
+const formSchema = z.object({
+  invitationCode: z.string().min(6, {
+    message: 'Invitation code must be at least 6 characters.',
+  }),
+});
 
-const InvitationCodeForm = ({ onSuccess }: InvitationCodeFormProps) => {
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
+const InvitationCodeForm = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { setCurrentAssociation } = useAssociation();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!code.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an invitation code",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      invitationCode: '',
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to use an invitation code",
-        variant: "destructive"
+        title: "Authentication error",
+        description: "You must be logged in to use an invitation code.",
+        variant: "destructive",
       });
       return;
     }
-    
+
+    setIsLoading(true);
     try {
-      setLoading(true);
+      logDebug('Validating invitation code', { code: values.invitationCode });
       
-      // Lookup the invitation code
-      const { data: invitation, error: invitationError } = await supabase
+      // Find the invitation
+      const { data: invitationData, error: invitationError } = await supabase
         .from('association_invitations')
         .select('*')
-        .eq('code', code.trim())
+        .eq('code', values.invitationCode)
         .single();
       
-      if (invitationError || !invitation) {
-        throw new Error("Invalid invitation code");
+      if (invitationError) {
+        if (invitationError.code === 'PGRST116') {
+          throw new Error('Invalid invitation code. Please check and try again.');
+        }
+        throw invitationError;
+      }
+      
+      if (!invitationData) {
+        throw new Error('Invalid invitation code. Please check and try again.');
       }
       
       // Check if invitation has expired
-      if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
-        throw new Error("This invitation code has expired");
+      const now = new Date();
+      const expiresAt = new Date(invitationData.expires_at);
+      
+      if (now > expiresAt) {
+        throw new Error('This invitation code has expired.');
       }
       
-      // Check if user is already a member of this association
-      const { data: existingMembership } = await supabase
-        .from('association_members')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('association_id', invitation.association_id)
-        .single();
-      
-      if (existingMembership) {
-        // Get association details
-        const { data: association } = await supabase
-          .from('associations')
-          .select('*')
-          .eq('id', invitation.association_id)
-          .single();
-        
-        if (association) {
-          setCurrentAssociation({
-            id: association.id,
-            name: association.name,
-            description: association.description,
-            logo: association.logo,
-            contactEmail: association.contact_email,
-            contactPhone: association.contact_phone,
-            website: association.website,
-            address: association.address,
-            createdAt: association.created_at,
-            updatedAt: association.updated_at
-          });
-          
-          toast({
-            title: "Already a member",
-            description: `You are already a member of ${association.name}`
-          });
-          
-          // Call success callback
-          onSuccess?.();
-          return;
-        }
-      }
-      
-      // Add user to association members
-      const { error: membershipError } = await supabase
+      // Create association member entry
+      const { error: memberError } = await supabase
         .from('association_members')
         .insert({
+          association_id: invitationData.association_id,
           user_id: user.id,
-          association_id: invitation.association_id,
-          role: invitation.role || 'member'
+          role: invitationData.role as UserRoleType,
         });
       
-      if (membershipError) {
-        throw membershipError;
-      }
-      
-      // Update user profile with association_id if they don't have one already
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('association_id')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profile?.association_id) {
-        await supabase
-          .from('profiles')
-          .update({ association_id: invitation.association_id })
-          .eq('id', user.id);
-      }
-      
-      // Get association details
-      const { data: association } = await supabase
-        .from('associations')
-        .select('*')
-        .eq('id', invitation.association_id)
-        .single();
-      
-      if (association) {
-        setCurrentAssociation({
-          id: association.id,
-          name: association.name,
-          description: association.description,
-          logo: association.logo,
-          contactEmail: association.contact_email,
-          contactPhone: association.contact_phone,
-          website: association.website,
-          address: association.address,
-          createdAt: association.created_at,
-          updatedAt: association.updated_at
-        });
+      if (memberError) {
+        // Check if it's a duplicate key error
+        if (memberError.code === '23505') {
+          throw new Error('You are already a member of this association.');
+        }
+        throw memberError;
       }
       
       toast({
-        title: "Success",
-        description: `You have joined ${association?.name || 'the association'}`
+        title: "Success!",
+        description: "You have successfully joined the association.",
       });
       
-      // Call success callback
-      onSuccess?.();
-      
+      // Redirect to dashboard
+      navigate('/dashboard');
     } catch (error: any) {
+      handleError(error, 'InvitationCodeForm.onSubmit');
       toast({
         title: "Error",
-        description: error.message || "Failed to use invitation code",
-        variant: "destructive"
+        description: error.message || "Failed to process invitation code.",
+        variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="code">Invitation Code</Label>
-        <Input
-          id="code"
-          placeholder="Enter invitation code"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          disabled={loading}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="invitationCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Invitation Code</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter your invitation code" {...field} />
+              </FormControl>
+              <FormDescription>
+                Please enter the invitation code you received from your association admin.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Joining...' : 'Join Association'}
-      </Button>
-    </form>
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <span className="flex items-center">
+              <Spinner className="mr-2" /> Joining...
+            </span>
+          ) : (
+            "Join Association"
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 };
 

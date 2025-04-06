@@ -21,7 +21,7 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, signInWithOAuth } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const emailVerificationNeeded = location.state?.emailVerification;
@@ -81,23 +81,10 @@ const LoginForm = () => {
     try {
       setIsGoogleLoading(true);
       logDebug('Google sign in attempt', null, 'info');
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          scopes: 'email profile',
-        }
-      });
-      
-      if (error) throw error;
+      await signInWithOAuth('google');
+      // Redirect happens automatically via the OAuth provider
     } catch (error: any) {
       handleError(error, 'LoginForm.handleGoogleSignIn');
-      toast({
-        title: 'Google login failed',
-        description: error.message || 'Could not sign in with Google.',
-        variant: 'destructive',
-      });
       setIsGoogleLoading(false);
     }
   };
@@ -105,23 +92,11 @@ const LoginForm = () => {
   const handleDiscordLogin = async () => {
     try {
       setIsDiscordLoading(true);
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: {
-          redirectTo: `${window.location.origin}`,
-          scopes: 'identify email',
-        }
-      });
-      
-      if (error) throw error;
+      logDebug('Discord sign in attempt', null, 'info');
+      await signInWithOAuth('discord');
+      // Redirect happens automatically via the OAuth provider
     } catch (error: any) {
-      console.error('Discord login error:', error);
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: error.message || "Failed to login with Discord.",
-      });
+      handleError(error, 'LoginForm.handleDiscordLogin');
       setIsDiscordLoading(false);
     }
   };

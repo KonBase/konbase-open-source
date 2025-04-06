@@ -1,10 +1,10 @@
-
 import React, { createContext, useEffect, useState } from 'react';
 import { AuthContextType, AuthState, AuthUser, AuthUserProfile } from './AuthTypes';
 import { supabase } from '@/lib/supabase';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { toast } from '@/components/ui/use-toast';
 import { USER_ROLES, UserRoleType } from '@/types/user';
+import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
 
 // Create the context with a default undefined value
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +26,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setupAuth = async () => {
       setState(prev => ({ ...prev, isLoading: true }));
       try {
+        // Handle OAuth redirects if applicable
+        const redirectResult = await handleOAuthRedirect();
+        if (redirectResult.success && redirectResult.session) {
+          await updateUserState(redirectResult.session);
+          return;
+        }
+        
         // Get initial session
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -269,6 +276,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Function to handle OAuth sign-in (Google, Discord, etc.)
+  const signInWithOAuth = async (provider: 'google' | 'discord') => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        }
+      });
+      
+      if (error) throw error;
+      
+      // The redirect will happen automatically, no need to do anything else here
+    } catch (error: any) {
+      console.error(`Error signing in with ${provider}:`, error);
+      setState(prev => ({ ...prev, loading: false, error: error.message }));
+      toast({
+        title: `${provider} sign in failed`,
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   // Legacy/convenience methods
   const login = signIn;
   const logout = signOut;
@@ -279,6 +312,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
+    signInWithOAuth,
     hasPermission,
     hasRole,
     checkRoleAccess,

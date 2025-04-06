@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useToast } from '@/components/ui/use-toast';
 import useNetworkStatus from '@/hooks/useNetworkStatus';
+import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
 
 export default function RootLayout() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -18,6 +19,25 @@ export default function RootLayout() {
     testInterval: 60000, // Check connection every minute
     testEndpoint: 'https://www.google.com' // Use a reliable public endpoint
   });
+
+  // Process OAuth redirects when the component mounts
+  useEffect(() => {
+    const processOAuthRedirect = async () => {
+      if (location.hash && location.hash.includes('access_token')) {
+        const result = await handleOAuthRedirect();
+        if (result.success) {
+          toast({
+            title: "Login successful",
+            description: "You have been successfully logged in.",
+          });
+          // Redirect to the dashboard
+          navigate('/dashboard', { replace: true });
+        }
+      }
+    };
+
+    processOAuthRedirect();
+  }, [location.hash, navigate, toast]);
 
   // Add effect to show offline status
   useEffect(() => {
