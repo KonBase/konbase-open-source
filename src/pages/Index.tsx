@@ -1,10 +1,14 @@
+
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import HomeHeader from '@/components/layout/HomeHeader';
 import { ArrowRight, BarChart3, Box, CheckCircle, Database, Shield, Users, MessageCircle, Github, Coffee } from 'lucide-react';
 
 const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
+      <HomeHeader />
+      
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-background to-muted/20 py-20" id="home">
         <div className="container mx-auto px-4">
