@@ -29,10 +29,6 @@ interface AuditLog {
 }
 
 const Dashboard = () => {
-<<<<<<< HEAD
-  const { currentAssociation } = useAssociation();
-  const someNumberValue = 42; // Example number value
-=======
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const { user } = useAuth();
   const [retryCount, setRetryCount] = useState(0);
@@ -63,7 +59,7 @@ const Dashboard = () => {
   } = useSupabaseQuery<AuditLog[]>(
     ['recent-activity', currentAssociation?.id, retryCount],
     async () => {
-      if (!currentAssociation?.id) return { data: [], error: null };
+      if (!currentAssociation?.id) return { data: [] as AuditLog[], error: null };
       
       logDebug(`Fetching recent activity for association ${currentAssociation.id}`, null, 'info');
       
@@ -163,7 +159,6 @@ const Dashboard = () => {
   const showLocationManager = () => {
     console.log('Location manager should open');
   };
->>>>>>> ab317a2158efa2beead671dc91ae2386179e026e
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,57 +169,11 @@ const Dashboard = () => {
           isHome={isHome} 
         />
 
-<<<<<<< HEAD
-        {/* Main Dashboard Content */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
-          <Card>
-            <CardHeader>
-              <CardTitle>Association Overview</CardTitle>
-              <CardDescription>Current status of your association</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Association info will go here */}
-                <p className="text-sm text-muted-foreground">Manage your association details, members and equipment</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest actions and events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Recent activity list will go here */}
-                <p className="text-sm text-muted-foreground">No recent activities to display</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks for fast access</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Quick action buttons will go here */}
-                <p className="text-sm text-muted-foreground">Access your most common tasks quickly</p>
-                <p className="text-sm text-muted-foreground">Example number as string: {someNumberValue.toString()}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <ConventionManagementSection something={[]} />
-=======
         <ErrorBoundary>
           <DashboardOverviewSection 
             currentAssociation={currentAssociation}
             isLoadingActivity={isLoadingActivity}
-            recentActivity={recentActivity || []} 
+            recentActivity={recentActivity || []}
             activityError={activityError}
             handleRetry={handleRetry}
           />
@@ -233,7 +182,6 @@ const Dashboard = () => {
         <ErrorBoundary>
           <AssociationManagementSection onShowLocationManager={showLocationManager} />
         </ErrorBoundary>
->>>>>>> ab317a2158efa2beead671dc91ae2386179e026e
         
         <ErrorBoundary>
           <ConventionManagementSection />

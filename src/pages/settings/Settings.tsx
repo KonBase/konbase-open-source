@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,13 +18,80 @@ import {
   Moon, 
   Sun, 
   Laptop, 
-  Languages
+  Languages,
+  ToggleLeft,
+  ToggleRight,
+  Maximize,
+  MessageSquare,
+  Eye
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeProvider';
+import { useToast } from '@/hooks/use-toast';
+import { enableDebugMode, isDebugModeEnabled } from '@/utils/debug';
+import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const Settings = () => {
-  const { profile, loading } = useUserProfile();
+  const { profile, loading, refreshProfile } = useUserProfile();
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+  
+  const [isFormSaving, setIsFormSaving] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(() => isDebugModeEnabled());
+  const [animations, setAnimations] = useState(true);
+  const [largeText, setLargeText] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+  
+  const [notifications, setNotifications] = useState({
+    email: true,
+    push: true,
+    conventions: true,
+    inventory: true,
+    messages: true,
+    updates: true
+  });
+
+  const handleNotificationChange = (type: keyof typeof notifications) => {
+    setNotifications(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+  };
+
+  const handleDebugModeToggle = () => {
+    const newValue = !isDebugMode;
+    setIsDebugMode(newValue);
+    enableDebugMode(newValue);
+    
+    toast({
+      title: newValue ? "Debug mode enabled" : "Debug mode disabled",
+      description: newValue 
+        ? "Additional debugging information is now available." 
+        : "Debug mode has been turned off.",
+    });
+  };
+  
+  const saveAccountSettings = async () => {
+    setIsFormSaving(true);
+    
+    try {
+      // Simulating an API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Settings updated",
+        description: "Your account settings have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to update settings",
+        description: "There was a problem saving your settings. Please try again.",
+      });
+    } finally {
+      setIsFormSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -77,6 +145,23 @@ const Settings = () => {
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" type="email" defaultValue={profile?.email || ''} />
                 </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="debug-mode">Debug Mode</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Show additional debugging information
+                    </p>
+                  </div>
+                  <Switch 
+                    id="debug-mode" 
+                    checked={isDebugMode} 
+                    onCheckedChange={handleDebugModeToggle} 
+                  />
+                </div>
+                
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="marketing">Marketing emails</Label>
@@ -86,7 +171,10 @@ const Settings = () => {
                   </div>
                   <Switch id="marketing" defaultChecked={true} />
                 </div>
-                <Button>Save Changes</Button>
+                
+                <Button onClick={saveAccountSettings} disabled={isFormSaving}>
+                  {isFormSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -133,22 +221,55 @@ const Settings = () => {
                   
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="dense-mode">Dense Mode</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Compact UI with reduced spacing
-                      </p>
-                    </div>
-                    <Switch id="dense-mode" />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
                       <Label htmlFor="animations">Animations</Label>
                       <p className="text-sm text-muted-foreground">
                         Enable UI animations and transitions
                       </p>
                     </div>
-                    <Switch id="animations" defaultChecked={true} />
+                    <Switch 
+                      id="animations" 
+                      checked={animations}
+                      onCheckedChange={setAnimations}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="large-text">Large Text</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Increase the size of text for better readability
+                      </p>
+                    </div>
+                    <Switch 
+                      id="large-text" 
+                      checked={largeText}
+                      onCheckedChange={setLargeText}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="contrast">High Contrast Mode</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Enhance visibility with higher contrast colors
+                      </p>
+                    </div>
+                    <Switch 
+                      id="contrast" 
+                      checked={highContrast}
+                      onCheckedChange={setHighContrast}
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <Label>Density</Label>
+                    <ToggleGroup type="single" defaultValue="comfortable" className="justify-start">
+                      <ToggleGroupItem value="compact">Compact</ToggleGroupItem>
+                      <ToggleGroupItem value="comfortable">Comfortable</ToggleGroupItem>
+                      <ToggleGroupItem value="spacious">Spacious</ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
                 </div>
               </CardContent>
@@ -169,7 +290,11 @@ const Settings = () => {
                       Receive notifications via email
                     </p>
                   </div>
-                  <Switch id="email-notifications" defaultChecked={true} />
+                  <Switch 
+                    id="email-notifications" 
+                    checked={notifications.email}
+                    onCheckedChange={() => handleNotificationChange('email')}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -179,7 +304,30 @@ const Settings = () => {
                       Receive notifications in the browser
                     </p>
                   </div>
-                  <Switch id="push-notifications" defaultChecked={true} />
+                  <Switch 
+                    id="push-notifications" 
+                    checked={notifications.push}
+                    onCheckedChange={() => handleNotificationChange('push')}
+                  />
+                </div>
+                
+                <Separator />
+                <h3 className="text-sm font-medium pt-2">Notification Categories</h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Messages & Mentions
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      When someone mentions you or sends you a message
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={notifications.messages}
+                    onCheckedChange={() => handleNotificationChange('messages')}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -189,7 +337,11 @@ const Settings = () => {
                       Get reminders about upcoming conventions
                     </p>
                   </div>
-                  <Switch id="convention-reminders" defaultChecked={true} />
+                  <Switch 
+                    id="convention-reminders" 
+                    checked={notifications.conventions}
+                    onCheckedChange={() => handleNotificationChange('conventions')}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -199,47 +351,89 @@ const Settings = () => {
                       Get notified about inventory changes
                     </p>
                   </div>
-                  <Switch id="inventory-alerts" defaultChecked={true} />
+                  <Switch 
+                    id="inventory-alerts" 
+                    checked={notifications.inventory}
+                    onCheckedChange={() => handleNotificationChange('inventory')}
+                  />
                 </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="app-updates">Product Updates</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications about new features and updates
+                    </p>
+                  </div>
+                  <Switch 
+                    id="app-updates" 
+                    checked={notifications.updates}
+                    onCheckedChange={() => handleNotificationChange('updates')}
+                  />
+                </div>
+                
+                <Button>Save Notification Settings</Button>
               </CardContent>
             </Card>
           </TabsContent>
           
           <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>Manage your account security</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input id="new-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input id="confirm-password" type="password" />
-                </div>
-                
-                <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="two-factor">Two-Factor Authentication</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security to your account
-                    </p>
+            <div className="grid gap-6">
+              <TwoFactorAuth />
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Password Settings</CardTitle>
+                  <CardDescription>Update your password or security preferences</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input id="current-password" type="password" />
                   </div>
-                  <Switch id="two-factor" defaultChecked={profile?.two_factor_enabled || false} />
-                </div>
-                
-                <Button>Update Security Settings</Button>
-              </CardContent>
-            </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input id="new-password" type="password" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input id="confirm-password" type="password" />
+                  </div>
+                  
+                  <Button>Update Password</Button>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sessions</CardTitle>
+                  <CardDescription>Manage your active sessions and devices</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Current Device</p>
+                        <p className="text-xs text-muted-foreground">Chrome on Windows • Active now</p>
+                      </div>
+                      <span className="text-xs bg-primary/10 text-primary rounded px-2 py-1">Current</span>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Mobile App</p>
+                        <p className="text-xs text-muted-foreground">iOS • Last active 2 days ago</p>
+                      </div>
+                      <Button variant="ghost" size="sm">Sign out</Button>
+                    </div>
+                    
+                    <Button variant="outline" className="w-full">Sign out of all devices</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
           
           <TabsContent value="language">
