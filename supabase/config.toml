@@ -21,7 +21,7 @@ api_url = "https://api.supabase.com"
 
 [functions]
 [functions.generate-totp-secret]
-verify_jwt = true
+verify_jwt = false
 
 [functions.verify-totp]
 verify_jwt = true

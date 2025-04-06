@@ -38,10 +38,10 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       setIsGenerating(true);
       setErrorMessage(null);
       
-      const { data, error } = await supabase.functions.invoke('generate-totp-secret', {});
+      const { data, error } = await supabase.functions.invoke('generate-totp-secret');
       
       if (error) {
-        console.error("Error generating TOTP secret:", error);
+        logDebug("Error generating TOTP secret:", error, 'error');
         throw error;
       }
       

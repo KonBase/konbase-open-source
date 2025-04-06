@@ -14,12 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    // Get the current user from the authorization header
-    const authHeader = req.headers.get('authorization') || '';
-    if (!authHeader) {
-      throw new Error('Authorization header is required');
-    }
-
     // Generate a new TOTP secret
     const secret = OTPAuth.Secret.generate(32);
     

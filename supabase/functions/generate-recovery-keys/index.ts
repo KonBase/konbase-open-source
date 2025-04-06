@@ -28,7 +28,9 @@ serve(async (req) => {
   }
 
   try {
-    const { count = 8 } = await req.json();
+    // Default to 8 keys if not specified
+    const body = await req.json().catch(() => ({}));
+    const count = body?.count || 8;
     
     // Generate the requested number of recovery keys
     const keys = Array.from({ length: count }, () => {
