@@ -1,10 +1,10 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ContextWrapper } from './components/ContextWrapper';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from './components/ui/toaster';
 import { SessionRecovery } from '@/components/SessionRecovery';
 
@@ -72,69 +72,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Define your routes with the ContextWrapper
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: (
-      <ContextWrapper>
-        <RootLayout />
-      </ContextWrapper>
-    ),
-    errorElement: <ErrorPage />,
-    children: [
-      { index: true, element: <Home /> },
-      { path: "dashboard", element: <Dashboard /> },
-      { path: "profile", element: <ProfilePage /> },
-      { path: "settings", element: <Settings /> },
-      
-      // Admin routes
-      { path: "admin", element: <AdminPanel /> },
-      
-      // Association routes
-      { path: "associations", element: <AssociationsList /> },
-      { path: "association/profile", element: <AssociationProfile /> },
-      { path: "association/members", element: <AssociationMembers /> },
-      { path: "association/:id", element: <AssociationDetails /> },
-      
-      // Convention routes
-      { path: "conventions", element: <ConventionsList /> },
-      { path: "conventions/archive", element: <ConventionArchive /> },
-      { path: "conventions/templates", element: <ConventionTemplates /> },
-      { path: "convention/:id", element: <ConventionDetails /> },
-      { path: "convention/:id/equipment", element: <ConventionEquipment /> },
-      { path: "convention/:id/locations", element: <ConventionLocations /> },
-      { path: "convention/:id/logs", element: <ConventionLogs /> },
-      { path: "convention/:id/requirements", element: <ConventionRequirements /> },
-      { path: "convention/:id/consumables", element: <ConventionConsumables /> },
-      
-      // Inventory routes
-      { path: "inventory", element: <InventoryList /> },
-      { path: "inventory/items", element: <InventoryItems /> },
-      { path: "inventory/categories", element: <ItemCategories /> },
-      { path: "inventory/locations", element: <ItemLocations /> },
-      { path: "inventory/storage", element: <StorageLocations /> },
-      { path: "inventory/documents", element: <WarrantiesDocuments /> },
-      { path: "inventory/sets", element: <EquipmentSets /> },
-      { path: "inventory/import-export", element: <ImportExport /> },
-      
-      // Reports routes
-      { path: "reports", element: <ReportsList /> },
-      
-      // Catch-all route for 404
-      { path: "*", element: <NotFound /> }
-    ],
-  },
-  // Authentication routes (outside the main layout)
-  { path: "/login", element: <Login /> },
-  { path: "/register", element: <Register /> },
-  { path: "/forgot-password", element: <ForgotPassword /> },
-  { path: "/reset-password", element: <ResetPassword /> },
-  
-  // Setup wizard route
-  { path: "/setup", element: <SetupWizard /> },
-]);
-
 function App() {
   return (
     <ErrorBoundary>
@@ -143,7 +80,58 @@ function App() {
           <AuthProvider>
             <AssociationProvider>
               <SessionRecovery />
-              <RouterProvider router={router} />
+              <Routes>
+                <Route path="/" element={<RootLayout />}>
+                  <Route index element={<Home />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="settings" element={<Settings />} />
+                  
+                  {/* Admin routes */}
+                  <Route path="admin" element={<AdminPanel />} />
+                  
+                  {/* Association routes */}
+                  <Route path="associations" element={<AssociationsList />} />
+                  <Route path="association/profile" element={<AssociationProfile />} />
+                  <Route path="association/members" element={<AssociationMembers />} />
+                  <Route path="association/:id" element={<AssociationDetails />} />
+                  
+                  {/* Convention routes */}
+                  <Route path="conventions" element={<ConventionsList />} />
+                  <Route path="conventions/archive" element={<ConventionArchive />} />
+                  <Route path="conventions/templates" element={<ConventionTemplates />} />
+                  <Route path="convention/:id" element={<ConventionDetails />} />
+                  <Route path="convention/:id/equipment" element={<ConventionEquipment />} />
+                  <Route path="convention/:id/locations" element={<ConventionLocations />} />
+                  <Route path="convention/:id/logs" element={<ConventionLogs />} />
+                  <Route path="convention/:id/requirements" element={<ConventionRequirements />} />
+                  <Route path="convention/:id/consumables" element={<ConventionConsumables />} />
+                  
+                  {/* Inventory routes */}
+                  <Route path="inventory" element={<InventoryList />} />
+                  <Route path="inventory/items" element={<InventoryItems />} />
+                  <Route path="inventory/categories" element={<ItemCategories />} />
+                  <Route path="inventory/locations" element={<ItemLocations />} />
+                  <Route path="inventory/storage" element={<StorageLocations />} />
+                  <Route path="inventory/documents" element={<WarrantiesDocuments />} />
+                  <Route path="inventory/sets" element={<EquipmentSets />} />
+                  <Route path="inventory/import-export" element={<ImportExport />} />
+                  
+                  {/* Reports routes */}
+                  <Route path="reports" element={<ReportsList />} />
+                  
+                  {/* Catch-all route for 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+                {/* Authentication routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                
+                {/* Setup wizard route */}
+                <Route path="/setup" element={<SetupWizard />} />
+              </Routes>
               <Toaster />
             </AssociationProvider>
           </AuthProvider>
