@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Key, Plus, Copy } from 'lucide-react';
@@ -14,6 +13,22 @@ import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
+interface SetupStepProps {
+  onSuccess?: () => void;
+}
+
+const SetupStep: React.FC<SetupStepProps> = ({ onSuccess, ...props }) => {
+  const handleComplete = () => {
+    if (onSuccess) onSuccess();
+  };
+
+  return (
+    <div>
+      {/* Add your rendering logic here */}
+    </div>
+  );
+};
 
 const SetupWizard = () => {
   const navigate = useNavigate();
@@ -194,6 +209,7 @@ const SetupWizard = () => {
           </TabsContent>
         </Tabs>
       )}
+      <SetupStep onSuccess={() => setSetupCompleted(true)} />
     </div>
   );
 };

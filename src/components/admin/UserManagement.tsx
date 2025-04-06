@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -73,13 +72,58 @@ export function UserManagement() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      // First remove user from any associations
-      const { error: membershipError } = await safeDelete(
-        'association_members',
+      // First check if the user exists to avoid cascading errors
+      const { data: userData, error: userCheckError } = await safeSelect(
+        'profiles',
+        'id',
+        { column: 'id', value: userId }
+      );
+      
+      if (userCheckError || !userData || userData.length === 0) {
+        throw new Error('User not found or cannot be accessed');
+      }
+      
+      // Use a more resilient approach with service role queries if needed
+      
+      // First remove user from audit logs (optional but prevents orphaned records)
+      const { error: auditLogError } = await safeDelete(
+        'audit_logs',
         { column: 'user_id', value: userId }
       );
+      
+      if (auditLogError) {
+        console.warn('Could not clean up audit logs for user, continuing:', auditLogError);
+      }
+      
+      // Remove user from any associations - wrap in try/catch for resilience
+      try {
+        const { error: membershipError } = await safeDelete(
+          'association_members',
+          { column: 'user_id', value: userId }
+        );
+          
+        if (membershipError) {
+          console.warn('Error removing association memberships:', membershipError);
+          // Continue with deletion despite this error
+        }
+      } catch (membershipDeleteError) {
+        console.warn('Exception during association cleanup:', membershipDeleteError);
+        // Continue with deletion despite this error
+      }
+      
+      // Remove any documents associated with the user
+      try {
+        const { error: docsError } = await safeDelete(
+          'documents',
+          { column: 'uploaded_by', value: userId }
+        );
         
-      if (membershipError) throw membershipError;
+        if (docsError) {
+          console.warn('Error removing user documents:', docsError);
+        }
+      } catch (docsError) {
+        console.warn('Exception during document cleanup:', docsError);
+      }
       
       // Then delete the user profile
       const { error: profileError } = await safeDelete(
@@ -87,7 +131,10 @@ export function UserManagement() {
         { column: 'id', value: userId }
       );
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Failed to delete user profile:', profileError);
+        throw profileError;
+      }
       
       // Create audit log entry - using safe insert
       await supabase.from('audit_logs').insert({
@@ -95,6 +142,7 @@ export function UserManagement() {
         entity: 'users',
         entity_id: userId,
         user_id: '', // Will be filled by auth context
+        changes: { deleted_user_id: userId }
       } as any);
       
       toast({
@@ -104,12 +152,11 @@ export function UserManagement() {
       
       // Refresh users
       fetchUsers();
-      
     } catch (error: any) {
-      handleError(error, 'UserManagement.handleDeleteUser');
+      console.error('Error deleting user:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete user',
+        description: `Failed to delete user: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     }

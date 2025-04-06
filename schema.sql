@@ -880,3 +880,16 @@ BEGIN
     END IF;
 END
 $$;
+-- Add missing columns to audit_logs table if ip_address doesn't exist
+ALTER TABLE IF EXISTS public.audit_logs
+ADD COLUMN IF NOT EXISTS ip_address TEXT;
+
+-- Update association_members table to make sure profile info is properly joined
+-- First make sure we have proper foreign key relationship between user_id and profiles
+ALTER TABLE IF EXISTS public.association_members
+DROP CONSTRAINT IF EXISTS association_members_user_id_fkey,
+ADD CONSTRAINT association_members_user_id_fkey
+FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+-- Make sure the profiles table has proper index for faster joins
+CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles(id);
