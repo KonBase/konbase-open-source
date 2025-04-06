@@ -274,6 +274,23 @@ const InventoryItems = () => {
     );
   }
   
+  // Check if there are categories and locations before rendering
+  const hasCategoriesAndLocations = categories.length > 0 && locations.length > 0;
+  
+  if (!hasCategoriesAndLocations) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center p-6">
+          <Package2 className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-lg font-medium">Missing Required Data</p>
+          <p className="text-sm text-muted-foreground mb-4 text-center">
+            You need to create at least one category and one location before adding inventory items.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -391,7 +408,7 @@ const InventoryItems = () => {
                           </FormControl>
                           <SelectContent>
                             {categories.map(category => (
-                              <SelectItem key={category.id} value={category.id}>
+                              <SelectItem key={category.id} value={category.id || 'undefined-key'}>
                                 {category.name}
                               </SelectItem>
                             ))}
@@ -419,7 +436,7 @@ const InventoryItems = () => {
                           </FormControl>
                           <SelectContent>
                             {locations.map(location => (
-                              <SelectItem key={location.id} value={location.id}>
+                              <SelectItem key={location.id} value={location.id || 'undefined-key'}>
                                 {location.name}
                               </SelectItem>
                             ))}
@@ -715,7 +732,7 @@ const InventoryItems = () => {
                           </FormControl>
                           <SelectContent>
                             {categories.map(category => (
-                              <SelectItem key={category.id} value={category.id}>
+                              <SelectItem key={category.id} value={category.id || 'undefined-key'}>
                                 {category.name}
                               </SelectItem>
                             ))}
@@ -743,7 +760,7 @@ const InventoryItems = () => {
                           </FormControl>
                           <SelectContent>
                             {locations.map(location => (
-                              <SelectItem key={location.id} value={location.id}>
+                              <SelectItem key={location.id} value={location.id || 'undefined-key'}>
                                 {location.name}
                               </SelectItem>
                             ))}
