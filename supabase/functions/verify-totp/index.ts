@@ -21,13 +21,16 @@ serve(async (req) => {
     }
 
     // Create a new TOTP object with the provided secret
+    // Using the correct way to initialize a secret from base32
+    const secretObj = new OTPAuth.Secret({ base32: secret });
+    
     const totp = new OTPAuth.TOTP({
       issuer: 'KonBase',
       label: 'KonBase Account',
       algorithm: 'SHA1',
       digits: 6,
       period: 30,
-      secret: OTPAuth.Secret.fromBase32(secret)
+      secret: secretObj
     });
 
     // Verify the provided token

@@ -14,8 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    // Generate a new TOTP secret
-    const secret = OTPAuth.Secret.generate(32);
+    // Create a new TOTP secret using the correct API
+    // OTPAuth.Secret.generate is not available, use the correct method instead
+    const secret = new OTPAuth.Secret();
     
     // Create a new TOTP object
     const totp = new OTPAuth.TOTP({
