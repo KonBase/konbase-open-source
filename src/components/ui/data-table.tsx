@@ -26,14 +26,12 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchable?: boolean;
   searchField?: string;
-  forceHideSearch?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -41,24 +39,18 @@ export function DataTable<TData, TValue>({
   data,
   searchable = false,
   searchField,
-  forceHideSearch = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const { hasRole } = useAuth();
-  
-  // Only super admins, system admins, or explicitly allowed components can use search
-  const isSuperOrSystemAdmin = hasRole('super_admin') || hasRole('system_admin');
-  const showSearch = searchable && !forceHideSearch && (isSuperOrSystemAdmin || searchable);
   
   const filteredData = React.useMemo(() => {
-    if (!showSearch || !searchQuery || !searchField) return data;
+    if (!searchable || !searchQuery || !searchField) return data;
     
     return data.filter((item: any) => {
       const fieldValue = item[searchField]?.toString().toLowerCase();
       return fieldValue?.includes(searchQuery.toLowerCase());
     });
-  }, [data, searchQuery, showSearch, searchField]);
+  }, [data, searchQuery, searchable, searchField]);
   
   const table = useReactTable({
     data: filteredData,
@@ -74,7 +66,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {showSearch && (
+      {searchable && (
         <div className="flex items-center">
           <Input
             placeholder={`Search by ${searchField || "name"}...`}
