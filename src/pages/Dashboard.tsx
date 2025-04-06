@@ -6,7 +6,12 @@ import { useAssociation } from '@/contexts/AssociationContext';
 import MemberManager from '@/components/association/MemberManager';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/lib/supabase';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
+import { Spinner } from '@/components/ui/spinner';
+import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
+import CommunicationSection from '@/components/dashboard/CommunicationSection';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuditLog {
   id: string;
@@ -17,7 +22,8 @@ interface AuditLog {
 }
 
 const Dashboard = () => {
-  const { currentAssociation } = useAssociation();
+  const { currentAssociation, isLoading: associationLoading } = useAssociation();
+  const { user } = useAuth();
   
   // Use the enhanced query hook to efficiently fetch additional data
   const { data: recentActivity, isLoading: isLoadingActivity } = useSupabaseQuery<AuditLog[]>(
@@ -39,15 +45,31 @@ const Dashboard = () => {
     }
   );
 
+  // Show loading state when data is being fetched
+  if (associationLoading) {
+    return (
+      <div className="container mx-auto py-6">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
+  // This calculation needs to be done after the loading check
+  const isHome = true; // We're on the dashboard home page
+
+  const showLocationManager = () => {
+    console.log('Location manager should open');
+    // Implementation would go here
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome to {currentAssociation?.name || 'KonBase'}
-          </p>
-        </div>
+        <DashboardHeader 
+          currentAssociation={currentAssociation} 
+          user={user} 
+          isHome={isHome} 
+        />
 
         {/* Main Dashboard Content */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
@@ -81,14 +103,12 @@ const Dashboard = () => {
             <CardContent>
               <div className="space-y-4">
                 {isLoadingActivity ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-5/6" />
+                  <div className="flex justify-center">
+                    <Spinner size="sm" />
                   </div>
                 ) : recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
                   <ul className="space-y-2">
-                    {recentActivity.map((activity: AuditLog) => (
+                    {recentActivity.map((activity) => (
                       <li key={activity.id} className="text-sm">
                         <span className="font-medium">{activity.action}</span>: {activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}
                       </li>
@@ -115,7 +135,10 @@ const Dashboard = () => {
           </Card>
         </div>
         
+        {/* Management Sections */}
+        <AssociationManagementSection onShowLocationManager={showLocationManager} />
         <ConventionManagementSection />
+        <CommunicationSection unreadNotifications={0} />
         
         {/* Association Members Section */}
         <div className="py-6">

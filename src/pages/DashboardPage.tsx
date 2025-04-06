@@ -1,13 +1,14 @@
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Dashboard from './Dashboard';
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 
 const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6">
+      <Suspense fallback={<div className="container mx-auto py-6"><DashboardSkeleton /></div>}>
         <Dashboard />
-      </div>
+      </Suspense>
     </div>
   );
 };
