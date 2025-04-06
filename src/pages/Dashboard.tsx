@@ -1,6 +1,6 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Header } from '@/components/layout/Header';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
 import { useAssociation } from '@/contexts/AssociationContext';
 import MemberManager from '@/components/association/MemberManager';
@@ -10,7 +10,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <div className="container mx-auto py-6 space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
