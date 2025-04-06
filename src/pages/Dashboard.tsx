@@ -7,6 +7,7 @@ import MemberManager from '@/components/association/MemberManager';
 
 const Dashboard = () => {
   const { currentAssociation } = useAssociation();
+  const someNumberValue = 42; // Example number value
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,12 +57,13 @@ const Dashboard = () => {
               <div className="space-y-4">
                 {/* Quick action buttons will go here */}
                 <p className="text-sm text-muted-foreground">Access your most common tasks quickly</p>
+                <p className="text-sm text-muted-foreground">Example number as string: {someNumberValue.toString()}</p>
               </div>
             </CardContent>
           </Card>
         </div>
         
-        <ConventionManagementSection />
+        <ConventionManagementSection something={[]} />
         
         {/* Association Members Section */}
         <div className="py-6">
