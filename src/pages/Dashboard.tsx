@@ -73,7 +73,7 @@ const Dashboard = () => {
     },
     {
       enabled: !!currentAssociation?.id,
-      staleTime: 30000,
+      staleTime: 30000 as unknown as string, // Fix Type error by casting
       onError: (error) => {
         logDebug('Error fetching recent activity', error, 'error');
         setLastError(error);
@@ -160,6 +160,9 @@ const Dashboard = () => {
     console.log('Location manager should open');
   };
 
+  // Ensure recentActivity is always an array
+  const safeRecentActivity = Array.isArray(recentActivity) ? recentActivity : [];
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 space-y-8">
@@ -173,7 +176,7 @@ const Dashboard = () => {
           <DashboardOverviewSection 
             currentAssociation={currentAssociation}
             isLoadingActivity={isLoadingActivity}
-            recentActivity={recentActivity || []}
+            recentActivity={safeRecentActivity}
             activityError={activityError}
             handleRetry={handleRetry}
           />
