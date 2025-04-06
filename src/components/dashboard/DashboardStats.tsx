@@ -8,6 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { StatCard } from '@/components/ui/stat-card';
+import { LayoutGrid, Package, Folder, Calendar } from 'lucide-react';
 
 export function DashboardStats() {
   const { status: networkStatus, testConnection, isTestingConnection, lastTestedAt, testResults } = useNetworkStatus({
@@ -18,8 +21,9 @@ export function DashboardStats() {
   const [retryCount, setRetryCount] = useState(0);
   const [requestTimestamp, setRequestTimestamp] = useState<number | null>(null);
   const [responseTimestamp, setResponseTimestamp] = useState<number | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   
-  const { isLoading, error, refetch, dashboardData } = useDashboardStats({
+  const { isLoading, error, refetch, dashboardData, isInitialLoad } = useDashboardStats({
     onRequestStart: () => {
       setRequestTimestamp(Date.now());
       setResponseTimestamp(null);
@@ -28,6 +32,14 @@ export function DashboardStats() {
       setResponseTimestamp(Date.now());
     }
   });
+
+  // Add fade-in animation after component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle retry with exponential backoff
   const handleRetry = () => {
@@ -48,7 +60,7 @@ export function DashboardStats() {
 
   if (error) {
     return (
-      <Card className="col-span-12 lg:col-span-8 md:col-span-6">
+      <Card className={`col-span-12 lg:col-span-8 md:col-span-6 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
         <CardHeader>
           <CardTitle className="text-xl font-bold">Dashboard Statistics</CardTitle>
         </CardHeader>
@@ -93,83 +105,64 @@ export function DashboardStats() {
   }
 
   return (
-    <Card className="col-span-12 lg:col-span-8 md:col-span-6">
+    <Card className={`col-span-12 lg:col-span-8 md:col-span-6 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-xl font-bold">Dashboard Statistics</CardTitle>
-        {!isLoading && (
+        {!isInitialLoad && (
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => {
               refetch();
-              // Wrap testConnection in a function that returns a Promise<boolean>
               const runTest = async () => {
                 await testConnection();
                 return true;
               };
               runTest();
             }}
-            disabled={isTestingConnection}
+            disabled={isTestingConnection || isLoading}
+            className="transition-opacity duration-200"
           >
-            <RefreshCw className={`h-4 w-4 ${isTestingConnection ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${(isTestingConnection || isLoading) ? 'animate-spin' : ''}`} />
           </Button>
         )}
       </CardHeader>
+      
+      {/* Show loading progress bar during initial load */}
+      {isInitialLoad && (
+        <div className="px-6 pb-2">
+          <Progress value={45} className="h-1" />
+        </div>
+      )}
+      
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 border rounded-lg">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-16" />
-              </>
-            ) : (
-              <>
-                <h3 className="text-xs font-medium text-muted-foreground">Total Items</h3>
-                <p className="text-2xl font-bold">{dashboardData?.itemCount || 0}</p>
-              </>
-            )}
-          </div>
-          <div className="p-4 border rounded-lg">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-16" />
-              </>
-            ) : (
-              <>
-                <h3 className="text-xs font-medium text-muted-foreground">Categories</h3>
-                <p className="text-2xl font-bold">{dashboardData?.categoryCount || 0}</p>
-              </>
-            )}
-          </div>
-          <div className="p-4 border rounded-lg">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-16" />
-              </>
-            ) : (
-              <>
-                <h3 className="text-xs font-medium text-muted-foreground">Locations</h3>
-                <p className="text-2xl font-bold">{dashboardData?.locationCount || 0}</p>
-              </>
-            )}
-          </div>
-          <div className="p-4 border rounded-lg">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-16" />
-              </>
-            ) : (
-              <>
-                <h3 className="text-xs font-medium text-muted-foreground">Conventions</h3>
-                <p className="text-2xl font-bold">{dashboardData?.conventionCount || 0}</p>
-              </>
-            )}
-          </div>
+          <StatCard
+            title="Total Items"
+            value={isLoading ? "-" : (dashboardData?.itemCount || 0).toString()}
+            icon={<Package className="h-4 w-4" />}
+            className="min-h-[90px]"
+          />
+          <StatCard
+            title="Categories"
+            value={isLoading ? "-" : (dashboardData?.categoryCount || 0).toString()}
+            icon={<Folder className="h-4 w-4" />}
+            className="min-h-[90px]"
+          />
+          <StatCard
+            title="Locations"
+            value={isLoading ? "-" : (dashboardData?.locationCount || 0).toString()}
+            icon={<LayoutGrid className="h-4 w-4" />}
+            className="min-h-[90px]"
+          />
+          <StatCard
+            title="Conventions"
+            value={isLoading ? "-" : (dashboardData?.conventionCount || 0).toString()}
+            icon={<Calendar className="h-4 w-4" />}
+            className="min-h-[90px]"
+          />
         </div>
+        
         <div className="mt-4">
           {isLoading ? (
             <div className="space-y-2">
@@ -180,7 +173,7 @@ export function DashboardStats() {
           ) : (
             <>
               {dashboardData?.recentNotifications && dashboardData.recentNotifications.length > 0 ? (
-                <div>
+                <div className="animate-fade-in">
                   <h3 className="text-sm font-medium mb-2">Recent Notifications</h3>
                   <ul className="space-y-2">
                     {dashboardData.recentNotifications.map((notification, index) => (

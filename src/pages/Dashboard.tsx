@@ -14,6 +14,7 @@ import ConventionManagementSection from '@/components/dashboard/ConventionManage
 import CommunicationSection from '@/components/dashboard/CommunicationSection';
 import LocationManagerView from '@/components/dashboard/LocationManagerView';
 import DashboardRedirectHandler from '@/components/dashboard/DashboardRedirectHandler';
+import DashboardStats from '@/components/dashboard/DashboardStats';
 import DebugPanel from '@/utils/debug-panel';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -25,6 +26,7 @@ const Dashboard = () => {
   const location = useLocation();
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [isDebugEnabled, setIsDebugEnabled] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Use our network status hook
   const { status: networkStatus, testConnection } = useNetworkStatus({
@@ -59,10 +61,23 @@ const Dashboard = () => {
     };
   }, []);
   
+  // Reset initial load state after association data is loaded
+  useEffect(() => {
+    if (!associationLoading) {
+      // Use a short timeout to prevent flashing between loading states
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [associationLoading]);
+  
   // Handle redirects from query parameters
   <DashboardRedirectHandler />
   
-  if (associationLoading) {
+  // Show loading spinner only during initial load
+  if (isInitialLoad && associationLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
         <Spinner size="xl" loadingText="Loading your dashboard..." />
@@ -105,6 +120,11 @@ const Dashboard = () => {
         user={user} 
         isHome={isHome} 
       />
+
+      {/* Add DashboardStats component */}
+      <div className="grid grid-cols-12 gap-4">
+        <DashboardStats />
+      </div>
 
       {/* Conditionally render Debug Panel based on debug mode setting */}
       {isDebugEnabled && (

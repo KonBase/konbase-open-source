@@ -34,24 +34,30 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
   const { safeSelect } = useTypeSafeSupabase();
   const { isOnline } = useNetworkStatus();
   const [loadAttempted, setLoadAttempted] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (isInitialFetch = false) => {
     if (!currentAssociation) {
       setDashboardData(null);
       setIsLoading(false);
       setLoadAttempted(true);
+      setInitialLoad(false);
       return;
     }
 
     setIsLoading(true);
-    setError(null);
+    
+    // Only clear error on manual refreshes, not initial load
+    if (!isInitialFetch) {
+      setError(null);
+    }
     
     // Signal request start
     if (onRequestStart) onRequestStart();
 
     try {
       const associationId = currentAssociation.id;
-      // Get the current user ID from the auth context instead of the association profile
+      // Get the current user ID from the auth context
       const userId = user?.id || null;
       
       // Using Promise.allSettled to handle partial failures gracefully
@@ -146,10 +152,12 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
       
       setDashboardData(data);
       setLoadAttempted(true);
+      setInitialLoad(false);
     } catch (err) {
       handleError(err, 'fetchDashboardData');
       setError(err);
       setLoadAttempted(true);
+      setInitialLoad(false);
     } finally {
       setIsLoading(false);
       // Signal request end
@@ -159,20 +167,24 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
 
   useEffect(() => {
     // Only fetch if online and we have an association
-    if (isOnline && currentAssociation && !loadAttempted) {
-      fetchDashboardData();
+    if (isOnline && currentAssociation && (!loadAttempted || initialLoad)) {
+      fetchDashboardData(initialLoad);
     }
-  }, [isOnline, currentAssociation, fetchDashboardData, loadAttempted]);
+  }, [isOnline, currentAssociation, fetchDashboardData, loadAttempted, initialLoad]);
 
   // Reset load attempted when association changes
   useEffect(() => {
-    setLoadAttempted(false);
+    if (currentAssociation?.id) {
+      setLoadAttempted(false);
+      setInitialLoad(true);
+    }
   }, [currentAssociation?.id]);
 
   return {
     dashboardData,
     isLoading,
     error,
-    refetch: fetchDashboardData
+    refetch: () => fetchDashboardData(false),
+    isInitialLoad: initialLoad
   };
 }
