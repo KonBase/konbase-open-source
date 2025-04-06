@@ -14,7 +14,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
   const { 
     showToasts = true, 
     onStatusChange,
-    testEndpoint = 'https://ceeoxorrfduotwfgmegx.supabase.co/rest/v1/',
+    testEndpoint = 'https://www.google.com',
     testInterval = 30000 // Default to 30 seconds to avoid excessive requests
   } = options;
   
@@ -85,10 +85,12 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
     setIsTestingConnection(true);
     
     try {
-      logDebug(`Testing connection to ${testEndpoint}`, null, 'debug');
+      logDebug(`Testing connection to ${testEndpoint}`, null, 'info');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
+      // Use a public endpoint like Google instead of Supabase REST API
+      // which requires authentication
       const response = await fetch(testEndpoint, { 
         method: 'HEAD',
         signal: controller.signal,
@@ -104,7 +106,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
       const result = { success: isConnected, timestamp };
       setTestResults(result);
       
-      logDebug(`Connection test result: ${isConnected ? 'Connected' : 'Failed'}`, null, 'debug');
+      logDebug(`Connection test result: ${isConnected ? 'Connected' : 'Failed'}`, null, 'info');
       return isConnected;
     } catch (error) {
       const timestamp = Date.now();

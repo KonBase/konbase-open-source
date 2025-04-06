@@ -1,292 +1,293 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
-import { Header } from '@/components/layout/Header';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { useAuth } from '@/contexts/AuthContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
-import { enableDebugMode, logDebug } from '@/utils/debug';
-import { Bug } from 'lucide-react';
-
-const accountFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-});
-
-type AccountFormValues = z.infer<typeof accountFormSchema>;
+import { Separator } from '@/components/ui/separator';
+import { 
+  Bell, 
+  Shield, 
+  User, 
+  Lock, 
+  Globe, 
+  Moon, 
+  Sun, 
+  Laptop, 
+  Languages
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeProvider';
 
 const Settings = () => {
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'account';
-  
-  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [debugModeEnabled, setDebugModeEnabled] = useState(
-    localStorage.getItem('konbase-debug') === 'true'
-  );
-  
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { profile, updateProfile } = useUserProfile();
-  const { signOut } = useAuth();
+  const { profile, loading } = useUserProfile();
+  const { theme, setTheme } = useTheme();
 
-  const form = useForm<AccountFormValues>({
-    resolver: zodResolver(accountFormSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-    },
-  });
-
-  useEffect(() => {
-    if (profile) {
-      form.reset({
-        name: profile.name || '',
-        email: profile.email || '',
-      });
-      setIsTwoFactorEnabled(profile.two_factor_enabled || false);
-    }
-  }, [profile, form]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Signed out",
-        description: "You have been signed out successfully.",
-      });
-      navigate('/login');
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error signing out",
-        description: error.message,
-      });
-    }
-  };
-
-  const handleTwoFactorChange = async (enabled: boolean) => {
-    setIsTwoFactorEnabled(enabled);
-    const result = await updateProfile({ two_factor_enabled: enabled });
-
-    if (result && result.success) {
-      toast({
-        title: "2FA settings updated",
-        description: `Two-factor authentication has been ${enabled ? 'enabled' : 'disabled'}.`,
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error updating 2FA settings",
-        description: result?.error || 'Failed to update 2FA settings.',
-      });
-    }
-  };
-  
-  const onSubmitAccount = async (data: AccountFormValues) => {
-    const result = await updateProfile({ name: data.name, email: data.email });
-    
-    if (result && result.success) {
-      toast({
-        title: "Profile updated",
-        description: "Your profile information has been updated successfully.",
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error updating profile",
-        description: result?.error || 'Failed to update profile information.',
-      });
-    }
-  };
-  
-  const handleNotificationChange = (type: 'email' | 'push', enabled: boolean) => {
-    if (type === 'email') {
-      setEmailNotifications(enabled);
-    } else {
-      setPushNotifications(enabled);
-    }
-    
-    toast({
-      title: "Notification settings updated",
-      description: `${type === 'email' ? 'Email' : 'Push'} notifications have been ${enabled ? 'enabled' : 'disabled'}.`,
-    });
-  };
-
-  const handleDebugModeChange = (enabled: boolean) => {
-    setDebugModeEnabled(enabled);
-    enableDebugMode(enabled);
-    
-    toast({
-      title: "Debug mode updated",
-      description: `Debug tools have been ${enabled ? 'enabled' : 'disabled'}.`,
-    });
-    
-    logDebug(`Debug mode ${enabled ? 'enabled' : 'disabled'} via settings`, null, 'info');
-  };
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Back
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         
-        <Tabs defaultValue={defaultTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        <Tabs defaultValue="account" className="w-full">
+          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-5 mb-4">
+            <TabsTrigger value="account" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="hidden md:inline">Account</span>
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <Moon className="h-4 w-4" />
+              <span className="hidden md:inline">Appearance</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              <span className="hidden md:inline">Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden md:inline">Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="language" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              <span className="hidden md:inline">Language</span>
+            </TabsTrigger>
           </TabsList>
           
-          {/* Account Settings */}
           <TabsContent value="account">
             <Card>
               <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-                <CardDescription>Manage your account details and preferences</CardDescription>
+                <CardTitle>Account Settings</CardTitle>
+                <CardDescription>Manage your account information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmitAccount)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Your name" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            This is your public display name.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Your email address" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            We'll use this email to contact you.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex justify-between">
-                      <Button type="submit">Save Changes</Button>
-                      <Button variant="outline" onClick={handleSignOut} type="button">
-                        Sign Out
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-                
-                <div className="flex items-center justify-between pt-4 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" defaultValue={profile?.name || ''} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" defaultValue={profile?.email || ''} />
+                </div>
+                <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label htmlFor="debug-tools" className="flex items-center space-x-2">
-                      <Bug className="h-4 w-4" />
-                      <span>Debug Tools</span>
-                    </Label>
+                    <Label htmlFor="marketing">Marketing emails</Label>
                     <p className="text-sm text-muted-foreground">
-                      Enable developer debugging tools and panels
+                      Receive emails about new features and updates
                     </p>
                   </div>
-                  <Switch 
-                    id="debug-tools" 
-                    checked={debugModeEnabled} 
-                    onCheckedChange={handleDebugModeChange} 
-                  />
+                  <Switch id="marketing" defaultChecked={true} />
+                </div>
+                <Button>Save Changes</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="appearance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>Customize the look and feel of the application</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="mb-2 text-lg font-medium">Theme</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button 
+                        variant={theme === 'light' ? 'default' : 'outline'} 
+                        className="flex flex-col items-center justify-center gap-1 h-24"
+                        onClick={() => setTheme('light')}
+                      >
+                        <Sun className="h-6 w-6" />
+                        <span>Light</span>
+                      </Button>
+                      <Button 
+                        variant={theme === 'dark' ? 'default' : 'outline'} 
+                        className="flex flex-col items-center justify-center gap-1 h-24"
+                        onClick={() => setTheme('dark')}
+                      >
+                        <Moon className="h-6 w-6" />
+                        <span>Dark</span>
+                      </Button>
+                      <Button 
+                        variant={theme === 'system' ? 'default' : 'outline'} 
+                        className="flex flex-col items-center justify-center gap-1 h-24"
+                        onClick={() => setTheme('system')}
+                      >
+                        <Laptop className="h-6 w-6" />
+                        <span>System</span>
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="dense-mode">Dense Mode</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Compact UI with reduced spacing
+                      </p>
+                    </div>
+                    <Switch id="dense-mode" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="animations">Animations</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Enable UI animations and transitions
+                      </p>
+                    </div>
+                    <Switch id="animations" defaultChecked={true} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
           
-          {/* Security Settings */}
-          <TabsContent value="security">
-            <div className="grid gap-6">
-              <TwoFactorAuth />
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>Update your account password</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Alert className="mb-4">
-                    <AlertTitle>Password Security</AlertTitle>
-                    <AlertDescription>
-                      Use a strong, unique password that you don't use elsewhere.
-                    </AlertDescription>
-                  </Alert>
-                  <Button>Change Password</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          {/* Notifications Settings */}
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Manage your notification preferences</CardDescription>
+                <CardTitle>Notification Settings</CardTitle>
+                <CardDescription>Configure how you receive notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="email-notifications">Email Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Receive notifications via email</p>
-                    </div>
-                    <Switch 
-                      id="email-notifications" 
-                      checked={emailNotifications} 
-                      onCheckedChange={(checked) => handleNotificationChange('email', checked)} 
-                    />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="email-notifications">Email Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications via email
+                    </p>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="push-notifications">Push Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Receive notifications on your device</p>
-                    </div>
-                    <Switch 
-                      id="push-notifications" 
-                      checked={pushNotifications} 
-                      onCheckedChange={(checked) => handleNotificationChange('push', checked)} 
-                    />
-                  </div>
+                  <Switch id="email-notifications" defaultChecked={true} />
                 </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="push-notifications">Push Notifications</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications in the browser
+                    </p>
+                  </div>
+                  <Switch id="push-notifications" defaultChecked={true} />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="convention-reminders">Convention Reminders</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Get reminders about upcoming conventions
+                    </p>
+                  </div>
+                  <Switch id="convention-reminders" defaultChecked={true} />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="inventory-alerts">Inventory Alerts</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified about inventory changes
+                    </p>
+                  </div>
+                  <Switch id="inventory-alerts" defaultChecked={true} />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="security">
+            <Card>
+              <CardHeader>
+                <CardTitle>Security Settings</CardTitle>
+                <CardDescription>Manage your account security</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input id="current-password" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input id="new-password" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input id="confirm-password" type="password" />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="two-factor">Two-Factor Authentication</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Add an extra layer of security to your account
+                    </p>
+                  </div>
+                  <Switch id="two-factor" defaultChecked={profile?.two_factor_enabled || false} />
+                </div>
+                
+                <Button>Update Security Settings</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="language">
+            <Card>
+              <CardHeader>
+                <CardTitle>Language & Region</CardTitle>
+                <CardDescription>Set your language and regional preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="language">Display Language</Label>
+                  <select 
+                    id="language" 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="en-US">English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                    <option value="fr-FR">Français</option>
+                    <option value="de-DE">Deutsch</option>
+                    <option value="es-ES">Español</option>
+                    <option value="ja-JP">日本語</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="date-format">Date Format</Label>
+                  <select 
+                    id="date-format" 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="time-format">Time Format</Label>
+                  <select 
+                    id="time-format" 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="12">12-hour (AM/PM)</option>
+                    <option value="24">24-hour</option>
+                  </select>
+                </div>
+                
+                <Button>Save Preferences</Button>
               </CardContent>
             </Card>
           </TabsContent>

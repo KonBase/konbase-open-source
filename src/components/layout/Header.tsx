@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ import {
 import LogoutButton from '../auth/LogoutButton';
 
 export function Header() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { profile } = useUserProfile();
   const { currentAssociation } = useAssociation();
   const location = useLocation();
@@ -38,6 +39,9 @@ export function Header() {
   
   // Check if we're on a page that's not the dashboard
   const showBackToDashboard = location.pathname !== '/dashboard' && location.pathname !== '/';
+  
+  // Check if the user has admin role
+  const isAdmin = hasRole('system_admin') || hasRole('super_admin');
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -99,12 +103,15 @@ export function Header() {
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/admin">
-                  <Shield className="mr-2 h-4 w-4" />
-                  <span>Admin</span>
-                </Link>
-              </DropdownMenuItem>
+              {/* Only show Admin Panel option if user has system_admin or super_admin role */}
+              {isAdmin && (
+                <DropdownMenuItem asChild>
+                  <Link to="/admin">
+                    <Shield className="mr-2 h-4 w-4" />
+                    <span>Admin</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <LogoutButton variant="ghost" size="sm" />

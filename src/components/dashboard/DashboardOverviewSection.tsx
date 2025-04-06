@@ -1,0 +1,54 @@
+
+import React from 'react';
+import AssociationOverviewCard from './AssociationOverviewCard';
+import RecentActivityCard from './RecentActivityCard';
+import QuickActionsCard from './QuickActionsCard';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { Association } from '@/types/association';
+
+interface AuditLog {
+  id: string;
+  action: string;
+  created_at: string;
+  entity: string;
+  entity_id: string;
+}
+
+interface DashboardOverviewSectionProps {
+  currentAssociation: Association | null;
+  isLoadingActivity: boolean;
+  recentActivity: AuditLog[] | null;
+  activityError: any;
+  handleRetry: () => void;
+}
+
+const DashboardOverviewSection: React.FC<DashboardOverviewSectionProps> = ({ 
+  currentAssociation,
+  isLoadingActivity,
+  recentActivity,
+  activityError,
+  handleRetry
+}) => {
+  return (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
+      <ErrorBoundary>
+        <AssociationOverviewCard association={currentAssociation} />
+      </ErrorBoundary>
+      
+      <ErrorBoundary>
+        <RecentActivityCard 
+          isLoading={isLoadingActivity}
+          activities={recentActivity}
+          error={activityError}
+          onRetry={handleRetry}
+        />
+      </ErrorBoundary>
+      
+      <ErrorBoundary>
+        <QuickActionsCard />
+      </ErrorBoundary>
+    </div>
+  );
+};
+
+export default DashboardOverviewSection;

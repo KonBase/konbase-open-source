@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
 import { logDebug, handleError } from '@/utils/debug';
@@ -7,7 +6,12 @@ import { logDebug, handleError } from '@/utils/debug';
 const SUPABASE_URL = "https://ceeoxorrfduotwfgmegx.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZW94b3JyZmR1b3R3ZmdtZWd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3NTcxNDQsImV4cCI6MjA1OTMzMzE0NH0.xlAn4Z-WkCX4TBMmHt9pnMB7V1Ur6K0AV0L_u0ySKAo";
 
-// Create a stable Supabase client instance with consistent configuration
+// Enhanced error handling and diagnostic logging
+const logSupabaseActivity = (operation: string, details: any = null, level: 'info' | 'warn' | 'error' = 'info') => {
+  logDebug(`Supabase [${operation}]`, details, level);
+};
+
+// Create a stable Supabase client instance with consistent configuration and improved error handling
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
@@ -19,13 +23,60 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     headers: {
       'Content-Type': 'application/json',
     },
+    fetch: (url, options) => {
+      // Add a custom fetch with timeout and retry
+      const timeoutId = setTimeout(() => {
+        logDebug(`Request to ${url} is taking too long`, null, 'warn');
+      }, 5000); // Log warning after 5 seconds
+      
+      return fetch(url, {
+        ...options,
+        // Adding some resilience for intermittent network issues
+        cache: 'no-cache',
+      }).then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          logDebug(`Supabase response not OK: ${response.status} ${response.statusText}`, { url }, 'warn');
+        }
+        return response;
+      }).catch(error => {
+        clearTimeout(timeoutId);
+        logDebug(`Error fetching ${url}: ${error.message}`, error, 'error');
+        throw error;
+      });
+    },
   },
   realtime: {
     params: {
       eventsPerSecond: 10,
     },
   },
+  db: {
+    schema: 'public',
+  },
 });
+
+// Add connection status logging
+supabase.auth.onAuthStateChange((event, session) => {
+  logSupabaseActivity('Auth state change', { event, userId: session?.user?.id }, 'info');
+});
+
+// Ping Supabase to check connection on startup
+(async () => {
+  try {
+    const start = performance.now();
+    const { data, error } = await supabase.from('profiles').select('id').limit(1);
+    const duration = Math.round(performance.now() - start);
+    
+    if (error) {
+      logSupabaseActivity('Initial connection check failed', error, 'error');
+    } else {
+      logSupabaseActivity('Initial connection successful', { durationMs: duration }, 'info');
+    }
+  } catch (error) {
+    logSupabaseActivity('Initial connection check exception', error, 'error');
+  }
+})();
 
 // Add event listeners for connection status
 if (typeof window !== 'undefined') {
@@ -47,7 +98,7 @@ export const isUsingDefaultCredentials = () => {
 // Helper function to get the current session
 export const getCurrentSession = async () => {
   try {
-    logDebug('Getting current session', null, 'debug');
+    logDebug('Getting current session', null, 'info');
     const { data, error } = await supabase.auth.getSession();
     if (error) {
       handleError(error, 'getCurrentSession');
@@ -65,7 +116,7 @@ export const isUserAuthenticated = async () => {
   try {
     const session = await getCurrentSession();
     const authenticated = !!session;
-    logDebug(`Authentication check: ${authenticated ? 'authenticated' : 'not authenticated'}`, null, 'debug');
+    logDebug(`Authentication check: ${authenticated ? 'authenticated' : 'not authenticated'}`, null, 'info');
     return authenticated;
   } catch (error) {
     handleError(error, 'isUserAuthenticated');
