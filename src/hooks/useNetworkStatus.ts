@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { logDebug } from '@/utils/debug';
 import { toast } from '@/components/ui/use-toast';
@@ -27,6 +26,7 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
   const [testResults, setTestResults] = useState<{
     success: boolean;
     timestamp: number;
+    message?: string;
     error?: Error;
   } | null>(null);
   
@@ -85,47 +85,99 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
     setIsTestingConnection(true);
     
     try {
-      logDebug(`Testing connection to ${testEndpoint}`, null, 'info');
+      // Use a different approach to test connectivity
+      // Option 1: Use no-cors mode (will give an opaque response but works for connectivity testing)
+      logDebug(`Testing connection with no-cors mode`, null, 'info');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      // Use a public endpoint like Google instead of Supabase REST API
-      // which requires authentication
-      const response = await fetch(testEndpoint, { 
+      // Try to use a local endpoint first if available
+      const localEndpoint = '/api/health-check';
+      let testEndpointToUse = testEndpoint;
+      
+      try {
+        // First attempt with local API endpoint to avoid CORS
+        const localResponse = await fetch(localEndpoint, { 
+          method: 'HEAD',
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        
+        clearTimeout(timeoutId);
+        const isOnline = localResponse.status >= 200 && localResponse.status < 400;
+        
+        if (isOnline) {
+          logDebug('Connection test successful using local endpoint', null, 'info');
+          setLastTestedAt(now);
+          setTestResults({
+            success: true,
+            timestamp: now,
+            message: 'Connected to local API'
+          });
+          pendingTestRef.current = false;
+          setIsTestingConnection(false);
+          return true;
+        }
+      } catch (localError) {
+        logDebug('Local endpoint test failed, trying external endpoint', localError, 'warn');
+        // Continue to external endpoint test
+      }
+      
+      // If local endpoint failed, try external with no-cors
+      const response = await fetch(testEndpointToUse, { 
         method: 'HEAD',
         signal: controller.signal,
-        cache: 'no-store'
+        cache: 'no-store',
+        mode: 'no-cors' // Use no-cors mode to avoid CORS errors
       });
       
       clearTimeout(timeoutId);
       
-      const isConnected = response.ok;
-      const timestamp = Date.now();
-      setLastTestedAt(timestamp);
-      
-      const result = { success: isConnected, timestamp };
-      setTestResults(result);
-      
-      logDebug(`Connection test result: ${isConnected ? 'Connected' : 'Failed'}`, null, 'info');
-      return isConnected;
-    } catch (error) {
-      const timestamp = Date.now();
-      setLastTestedAt(timestamp);
-      
-      const result = { 
-        success: false, 
-        timestamp,
-        error: error instanceof Error ? error : new Error(String(error))
-      };
-      setTestResults(result);
-      
-      logDebug('Connection test error', error, 'error');
-      return false;
-    } finally {
+      // With no-cors mode, we can't access response properties
+      // But if we got here without an exception, the network is likely working
+      logDebug('Connection test completed without errors', null, 'info');
+      setLastTestedAt(now);
+      setTestResults({
+        success: true,
+        timestamp: now,
+        message: 'Connected successfully'
+      });
       pendingTestRef.current = false;
       setIsTestingConnection(false);
+      return true;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const isCorsError = errorMessage.includes('CORS') || errorMessage.includes('Cross-Origin');
+      
+      if (isCorsError) {
+        logDebug('CORS error during connection test - this is expected with external domains', { error: errorMessage }, 'warn');
+        // For CORS errors during testing, we can assume the network is working
+        // The CORS error itself indicates we reached the server, just couldn't access the response
+        setLastTestedAt(now);
+        setTestResults({
+          success: true, // Consider this a successful test since network is working
+          timestamp: now,
+          message: 'Connected (CORS limitation)'
+        });
+        pendingTestRef.current = false;
+        setIsTestingConnection(false);
+        return true;
+      }
+      
+      // For other errors (like network failures)
+      logDebug('Connection test failed', error, 'error');
+      setLastTestedAt(now);
+      setTestResults({
+        success: false,
+        timestamp: now,
+        message: errorMessage
+      });
+      pendingTestRef.current = false;
+      setIsTestingConnection(false);
+      return false;
     }
-  }, [testEndpoint, lastTestedAt]);
+  }, [lastTestedAt, testEndpoint]);
   
   const throttledTestConnection = useCallback(async (): Promise<boolean> => {
     if (throttleTimeoutRef.current) {

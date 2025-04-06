@@ -1,68 +1,78 @@
 import { supabase } from '@/lib/supabase';
+import { logDebug } from '@/utils/debug';
 
 // Create storage bucket if it doesn't exist
 export async function initializeStorage() {
   try {
-    // Check if the documents bucket exists (we'll create profiles later)
-    const { data: buckets, error: bucketsError } = await supabase
-      .storage
-      .listBuckets();
-
-    if (bucketsError) {
-      console.error('Error listing buckets:', bucketsError);
-      return;
-    }
-
-    // Check for documents bucket first - this is likely to succeed without RLS issues
-    const documentsBucketExists = buckets.some(bucket => bucket.name === 'documents');
-    if (!documentsBucketExists) {
-      try {
-        const { error } = await supabase.storage.createBucket('documents', {
-          public: false, // Not public by default
-          fileSizeLimit: 10 * 1024 * 1024, // 10MB
-        });
-
-        if (error) {
-          console.error('Failed to create documents bucket:', error.message);
-        } else {
-          console.log('Created documents storage bucket successfully');
-        }
-      } catch (bucketError) {
-        console.error('Error creating documents bucket:', bucketError);
-      }
-    }
-
-    // Check if the profiles bucket exists
-    const profilesBucketExists = buckets.some(bucket => bucket.name === 'profiles');
-    if (!profilesBucketExists) {
-      // For profiles bucket, we'll handle RLS errors gracefully
-      try {
-        const { error } = await supabase.storage.createBucket('profiles', {
-          public: true,
-          fileSizeLimit: 2 * 1024 * 1024, // 2MB
-          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-        });
-
-        if (error) {
-          // If we get RLS error, don't treat as critical failure
-          if (error.message?.includes('row-level security') || error.message?.includes('401')) {
-            console.warn('RLS policy prevented bucket creation - this is normal if buckets already exist in production');
-          } else {
-            console.error('Failed to create profiles bucket:', error.message);
-          }
-        } else {
-          console.log('Created profiles storage bucket successfully');
-          
-          // Only try to add public policy if bucket was created successfully
-          await addPublicBucketPolicy();
-        }
-      } catch (bucketError) {
-        // Handle the error without breaking the application flow
-        console.error('Error creating profiles bucket - continuing anyway:', bucketError);
-      }
-    }
+    // Check if the buckets exist by trying to access them rather than creating
+    await verifyBucketAccess('documents');
+    await verifyBucketAccess('profiles');
   } catch (error) {
-    console.error('Error initializing storage - continuing anyway:', error);
+    logDebug('Error initializing storage - continuing anyway:', error, 'warn');
+  }
+}
+
+// Verify bucket access without trying to create it if it exists
+async function verifyBucketAccess(bucketName: string) {
+  try {
+    // First just try to list the bucket contents to see if it exists and we have access
+    const { data, error } = await supabase
+      .storage
+      .from(bucketName)
+      .list();
+    
+    if (!error) {
+      logDebug(`Successfully accessed ${bucketName} bucket`, null, 'info');
+      return true; // Bucket exists and we have access
+    }
+    
+    // If we get a 404, the bucket likely doesn't exist
+    if (error.status === 404 || error.message?.includes('bucket') || error.message?.toLowerCase().includes('not found')) {
+      logDebug(`Bucket ${bucketName} doesn't exist, attempting to create`, null, 'info');
+      
+      // Try to create the bucket with appropriate settings
+      const options = bucketName === 'profiles' 
+        ? { 
+            public: true, 
+            fileSizeLimit: 2 * 1024 * 1024,
+            allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] 
+          }
+        : { 
+            public: false, 
+            fileSizeLimit: 10 * 1024 * 1024
+          };
+      
+      const { error: createError } = await supabase.storage.createBucket(bucketName, options);
+      
+      if (createError) {
+        if (createError.message?.includes('row-level security') || 
+            createError.message?.includes('401') || 
+            createError.message?.includes('403') ||
+            createError.status === 400) {
+          // This is expected in production where buckets exist but RLS prevents seeing them
+          logDebug(`Cannot create ${bucketName} bucket due to permissions - this is normal in production`, null, 'warn');
+        } else {
+          logDebug(`Failed to create ${bucketName} bucket: ${createError.message}`, createError, 'error');
+        }
+        return false;
+      }
+      
+      logDebug(`Created ${bucketName} storage bucket successfully`, null, 'info');
+      
+      // For profiles bucket, add public policy
+      if (bucketName === 'profiles') {
+        await addPublicBucketPolicy();
+      }
+      
+      return true;
+    }
+    
+    // Any other error is likely permissions related
+    logDebug(`Cannot access ${bucketName} bucket: ${error.message}`, error, 'warn');
+    return false;
+  } catch (err) {
+    logDebug(`Error verifying ${bucketName} bucket access`, err, 'error');
+    return false;
   }
 }
 
@@ -76,7 +86,7 @@ async function addPublicBucketPolicy() {
       .list();
     
     if (error) {
-      console.warn('Storage permissions check failed:', error.message);
+      logDebug('Storage permissions check failed:', error, 'warn');
       return;
     }
     
@@ -89,7 +99,7 @@ async function addPublicBucketPolicy() {
       });
     
     if (uploadError) {
-      console.warn('Error creating public bucket policy, but continuing:', uploadError);
+      logDebug('Error creating public bucket policy, but continuing:', uploadError, 'warn');
     } else {
       // Remove the test file if upload was successful
       await supabase
@@ -99,7 +109,7 @@ async function addPublicBucketPolicy() {
     }
       
   } catch (error) {
-    console.warn('Error adding bucket policies, but continuing:', error);
+    logDebug('Error adding bucket policies, but continuing:', error, 'warn');
   }
 }
 
@@ -108,9 +118,9 @@ try {
   // Delay the initialization slightly to ensure auth is ready
   setTimeout(() => {
     initializeStorage().catch(err => {
-      console.warn('Storage initialization had issues - application will continue:', err);
+      logDebug('Storage initialization had issues - application will continue:', err, 'warn');
     });
-  }, 2000);
+  }, 3000); // Increased delay to ensure auth is fully established
 } catch (error) {
-  console.warn('Error calling initializeStorage - application will continue:', error);
+  logDebug('Error calling initializeStorage - application will continue:', error, 'warn');
 }
