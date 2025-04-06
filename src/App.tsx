@@ -1,3 +1,4 @@
+
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
@@ -10,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
 import ErrorPage from './pages/ErrorPage';
+import Home from './pages/Index';
 
 // Layouts
 import RootLayout from './components/layout/RootLayout';
