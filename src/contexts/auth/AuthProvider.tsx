@@ -90,13 +90,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (error) throw error;
 
+      // Ensure the role is a valid UserRoleType or default to 'guest'
+      const userRole = profile?.role as UserRoleType || 'guest';
+      
       // Create extended user object with profile data
       const user: AuthUser = {
         ...supabaseUser,
         name: profile?.name || "",
         profileImage: profile?.profile_image || "",
-        // Convert string role to UserRoleType
-        role: (profile?.role as UserRoleType) || "guest",
+        role: userRole,
         email: profile?.email || supabaseUser.email || "",
       };
       
