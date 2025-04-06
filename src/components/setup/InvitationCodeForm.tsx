@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -28,7 +27,11 @@ const formSchema = z.object({
   }),
 });
 
-const InvitationCodeForm = () => {
+interface InvitationCodeFormProps {
+  onSuccess?: () => void;
+}
+
+const InvitationCodeForm = ({ onSuccess }: InvitationCodeFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -102,9 +105,13 @@ const InvitationCodeForm = () => {
         title: "Success!",
         description: "You have successfully joined the association.",
       });
-      
-      // Redirect to dashboard
-      navigate('/dashboard');
+
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        // Redirect to dashboard
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       handleError(error, 'InvitationCodeForm.onSubmit');
       toast({
