@@ -77,6 +77,13 @@ export type Database = {
             referencedRelation: "associations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "association_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       associations: {

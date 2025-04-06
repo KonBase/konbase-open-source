@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Key, Plus, Copy } from 'lucide-react';
@@ -15,6 +14,15 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+function AssociationFormWrapper() {
+  const handleSuccess = () => {
+    // Implement the success handler logic here
+    // For example: setStep(step + 1);
+  };
+
+  return <AssociationForm onSuccess={handleSuccess} />;
+}
+
 const SetupWizard = () => {
   const navigate = useNavigate();
   const { currentAssociation, isLoading } = useAssociation();
@@ -23,7 +31,6 @@ const SetupWizard = () => {
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
   
-  // Redirect if user already has an association or when setup is completed
   useEffect(() => {
     if (!isLoading && (currentAssociation || setupCompleted)) {
       toast({
@@ -34,14 +41,12 @@ const SetupWizard = () => {
     }
   }, [currentAssociation, isLoading, setupCompleted, navigate]);
   
-  // Update user role to 'admin' when creating an association
   const updateUserRole = async () => {
     if (!user) return;
     
     try {
       setIsUpdatingRole(true);
       
-      // First update the profile table
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ role: 'admin' })
@@ -49,7 +54,6 @@ const SetupWizard = () => {
         
       if (profileError) throw profileError;
       
-      // Create audit log for the role update
       await supabase
         .from('audit_logs')
         .insert({
@@ -69,22 +73,19 @@ const SetupWizard = () => {
     }
   };
 
-  // Generate invitation code for others to join
   const generateInvitationCode = async () => {
     if (!currentAssociation || !user) return;
 
     try {
-      // Generate a random code
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Save it to the database
       const { error } = await supabase
         .from('association_invitations')
         .insert({
           code,
           association_id: currentAssociation.id,
           role: 'member',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         });
       
       if (error) throw error;
@@ -111,7 +112,6 @@ const SetupWizard = () => {
     }
   };
   
-  // Handlers for successful setup
   const handleAssociationCreated = async () => {
     await updateUserRole();
     setSetupCompleted(true);
@@ -166,7 +166,6 @@ const SetupWizard = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Invitation Code Tab */}
           <TabsContent value="invitation" className="mt-6">
             <Card>
               <CardHeader>
@@ -178,17 +177,13 @@ const SetupWizard = () => {
             </Card>
           </TabsContent>
           
-          {/* Create New Tab */}
           <TabsContent value="create" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Create New Association</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <AssociationForm onSuccess={async () => {
-                  await handleAssociationCreated();
-                  await generateInvitationCode();
-                }} />
+                <AssociationFormWrapper />
               </CardContent>
             </Card>
           </TabsContent>

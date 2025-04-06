@@ -58,12 +58,14 @@ export const useAssociationMembers = (associationId: string) => {
         // Handle profile data safely
         let profile: ProfileData | undefined = undefined;
         
-        if (member.profiles && typeof member.profiles === 'object' && !Array.isArray(member.profiles)) {
+        if (member.profiles) {
+          // Ensure profiles is treated as an object, not an array
+          const profileData = member.profiles as any;
           profile = {
-            id: member.profiles.id,
-            name: member.profiles.name,
-            email: member.profiles.email,
-            profile_image: member.profiles.profile_image,
+            id: profileData.id || '',
+            name: profileData.name || '',
+            email: profileData.email || '',
+            profile_image: profileData.profile_image,
           };
         }
         
