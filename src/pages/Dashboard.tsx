@@ -73,7 +73,7 @@ const Dashboard = () => {
     },
     {
       enabled: !!currentAssociation?.id,
-      staleTime: 30000, // This is correct, staleTime accepts number (milliseconds)
+      staleTime: 30000,
       onError: (error) => {
         logDebug('Error fetching recent activity', error, 'error');
         setLastError(error);
@@ -173,7 +173,7 @@ const Dashboard = () => {
           <DashboardOverviewSection 
             currentAssociation={currentAssociation}
             isLoadingActivity={isLoadingActivity}
-            recentActivity={recentActivity || []} {/* Fixed: Ensure recentActivity is always an array */}
+            recentActivity={recentActivity || []} 
             activityError={activityError}
             handleRetry={handleRetry}
           />
