@@ -1,3 +1,4 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Key, Plus, Copy } from 'lucide-react';
@@ -15,23 +16,6 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-<<<<<<< HEAD
-interface SetupStepProps {
-  onSuccess?: () => void;
-}
-
-const SetupStep: React.FC<SetupStepProps> = ({ onSuccess, ...props }) => {
-  const handleComplete = () => {
-    if (onSuccess) onSuccess();
-  };
-
-  return (
-    <div>
-      {/* Add your rendering logic here */}
-    </div>
-  );
-};
-=======
 function AssociationFormWrapper() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -145,6 +129,10 @@ const SetupWizard = () => {
   const handleAssociationJoined = () => {
     setSetupCompleted(true);
   };
+
+  const handleSetupStepComplete = () => {
+    setSetupCompleted(true);
+  };
   
   return (
     <div className="container max-w-4xl mx-auto py-8">
@@ -214,7 +202,7 @@ const SetupWizard = () => {
           </TabsContent>
         </Tabs>
       )}
-      <SetupStep onSuccess={() => setSetupCompleted(true)} />
+      <SetupStep onSuccess={handleSetupStepComplete} />
     </div>
   );
 };
