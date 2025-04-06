@@ -202,7 +202,11 @@ const SetupWizard = () => {
           </TabsContent>
         </Tabs>
       )}
-      <SetupStep onSuccess={handleSetupStepComplete} />
+      <SetupStep onSuccess={handleSetupStepComplete}>
+        <div className="mt-4">
+          <Button variant="outline">Continue Setup</Button>
+        </div>
+      </SetupStep>
     </div>
   );
 };

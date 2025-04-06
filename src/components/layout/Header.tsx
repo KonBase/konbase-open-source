@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from "@/components/ui/button";
@@ -20,16 +21,19 @@ import LogoutButton from '../auth/LogoutButton';
 import { MobileNav } from '@/components/ui/MobileNav';
 
 export function Header() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { currentAssociation } = useAssociation();
   const location = useLocation();
   const { profile } = useUserProfile();
+  
+  // Check if user has admin or super_admin role
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'system_admin';
   
   const showBackToDashboard = location.pathname !== '/dashboard' && 
                              !location.pathname.startsWith('/settings') && 
                              !location.pathname.startsWith('/profile');
 
-  const userName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const userName = profile?.name || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email || '';
   const userInitial = userName[0]?.toUpperCase() || 'U';
 
@@ -99,7 +103,7 @@ export function Header() {
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
-              {/* Only show Admin Panel option if user has system_admin or super_admin role */}
+              {/* Only show Admin Panel option if user has admin or super_admin role */}
               {isAdmin && (
                 <DropdownMenuItem asChild>
                   <Link to="/admin">

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { logDebug } from '@/utils/debug';
 
@@ -26,8 +27,10 @@ async function verifyBucketAccess(bucketName: string) {
       return true; // Bucket exists and we have access
     }
     
-    // If we get a 404, the bucket likely doesn't exist
-    if (error.status === 404 || error.message?.includes('bucket') || error.message?.toLowerCase().includes('not found')) {
+    // If we get a 404 or error about bucket not found
+    if (error?.message?.includes('not found') || 
+        error?.message?.includes('bucket') || 
+        error?.message?.toLowerCase().includes('not found')) {
       logDebug(`Bucket ${bucketName} doesn't exist, attempting to create`, null, 'info');
       
       // Try to create the bucket with appropriate settings
@@ -48,7 +51,7 @@ async function verifyBucketAccess(bucketName: string) {
         if (createError.message?.includes('row-level security') || 
             createError.message?.includes('401') || 
             createError.message?.includes('403') ||
-            createError.status === 400) {
+            createError.message?.toLowerCase().includes('400')) {
           // This is expected in production where buckets exist but RLS prevents seeing them
           logDebug(`Cannot create ${bucketName} bucket due to permissions - this is normal in production`, null, 'warn');
         } else {
