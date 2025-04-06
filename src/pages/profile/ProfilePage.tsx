@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
-import { Header } from '@/components/layout/Header';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
 
@@ -29,7 +28,6 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <div className="container mx-auto py-6 space-y-6">
         <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
         <div className="grid gap-6 md:grid-cols-2">

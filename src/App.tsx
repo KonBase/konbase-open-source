@@ -12,6 +12,7 @@ import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
 import ErrorPage from './pages/ErrorPage';
 import Home from './pages/Index';
+import NotFound from './pages/NotFound';
 
 // Layouts
 import RootLayout from './layouts/RootLayout';
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <Dashboard /> },
       { path: "profile", element: <ProfilePage /> },
       { path: "settings", element: <Settings /> },
+      { path: "*", element: <NotFound /> }
     ],
   },
 ]);
