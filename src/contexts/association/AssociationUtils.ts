@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { Association } from '@/types/association';
 import { toast } from '@/components/ui/use-toast';
@@ -59,27 +58,51 @@ export const fetchUserAssociations = async (profileId: string): Promise<Associat
       return association ? [association] : [];
     }
     
-    // If no primary association, check for memberships
-    const { data: memberships, error } = await supabase
-      .from('association_members')
-      .select('association_id')
-      .eq('user_id', profileId);
+    let membershipData;
     
-    if (error) throw error;
-    
-    if (memberships && memberships.length > 0) {
-      const associationIds = memberships.map(m => m.association_id);
+    // Try the RPC function first - this bypasses row-level policies
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_association_memberships', { user_id_param: profileId });
       
-      const { data: associations, error: associationsError } = await supabase
-        .from('associations')
-        .select('*')
-        .in('id', associationIds);
-        
-      if (associationsError) throw associationsError;
-      
-      if (associations && associations.length > 0) {
-        return associations.map(formatAssociation);
+      if (!error) {
+        membershipData = data;
+      } else {
+        console.warn('RPC method failed, falling back to direct query:', error);
+        throw error; // Trigger the fallback
       }
+    } catch (rpcError) {
+      // Fallback to direct query if RPC fails
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('association_members')
+        .select('association_id')
+        .eq('user_id', profileId);
+      
+      if (fallbackError) {
+        console.error("Both RPC and fallback queries failed:", fallbackError);
+        return []; // Return empty if both methods fail
+      }
+      
+      membershipData = fallbackData;
+    }
+    
+    // If we have no memberships, return empty array
+    if (!membershipData || membershipData.length === 0) {
+      return [];
+    }
+    
+    // Continue with existing code: get association details for each membership
+    const associationIds = membershipData.map(m => m.association_id);
+    
+    const { data: associations, error: associationsError } = await supabase
+      .from('associations')
+      .select('*')
+      .in('id', associationIds);
+      
+    if (associationsError) throw associationsError;
+    
+    if (associations && associations.length > 0) {
+      return associations.map(formatAssociation);
     }
     
     return [];
