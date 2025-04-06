@@ -61,7 +61,7 @@ const Dashboard = () => {
                 {currentAssociation ? (
                   <>
                     <p><span className="font-medium">Name:</span> {currentAssociation.name}</p>
-                    <p><span className="font-medium">Email:</span> {currentAssociation.contact_email || 'Not provided'}</p>
+                    <p><span className="font-medium">Email:</span> {currentAssociation.contactEmail || 'Not provided'}</p>
                     {currentAssociation.description && (
                       <p><span className="font-medium">Description:</span> {currentAssociation.description}</p>
                     )}
