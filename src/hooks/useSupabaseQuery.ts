@@ -30,7 +30,7 @@ export function useSupabaseQuery<T>(
         const duration = Math.round(performance.now() - start);
         logDebug(`Supabase query (${Array.isArray(key) ? key.join('.') : key}) completed in ${duration}ms`, null, 'info');
         
-        return data;
+        return data as T;
       } catch (error) {
         logDebug(`Exception in useSupabaseQuery (${Array.isArray(key) ? key.join('.') : key})`, error, 'error');
         throw error;
@@ -53,7 +53,7 @@ export function useAssociationData<T>(
     [queryName, associationId || 'none'],
     async () => {
       if (!associationId) {
-        return { data: null, error: null };
+        return { data: null as unknown as T, error: null };
       }
       return fetchFn(associationId);
     },

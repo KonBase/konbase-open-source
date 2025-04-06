@@ -8,11 +8,19 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 
+interface AuditLog {
+  id: string;
+  action: string;
+  created_at: string;
+  entity: string;
+  entity_id: string;
+}
+
 const Dashboard = () => {
   const { currentAssociation } = useAssociation();
   
   // Use the enhanced query hook to efficiently fetch additional data
-  const { data: recentActivity, isLoading: isLoadingActivity } = useSupabaseQuery(
+  const { data: recentActivity, isLoading: isLoadingActivity } = useSupabaseQuery<AuditLog[]>(
     ['recent-activity', currentAssociation?.id],
     async () => {
       if (!currentAssociation?.id) return { data: [], error: null };
@@ -53,7 +61,7 @@ const Dashboard = () => {
                 {currentAssociation ? (
                   <>
                     <p><span className="font-medium">Name:</span> {currentAssociation.name}</p>
-                    <p><span className="font-medium">Email:</span> {currentAssociation.contact_email}</p>
+                    <p><span className="font-medium">Email:</span> {currentAssociation.contact_email || 'Not provided'}</p>
                     {currentAssociation.description && (
                       <p><span className="font-medium">Description:</span> {currentAssociation.description}</p>
                     )}
@@ -80,7 +88,7 @@ const Dashboard = () => {
                   </div>
                 ) : recentActivity && recentActivity.length > 0 ? (
                   <ul className="space-y-2">
-                    {recentActivity.map((activity: any) => (
+                    {recentActivity.map((activity: AuditLog) => (
                       <li key={activity.id} className="text-sm">
                         <span className="font-medium">{activity.action}</span>: {activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}
                       </li>

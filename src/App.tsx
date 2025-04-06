@@ -1,10 +1,10 @@
-
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
-import { AssociationProvider } from './contexts/AssociationContext';
+import { AssociationProvider } from './contexts/AssociationProvider';
 import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -58,6 +58,17 @@ import SetupWizard from './pages/setup/SetupWizard';
 
 // Layouts
 import RootLayout from './layouts/RootLayout';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30000, // 30 seconds
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Core application with comprehensive routing
 const router = createBrowserRouter([
@@ -122,12 +133,14 @@ const App = () => {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
-        <AuthProvider>
-          <AssociationProvider>
-            <RouterProvider router={router} />
-            <Toaster />
-          </AssociationProvider>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AssociationProvider>
+              <RouterProvider router={router} />
+              <Toaster />
+            </AssociationProvider>
+          </AuthProvider>
+        </QueryClientProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
