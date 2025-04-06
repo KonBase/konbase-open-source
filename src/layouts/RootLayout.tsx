@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +7,7 @@ import Footer from '@/components/layout/Footer';
 import { useToast } from '@/components/ui/use-toast';
 import useNetworkStatus from '@/hooks/useNetworkStatus';
 import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
+import { SessionRecovery } from '@/components/SessionRecovery';
 
 export default function RootLayout() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -75,13 +75,14 @@ export default function RootLayout() {
   const isIndexPage = location.pathname === '/';
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <>
+      <SessionRecovery />
       {isAuthenticated && !isIndexPage && <Header />}
       <main className="flex-1">
         <Outlet />
       </main>
       <Footer />
       <Toaster />
-    </div>
+    </>
   );
 }

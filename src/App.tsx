@@ -2,9 +2,10 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
-import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ContextWrapper } from './components/ContextWrapper';
+import { Toaster } from './components/ui/toaster';
 import { SessionRecovery } from '@/components/SessionRecovery';
 
 // Pages
@@ -60,7 +61,7 @@ import SetupWizard from './pages/setup/SetupWizard';
 // Layouts
 import RootLayout from './layouts/RootLayout';
 
-// Create a client
+// Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -71,11 +72,15 @@ const queryClient = new QueryClient({
   },
 });
 
-// Core application with comprehensive routing
+// Define your routes with the ContextWrapper
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootLayout />,
+    element: (
+      <ContextWrapper>
+        <RootLayout />
+      </ContextWrapper>
+    ),
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <Home /> },
@@ -130,11 +135,11 @@ const router = createBrowserRouter([
   { path: "/setup", element: <SetupWizard /> },
 ]);
 
-const App = () => {
+function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
-        <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
           <AuthProvider>
             <AssociationProvider>
               <SessionRecovery />
@@ -142,10 +147,10 @@ const App = () => {
               <Toaster />
             </AssociationProvider>
           </AuthProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
-};
+}
 
 export default App;
