@@ -1,3 +1,4 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Key, Plus, Copy } from 'lucide-react';
@@ -128,6 +129,10 @@ const SetupWizard = () => {
   const handleAssociationJoined = () => {
     setSetupCompleted(true);
   };
+
+  const handleSetupStepComplete = () => {
+    setSetupCompleted(true);
+  };
   
   return (
     <div className="container max-w-4xl mx-auto py-8">
@@ -197,7 +202,7 @@ const SetupWizard = () => {
           </TabsContent>
         </Tabs>
       )}
-      <SetupStep onSuccess={() => setSetupCompleted(true)} />
+      <SetupStep onSuccess={handleSetupStepComplete} />
     </div>
   );
 };
