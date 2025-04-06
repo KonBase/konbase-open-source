@@ -1,35 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/lib/database.types';
 import { logDebug, handleError } from '@/utils/debug';
 
 // Type for our Supabase client
 export type TypeSafeSupabaseClient = typeof supabase;
 
 // Define the table names explicitly as a union type
-export type TableNames = 
-  | 'association_members'
-  | 'associations'
-  | 'profiles'
-  | 'audit_logs'
-  | 'backups'
-  | 'categories'
-  | 'chat_messages'
-  | 'convention_access'
-  | 'convention_invitations'
-  | 'convention_locations'
-  | 'conventions'
-  | 'documents'
-  | 'equipment_set_items'
-  | 'equipment_sets'
-  | 'item_tags'
-  | 'items'
-  | 'locations'
-  | 'movements'
-  | 'notifications'
-  | 'requirement_items'
-  | 'requirements'
-  | 'association_invitations';
+export type TableNames = keyof Database['public']['Tables'];
 
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {

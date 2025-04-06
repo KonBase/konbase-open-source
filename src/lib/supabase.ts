@@ -44,6 +44,14 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// Get constants from the client
+const { SUPABASE_URL } = (() => {
+  const url = new URL(supabase.supabaseUrl);
+  return {
+    SUPABASE_URL: url.origin
+  };
+})();
+
 // Helper function to check if using default credentials
 export const isUsingDefaultCredentials = () => {
   return !SUPABASE_URL || SUPABASE_URL.includes("example") || SUPABASE_URL.length === 0;
