@@ -746,6 +746,14 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_association_memberships: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: {
+          association_id: string
+        }[]
+      }
       get_user_role: {
         Args: {
           user_id: string
