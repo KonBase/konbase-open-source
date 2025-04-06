@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
@@ -59,7 +58,7 @@ export function useTypeSafeSupabase() {
    */
   const safeInsert = async <T extends Tables>(
     table: T,
-    values: Database['public']['Tables'][T]['Insert']
+    values: Database['public']['Tables'][T] extends { Insert: any } ? Database['public']['Tables'][T]['Insert'] : never
   ) => {
     try {
       const { data, error } = await supabase.from(table).insert(values).select();
@@ -78,7 +77,7 @@ export function useTypeSafeSupabase() {
    */
   const safeUpdate = async <T extends Tables>(
     table: T,
-    values: Database['public']['Tables'][T]['Update'],
+    values: Database['public']['Tables'][T] extends { Update: any } ? Database['public']['Tables'][T]['Update'] : never,
     filter: { column: string; value: any }
   ) => {
     try {

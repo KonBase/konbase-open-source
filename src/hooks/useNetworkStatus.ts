@@ -91,13 +91,13 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      // Try to use a local endpoint first if available
-      const localEndpoint = '/api/health-check';
+      // Use our app's API base URL + a known endpoint that should exist
+      const apiBaseUrl = window.location.origin; // Use the current origin
       let testEndpointToUse = testEndpoint;
       
       try {
-        // First attempt with local API endpoint to avoid CORS
-        const localResponse = await fetch(localEndpoint, { 
+        // First attempt with the app's own base URL to check if we're online
+        const localResponse = await fetch(`${apiBaseUrl}/`, { 
           method: 'HEAD',
           signal: controller.signal,
           cache: 'no-store'
@@ -107,12 +107,12 @@ export const useNetworkStatus = (options: NetworkStatusOptions = {}) => {
         const isOnline = localResponse.status >= 200 && localResponse.status < 400;
         
         if (isOnline) {
-          logDebug('Connection test successful using local endpoint', null, 'info');
+          logDebug('Connection test successful using application base URL', null, 'info');
           setLastTestedAt(now);
           setTestResults({
             success: true,
             timestamp: now,
-            message: 'Connected to local API'
+            message: 'Connected to application'
           });
           pendingTestRef.current = false;
           setIsTestingConnection(false);
