@@ -20,8 +20,9 @@ serve(async (req) => {
       throw new Error('Secret and token are required');
     }
 
+    console.log(`Verifying TOTP with token: ${token} and secret (length): ${secret.length}`);
+
     // Create a new TOTP object with the provided secret
-    // Using the correct way to initialize a secret from base32
     const secretObj = new OTPAuth.Secret({ base32: secret });
     
     const totp = new OTPAuth.TOTP({
@@ -33,11 +34,11 @@ serve(async (req) => {
       secret: secretObj
     });
 
-    // Verify the provided token
-    const delta = totp.validate({ token });
+    // Verify the provided token with a window of 1 to account for time drift
+    const delta = totp.validate({ token, window: 1 });
     const verified = delta !== null;
 
-    console.log(`TOTP verification ${verified ? 'successful' : 'failed'}`);
+    console.log(`TOTP verification ${verified ? 'successful' : 'failed'} with delta: ${delta}`);
     
     return new Response(
       JSON.stringify({

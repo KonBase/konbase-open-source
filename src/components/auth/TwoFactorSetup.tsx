@@ -49,7 +49,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
         const { secret, keyUri } = data;
         setSecret(secret);
         
-        logDebug('TOTP secret generated successfully', { secret }, 'info');
+        logDebug('TOTP secret generated successfully', { secret, keyUri }, 'info');
         
         try {
           const qrCodeImage = await QRCode.toDataURL(keyUri);
@@ -106,12 +106,20 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       setErrorMessage(null);
       setVerificationAttempts(prev => prev + 1);
       
-      logDebug("Verifying TOTP", { secret, token: verificationCode, attempt: verificationAttempts + 1 }, 'info');
+      // Clean up token input
+      const cleanToken = verificationCode.trim();
+      
+      logDebug("Verifying TOTP", { 
+        secret, 
+        token: cleanToken, 
+        tokenLength: cleanToken.length,
+        attempt: verificationAttempts + 1
+      }, 'info');
       
       const { data, error } = await supabase.functions.invoke('verify-totp', {
         body: { 
           secret, 
-          token: verificationCode 
+          token: cleanToken
         }
       });
       
@@ -158,6 +166,13 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       verifyAndEnable();
     }
   };
+
+  // Auto-start the setup process when the component mounts
+  useEffect(() => {
+    if (!qrCode && !secret && !isGenerating) {
+      startSetup();
+    }
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -231,16 +246,16 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
           <p className="text-center mb-4">
             To set up two-factor authentication, you'll need an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator.
           </p>
-          <Button onClick={startSetup} disabled={isGenerating}>
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              "Start Setup"
-            )}
-          </Button>
+          {isGenerating ? (
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Generating setup...</span>
+            </div>
+          ) : (
+            <Button onClick={startSetup} disabled={isGenerating}>
+              Retry Setup
+            </Button>
+          )}
         </div>
       )}
     </div>
