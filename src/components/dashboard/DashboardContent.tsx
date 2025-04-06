@@ -11,6 +11,7 @@ import DashboardDebugPanel from '@/components/dashboard/DashboardDebugPanel';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
 import { useAssociationMembers } from '@/hooks/useAssociationMembers';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuditLog {
   id: string;
@@ -58,6 +59,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
 }) => {
   const isHome = true;
   const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(currentAssociation?.id || '');
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole('super_admin') || hasRole('system_admin');
 
   // Fetch members when the component mounts or when the association changes
   useEffect(() => {
@@ -73,6 +76,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           currentAssociation={currentAssociation} 
           user={user} 
           isHome={isHome} 
+          isSuperAdmin={isSuperAdmin}
         />
 
         <ErrorBoundary>

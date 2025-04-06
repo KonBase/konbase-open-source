@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
@@ -5,7 +6,7 @@ import { Database } from '@/lib/database.types';
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 // Define available tables from our database schema to provide better type safety
-type Tables = keyof Database['public']['Tables'];
+export type Tables = keyof Database['public']['Tables'];
 
 export interface SupabaseQueryOptions<T extends Tables> {
   column?: string;
@@ -58,7 +59,8 @@ export function useTypeSafeSupabase() {
    */
   const safeInsert = async <T extends Tables>(
     table: T,
-    values: Database['public']['Tables'][T] extends { Insert: any } ? Database['public']['Tables'][T]['Insert'] : never
+    // Use proper typing for the values parameter
+    values: Database['public']['Tables'][T]['Insert']
   ) => {
     try {
       const { data, error } = await supabase.from(table).insert(values).select();
@@ -77,7 +79,8 @@ export function useTypeSafeSupabase() {
    */
   const safeUpdate = async <T extends Tables>(
     table: T,
-    values: Database['public']['Tables'][T] extends { Update: any } ? Database['public']['Tables'][T]['Update'] : never,
+    // Use proper typing for the values parameter
+    values: Database['public']['Tables'][T]['Update'],
     filter: { column: string; value: any }
   ) => {
     try {
