@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { createClient, SupabaseClient, PostgrestFilterBuilder, PostgrestQueryBuilder } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/lib/database.types';
 import { handleError, logDebug } from '@/utils/debug';
 

@@ -8,7 +8,7 @@ import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
 import AssociationForm from '@/components/setup/AssociationForm';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ const SetupWizard = () => {
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
+  const { toast } = useToast();
   
   useEffect(() => {
     if (!isLoading && (currentAssociation || setupCompleted)) {
@@ -45,7 +46,7 @@ const SetupWizard = () => {
       });
       navigate('/dashboard');
     }
-  }, [currentAssociation, isLoading, setupCompleted, navigate]);
+  }, [currentAssociation, isLoading, setupCompleted, navigate, toast]);
   
   const updateUserRole = async () => {
     if (!user) return;

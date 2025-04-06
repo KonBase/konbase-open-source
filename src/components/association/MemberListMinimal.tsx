@@ -21,9 +21,9 @@ const MemberListMinimal: React.FC<MemberListMinimalProps> = ({ members }) => {
   return (
     <div className="space-y-2">
       {members.slice(0, 5).map(member => {
-        const profileData = member.profile || {};
-        const memberName = profileData.name || 'Unknown User';
-        const memberProfileImage = profileData.profile_image;
+        const profile = member.profile || { name: 'Unknown User', email: 'No email', profile_image: undefined };
+        const memberName = profile.name || 'Unknown User';
+        const memberProfileImage = profile.profile_image;
         
         return (
           <div key={member.id} className="flex items-center justify-between p-2 rounded-md border">

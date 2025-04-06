@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -38,21 +39,48 @@ export const useAssociationMembers = (associationId: string) => {
     try {
       logDebug('Fetching association members', { associationId });
       
-      const { data, error } = await supabase
-        .from('members_with_profiles') // Using the view we created
+      // First get the association members
+      const { data: membersData, error: membersError } = await supabase
+        .from('association_members')
         .select('*')
         .eq('association_id', associationId);
         
-      if (error) throw error;
+      if (membersError) throw membersError;
       
-      // Transform the data to match our interface
-      const transformedMembers = data.map(member => {
-        // Create profile data from the view data
-        const profile: ProfileData = {
+      if (!membersData || membersData.length === 0) {
+        setMembers([]);
+        return;
+      }
+      
+      // Get the user profiles in a separate query
+      const userIds = membersData.map(member => member.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, email, profile_image')
+        .in('id', userIds);
+        
+      if (profilesError) throw profilesError;
+      
+      // Map profiles to members
+      const profileMap = new Map();
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profileMap.set(profile.id, {
+            id: profile.id,
+            name: profile.name || '',
+            email: profile.email || '',
+            profile_image: profile.profile_image
+          });
+        });
+      }
+      
+      // Combine the data
+      const transformedMembers = membersData.map(member => {
+        const profile = profileMap.get(member.user_id) || {
           id: member.user_id,
-          name: member.name || '',
-          email: member.email || '',
-          profile_image: member.profile_image,
+          name: 'Unknown User',
+          email: 'No email',
+          profile_image: undefined
         };
         
         return {

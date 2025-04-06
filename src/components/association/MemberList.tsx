@@ -43,10 +43,10 @@ const MemberList: React.FC<MemberListProps> = ({
       </TableHeader>
       <TableBody>
         {members.map(member => {
-          const profileData = member.profile || {};
-          const memberName = profileData.name || 'Unknown User';
-          const memberEmail = profileData.email || 'No email';
-          const memberProfileImage = profileData.profile_image;
+          const profile = member.profile || { name: 'Unknown User', email: 'No email', profile_image: undefined };
+          const memberName = profile.name || 'Unknown User';
+          const memberEmail = profile.email || 'No email';
+          const memberProfileImage = profile.profile_image;
           const isSelf = user?.id === member.user_id;
           
           return (
