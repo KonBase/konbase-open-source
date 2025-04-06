@@ -1,8 +1,14 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { Calendar, ArrowUpDown, Package, MapPin, FileText, BarChart3, Archive, FileUp } from 'lucide-react';
+import {
+  Calendar,
+  FileText,
+  BarChart3,
+  MapPin,
+  Archive,
+  FileUp
+} from 'lucide-react';
 
 const ConventionManagementSection: React.FC = () => {
   return (
@@ -22,48 +28,12 @@ const ConventionManagementSection: React.FC = () => {
         </Card>
         
         <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-          <Link to="/conventions/equipment" className="block p-6">
-            <div className="flex items-center space-x-4">
-              <ArrowUpDown className="h-10 w-10 text-primary" />
-              <div>
-                <h3 className="font-semibold">Equipment Tracking</h3>
-                <p className="text-sm text-muted-foreground">Issue and return equipment</p>
-              </div>
-            </div>
-          </Link>
-        </Card>
-        
-        <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-          <Link to="/conventions/consumables" className="block p-6">
-            <div className="flex items-center space-x-4">
-              <Package className="h-10 w-10 text-primary" />
-              <div>
-                <h3 className="font-semibold">Consumables</h3>
-                <p className="text-sm text-muted-foreground">Track consumable items</p>
-              </div>
-            </div>
-          </Link>
-        </Card>
-        
-        <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
           <Link to="/conventions/locations" className="block p-6">
             <div className="flex items-center space-x-4">
               <MapPin className="h-10 w-10 text-primary" />
               <div>
                 <h3 className="font-semibold">Room Mapping</h3>
                 <p className="text-sm text-muted-foreground">Manage convention locations</p>
-              </div>
-            </div>
-          </Link>
-        </Card>
-        
-        <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-          <Link to="/conventions/requirements" className="block p-6">
-            <div className="flex items-center space-x-4">
-              <FileText className="h-10 w-10 text-primary" />
-              <div>
-                <h3 className="font-semibold">Requirements</h3>
-                <p className="text-sm text-muted-foreground">Manage equipment needs</p>
               </div>
             </div>
           </Link>

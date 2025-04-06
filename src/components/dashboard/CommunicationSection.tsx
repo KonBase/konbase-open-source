@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Bell } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 interface CommunicationSectionProps {
   unreadNotifications: number;
@@ -13,18 +12,6 @@ const CommunicationSection: React.FC<CommunicationSectionProps> = ({ unreadNotif
     <div>
       <h2 className="text-2xl font-bold tracking-tight mb-4">Communication</h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-          <Link to="/chat" className="block p-6">
-            <div className="flex items-center space-x-4">
-              <MessageCircle className="h-10 w-10 text-primary" />
-              <div>
-                <h3 className="font-semibold">Association Chat</h3>
-                <p className="text-sm text-muted-foreground">Chat with association members</p>
-              </div>
-            </div>
-          </Link>
-        </Card>
-        
         <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
           <Link to="/notifications" className="block p-6">
             <div className="flex items-center space-x-4">

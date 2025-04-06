@@ -1,9 +1,8 @@
-
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageCircle, User, Settings, Shield, LogOut, Building2, ArrowLeft } from 'lucide-react';
+import { User, Settings, Shield, LogOut, Building2, ArrowLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +23,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ChatModule } from '@/components/chat/ChatModule';
 import LogoutButton from '../auth/LogoutButton';
 
 export function Header() {

@@ -1,11 +1,11 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ProfileImageUpload } from '@/components/profile/ProfileImageUpload';
 import { Badge } from '@/components/ui/badge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
 import { Header } from '@/components/layout/Header';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { User } from 'lucide-react';
 
 const ProfilePage = () => {
   const { profile, loading } = useUserProfile();
@@ -17,6 +17,15 @@ const ProfilePage = () => {
       </div>
     );
   }
+
+  const getInitials = (name: string) => {
+    if (!name) return '';
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,7 +41,18 @@ const ProfilePage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ProfileImageUpload />
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={profile?.profile_image || ''} alt={profile?.name || 'User'} />
+                  <AvatarFallback className="text-lg">
+                    {profile?.name ? getInitials(profile.name) : <User className="h-6 w-6" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="text-xl font-semibold">{profile?.name}</h2>
+                  <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                </div>
+              </div>
               
               <div className="mt-6 space-y-4">
                 <div>
