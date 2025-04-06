@@ -86,7 +86,7 @@ const Dashboard = () => {
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-5/6" />
                   </div>
-                ) : recentActivity && recentActivity.length > 0 ? (
+                ) : recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
                   <ul className="space-y-2">
                     {recentActivity.map((activity: AuditLog) => (
                       <li key={activity.id} className="text-sm">

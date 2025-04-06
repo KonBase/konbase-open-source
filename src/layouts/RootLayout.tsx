@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
@@ -12,6 +12,7 @@ export default function RootLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const location = useLocation();
   const { status, isOffline } = useNetworkStatus({
     showToasts: false,
     testInterval: 60000 // Check connection every minute
@@ -46,9 +47,12 @@ export default function RootLayout() {
     );
   }
 
+  // Check if we're on the index page
+  const isIndexPage = location.pathname === '/';
+
   return (
     <div className="flex min-h-screen flex-col">
-      {isAuthenticated && <Header />}
+      {isAuthenticated && !isIndexPage && <Header />}
       <main className="flex-1">
         <Outlet />
       </main>
