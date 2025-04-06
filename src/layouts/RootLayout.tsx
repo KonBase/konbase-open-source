@@ -31,13 +31,16 @@ export default function RootLayout() {
     }
   }, [isOffline, toast]);
 
-  // Add effect to redirect unauthenticated users
+  // Check if we're on a public page that doesn't require authentication
+  const isPublicPage = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/register';
+
+  // Only redirect unauthenticated users if they're not on a public page
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated && !isPublicPage) {
       console.log('User not authenticated, redirecting to login');
       navigate('/login');
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, isPublicPage]);
 
   // If loading, show minimal layout
   if (isLoading) {

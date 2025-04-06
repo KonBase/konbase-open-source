@@ -12,7 +12,7 @@ interface NetworkStatusProviderProps {
 const NetworkStatusProvider: React.FC<NetworkStatusProviderProps> = ({ children }) => {
   const networkStatus = useNetworkStatus({
     showToasts: true,
-    testInterval: 30000,
+    testInterval: 30000, // 30 seconds
     testEndpoint: 'https://www.google.com'
   });
   

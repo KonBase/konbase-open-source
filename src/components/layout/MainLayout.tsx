@@ -14,12 +14,15 @@ const MainLayout: React.FC = () => {
   const isHeaderDisabledPage = location.pathname.startsWith('/profile') || 
                                location.pathname.startsWith('/settings');
   
+  // Check if current path is public and doesn't require authentication
+  const isPublicPage = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/register';
+
   useEffect(() => {
     // Check if user is authenticated and redirect if needed
-    if (!isLoading && !isAuthenticated && !location.pathname.startsWith('/login')) {
+    if (!isLoading && !isAuthenticated && !isPublicPage) {
       navigate('/login');
     }
-  }, [isAuthenticated, isLoading, navigate, location.pathname]);
+  }, [isAuthenticated, isLoading, navigate, location.pathname, isPublicPage]);
 
   // Show loading state
   if (isLoading) {

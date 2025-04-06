@@ -1,68 +1,61 @@
 
-import { useState } from 'react';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { logDebug } from '@/utils/debug';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Association } from '@/types/association';
+import { handleError, logDebug } from '@/utils/debug';
 
-export interface AuditLog {
-  id: string;
-  action: string;
-  created_at: string;
-  entity: string;
-  entity_id: string;
-}
-
-export function useDashboardActivity(currentAssociation: Association | null) {
-  const [retryCount, setRetryCount] = useState(0);
-  const [lastError, setLastError] = useState<any>(null);
-
+// Implement a custom hook for fetching dashboard activity data
+export const useDashboardActivity = () => {
+  // Query to fetch recent activity data
   const { 
-    data: recentActivity, 
-    isLoading: isLoadingActivity,
-    error: activityError,
-    refetch: refetchActivity
-  } = useSupabaseQuery<AuditLog[]>(
-    ['recent-activity', currentAssociation?.id, retryCount],
-    async () => {
-      if (!currentAssociation?.id) return { data: [] as AuditLog[], error: null };
-      
-      logDebug(`Fetching recent activity for association ${currentAssociation.id}`, null, 'info');
-      
-      return await supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('entity', 'associations')
-        .eq('entity_id', currentAssociation.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-    },
-    {
-      enabled: !!currentAssociation?.id,
-      staleTime: 30000,
-      onError: (error) => {
-        logDebug('Error fetching recent activity', error, 'error');
-        setLastError(error);
+    data: activityData, 
+    error: activityError, 
+    isLoading: activityLoading, 
+    refetch: refetchActivity 
+  } = useQuery({
+    queryKey: ['dashboard-activity'],
+    queryFn: async () => {
+      try {
+        // Log the query start
+        logDebug('Fetching dashboard activity', null, 'info');
+        
+        // Fetch recent activity data (last 30 days)
+        const { data: activityData, error: activityError } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (activityError) throw activityError;
+        
+        return activityData;
+      } catch (error) {
+        handleError(error, 'useDashboardActivity.fetchActivity');
+        throw error;
       }
+    },
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: true
+  });
+  
+  // Safe getter for activity data with error checking
+  const safeRecentActivity = () => {
+    if (activityError) {
+      logDebug('Error fetching recent activity', activityError, 'error');
+      return [];
     }
-  );
-
-  const handleRetry = () => {
-    logDebug('Manually retrying data fetch', null, 'info');
-    setRetryCount(count => count + 1);
-    refetchActivity();
+    
+    // Check if we have valid data
+    if (activityData && Array.isArray(activityData)) {
+      return activityData;
+    }
+    
+    return [];
   };
-
-  // Ensure recentActivity is always an array
-  const safeRecentActivity = Array.isArray(recentActivity?.data) ? recentActivity.data : [];
-
+  
   return {
-    recentActivity,
-    isLoadingActivity,
+    activityData: safeRecentActivity(),
     activityError,
-    handleRetry,
-    retryCount,
-    lastError,
-    safeRecentActivity
+    activityLoading,
+    refetchActivity
   };
-}
+};
