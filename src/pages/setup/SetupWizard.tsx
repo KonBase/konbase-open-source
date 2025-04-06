@@ -14,7 +14,6 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-<<<<<<< HEAD
 interface SetupStepProps {
   onSuccess?: () => void;
 }
@@ -30,7 +29,7 @@ const SetupStep: React.FC<SetupStepProps> = ({ onSuccess, ...props }) => {
     </div>
   );
 };
-=======
+
 function AssociationFormWrapper() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -45,7 +44,6 @@ function AssociationFormWrapper() {
 
   return <AssociationForm onSuccess={handleSuccess} />;
 }
->>>>>>> f321c7f6ea0d5776311e5460b58ce3793162401b
 
 const SetupWizard = () => {
   const navigate = useNavigate();
