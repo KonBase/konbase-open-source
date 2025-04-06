@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -61,8 +61,15 @@ export function AuditLogViewer() {
       if (error) throw error;
       
       // Format the logs with user information
-      const formattedLogs = data.map(log => ({
-        ...log,
+      const formattedLogs: AuditLog[] = data.map(log => ({
+        id: log.id,
+        action: log.action,
+        entity: log.entity,
+        entity_id: log.entity_id,
+        user_id: log.user_id,
+        changes: log.changes,
+        created_at: log.created_at,
+        ip_address: log.ip_address,
         user_name: log.profiles?.name || 'Unknown User'
       }));
       
@@ -124,7 +131,7 @@ export function AuditLogViewer() {
       
       {loading ? (
         <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
+          {Array(3).fill(0).map((_, i) => (
             <div key={i} className="flex justify-between p-2 animate-pulse">
               <Skeleton className="h-5 w-full" />
             </div>

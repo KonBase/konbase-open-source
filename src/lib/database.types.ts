@@ -9,7 +9,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       profiles: {
@@ -17,7 +17,7 @@ export interface Database {
           id: string
           name: string
           email: string
-          role: string
+          role: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
           profile_image: string | null
           two_factor_enabled: boolean
           association_id: string | null
@@ -28,7 +28,7 @@ export interface Database {
           id: string
           name: string
           email: string
-          role?: string
+          role?: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
           profile_image?: string | null
           two_factor_enabled?: boolean
           association_id?: string | null
@@ -39,13 +39,22 @@ export interface Database {
           id?: string
           name?: string
           email?: string
-          role?: string
+          role?: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
           profile_image?: string | null
           two_factor_enabled?: boolean
           association_id?: string | null
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       associations: {
         Row: {
@@ -84,29 +93,46 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       association_members: {
         Row: {
           id: string
           user_id: string
           association_id: string
-          role: string
+          role: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
           association_id: string
-          role?: string
+          role?: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
           association_id?: string
-          role?: string
+          role?: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "association_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       association_invitations: {
         Row: {
@@ -136,6 +162,15 @@ export interface Database {
           expires_at?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "association_invitations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       audit_logs: {
         Row: {
@@ -146,6 +181,7 @@ export interface Database {
           user_id: string
           changes: Json | null
           created_at: string
+          ip_address: string | null
         }
         Insert: {
           id?: string
@@ -155,6 +191,7 @@ export interface Database {
           user_id: string
           changes?: Json | null
           created_at?: string
+          ip_address?: string | null
         }
         Update: {
           id?: string
@@ -164,7 +201,17 @@ export interface Database {
           user_id?: string
           changes?: Json | null
           created_at?: string
+          ip_address?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       categories: {
         Row: {
@@ -194,6 +241,22 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "categories_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       chat_messages: {
         Row: {
@@ -220,6 +283,22 @@ export interface Database {
           created_at?: string
           association_id?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       conventions: {
         Row: {
@@ -258,6 +337,15 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "conventions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       convention_access: {
         Row: {
@@ -281,6 +369,22 @@ export interface Database {
           invitation_code?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "convention_access_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       convention_invitations: {
         Row: {
@@ -307,6 +411,22 @@ export interface Database {
           expires_at?: string
           uses_remaining?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: "convention_invitations_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       items: {
         Row: {
@@ -372,6 +492,29 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "items_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       locations: {
         Row: {
@@ -404,6 +547,22 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "locations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       documents: {
         Row: {
@@ -414,6 +573,7 @@ export interface Database {
           item_id: string
           uploaded_by: string
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -423,6 +583,7 @@ export interface Database {
           item_id: string
           uploaded_by: string
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -432,7 +593,24 @@ export interface Database {
           item_id?: string
           uploaded_by?: string
           created_at?: string
+          updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "documents_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       equipment_sets: {
         Row: {
@@ -459,6 +637,15 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_sets_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       equipment_set_items: {
         Row: {
@@ -482,6 +669,22 @@ export interface Database {
           quantity?: number
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_set_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_set_items_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_sets"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       notifications: {
         Row: {
@@ -508,6 +711,15 @@ export interface Database {
           read?: boolean
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       user_2fa: {
         Row: {
@@ -540,14 +752,25 @@ export interface Database {
           updated_at?: string
           last_used_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "user_2fa_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {}
     Functions: {}
-    Enums: {}
+    Enums: {
+      user_role_type: "super_admin" | "system_admin" | "admin" | "manager" | "member" | "guest"
+    }
     CompositeTypes: {}
   }
 }
 
-// Re-export the Database type
-export type { Database };
+// Fix the export conflict
+export type { Database }

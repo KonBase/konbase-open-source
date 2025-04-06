@@ -46,7 +46,8 @@ if (typeof window !== 'undefined') {
 
 // Get constants from the client
 const { SUPABASE_URL } = (() => {
-  const url = new URL(supabase.supabaseUrl);
+  // Access the Supabase URL from the public variable
+  const url = new URL(supabase.getUrl());
   return {
     SUPABASE_URL: url.origin
   };

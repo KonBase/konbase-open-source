@@ -6,13 +6,13 @@ import { logDebug, handleError } from '@/utils/debug';
 // Type for our Supabase client
 export type TypeSafeSupabaseClient = typeof supabase;
 
-// Define the table names explicitly as a union type
+// Define the table names explicitly as a union type of all available tables
 export type TableNames = keyof Database['public']['Tables'];
 
 // Create a hook for safe Supabase operations
 export const useTypeSafeSupabase = () => {
-  // Helper function for safe SELECT operations - no generic type parameter
-  const safeSelect = async (
+  // Helper function for safe SELECT operations with proper typing
+  const safeSelect = async <T = any>(
     table: TableNames,
     columns: string = '*',
     queryOptions?: { 
@@ -80,7 +80,7 @@ export const useTypeSafeSupabase = () => {
   };
 
   // Helper function for safe UPDATE operations with enhanced error handling
-  const safeUpdate = async (
+  const safeUpdate = async <T = any>(
     table: TableNames,
     updateData: Record<string, unknown>,
     condition: { column: string; value: any }
@@ -124,7 +124,7 @@ export const useTypeSafeSupabase = () => {
   };
 
   // Helper function for safe DELETE operations with enhanced error handling
-  const safeDelete = async (
+  const safeDelete = async <T = any>(
     table: TableNames,
     condition: { column: string; value: any }
   ) => {
@@ -167,12 +167,12 @@ export const useTypeSafeSupabase = () => {
   };
   
   // Helper function for safe INSERT operations with enhanced error handling
-  const safeInsert = async (
+  const safeInsert = async <T = any>(
     table: TableNames,
     data: Record<string, unknown> | Record<string, unknown>[]
   ) => {
     try {
-      // Use type assertion to bypass complex type checking
+      // Handle the insert operation
       const result = await supabase.from(table).insert(data as any);
       
       if (result.error) {
