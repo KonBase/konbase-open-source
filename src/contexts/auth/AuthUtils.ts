@@ -55,14 +55,20 @@ export const fetchAndEnhanceUserProfile = async (
     const profileData = await fetchUserProfile(userId);
     
     if (profileData) {
-      setUserProfile(profileData);
+      // Ensure the role is cast to UserRoleType
+      const typedProfile: AuthUserProfile = {
+        ...profileData,
+        role: profileData.role as UserRoleType
+      };
+      
+      setUserProfile(typedProfile);
       
       if (currentUser) {
-        const enhancedUser = enhanceUserWithProfile(currentUser, profileData);
+        const enhancedUser = enhanceUserWithProfile(currentUser, typedProfile);
         setUser(enhancedUser);
       }
       
-      console.log('Profile fetched successfully:', profileData.role);
+      console.log('Profile fetched successfully:', typedProfile.role);
     } else {
       console.error('Failed to fetch user profile or profile not found');
     }

@@ -10,7 +10,7 @@ import AssociationForm from '@/components/setup/AssociationForm';
 import { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { toast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/auth/useAuth';
+import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/lib/supabase';
 
 const SetupWizard = () => {

@@ -1,227 +1,172 @@
 
-import { createContext, useEffect, useState, ReactNode } from 'react';
-import { Session, AuthError } from '@supabase/supabase-js';
+import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
-import { AuthContextType, AuthUser, AuthUserProfile } from './AuthTypes';
-import { UserRoleType } from '@/types/user';
-import { 
-  checkUserHasRole, 
-  checkUserHasPermission, 
-  fetchAndEnhanceUserProfile,
-  elevateUserToSuperAdmin 
-} from './AuthUtils';
+import { AuthContextType, AuthState, AuthUser, AuthUserProfile } from './AuthTypes';
+import { checkUserHasPermission, checkUserHasRole, elevateUserToSuperAdmin, fetchAndEnhanceUserProfile } from './AuthUtils';
+import { USER_ROLES, UserRoleType } from '@/types/user';
 
-// Create context with undefined default value
+// Create the context with a default undefined value
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [userProfile, setUserProfile] = useState<AuthUserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // State for the auth context
+  const [state, setState] = useState<AuthState>({
+    session: null,
+    user: null,
+    userProfile: null,
+    loading: true,
+    error: null,
+    isAuthenticated: false,
+    isLoading: true,
+  });
 
-  // Derived state
-  const isAuthenticated = !!session;
-  const isLoading = loading;
+  // Update state helper function
+  const updateState = (newState: Partial<AuthState>) => {
+    setState(prevState => ({ ...prevState, ...newState }));
+  };
 
+  // Fetch user profile when user changes
   useEffect(() => {
-    const setupAuth = async () => {
-      try {
-        setLoading(true);
+    if (state.user?.id) {
+      fetchAndEnhanceUserProfile(
+        state.user.id,
+        state.user,
+        (profile) => updateState({ userProfile: profile }),
+        (user) => updateState({ user })
+      );
+    }
+  }, [state.user?.id]);
 
-        // First, set up the auth state change listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, newSession) => {
-            console.log('Auth state changed:', event);
-            setSession(newSession);
-            
-            if (newSession?.user) {
-              const userData = newSession.user as unknown as AuthUser;
-              setUser(userData);
-              
-              // Use setTimeout to avoid potential recursive updates
-              setTimeout(() => {
-                fetchAndEnhanceUserProfile(newSession.user.id, userData, setUserProfile, setUser);
-              }, 0);
-            } else {
-              setUser(null);
-              setUserProfile(null);
-            }
-          }
-        );
-
-        // Then check for existing session
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        
-        if (existingSession) {
-          console.log('Existing session found');
-          setSession(existingSession);
-          
-          if (existingSession.user) {
-            const userData = existingSession.user as unknown as AuthUser;
-            setUser(userData);
-            await fetchAndEnhanceUserProfile(existingSession.user.id, userData, setUserProfile, setUser);
-          }
-        } else {
-          console.log('No existing session found');
-        }
-
-        return () => {
-          subscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error('Error setting up auth:', error);
-      } finally {
-        setLoading(false);
+  // Set up auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        updateState({
+          session,
+          user: session?.user ?? null,
+          isAuthenticated: !!session,
+          loading: false,
+          isLoading: false
+        });
       }
-    };
+    );
 
-    setupAuth();
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      updateState({
+        session,
+        user: session?.user ?? null,
+        isAuthenticated: !!session,
+        loading: false,
+        isLoading: false
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Role and permission checks
-  const hasRole = (requiredRole: UserRoleType): boolean => {
-    return checkUserHasRole(userProfile, requiredRole);
-  };
-
-  const hasPermission = (requiredPermission: string): boolean => {
-    return checkUserHasPermission(userProfile, requiredPermission);
-  };
-
-  const checkRoleAccess = async (role: UserRoleType): Promise<boolean> => {
-    if (!isAuthenticated || !userProfile) {
-      console.log('checkRoleAccess failed: Not authenticated or no profile');
-      return false;
-    }
-    
-    if (!hasRole(role)) {
-      console.log(`checkRoleAccess failed: User does not have role ${role}`);
-      return false;
-    }
-    
-    if (USER_ROLES[role].requires2FA && !userProfile.two_factor_enabled) {
-      toast({
-        title: "Two-Factor Authentication Required",
-        description: `The ${USER_ROLES[role].name} role requires 2FA to be enabled.`,
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    return true;
-  };
-
-  // Authentication methods
+  // Auth methods
   const signIn = async (email: string, password: string) => {
     try {
-      setLoading(true);
+      updateState({ loading: true, error: null });
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
-      if (error) {
-        toast({
-          title: "Authentication failed",
-          description: error.message,
-          variant: "destructive"
-        });
-        setError(error.message);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      }
+      if (error) throw error;
+    } catch (error: any) {
+      updateState({ error: error.message });
+      throw error;
     } finally {
-      setLoading(false);
+      updateState({ loading: false });
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
-      setLoading(true);
+      updateState({ loading: true, error: null });
       const { error } = await supabase.auth.signUp({ email, password });
       
-      if (error) {
-        toast({
-          title: "Registration failed",
-          description: error.message,
-          variant: "destructive"
-        });
-        setError(error.message);
-      } else {
-        toast({
-          title: "Registration successful",
-          description: "Please check your email to confirm your account.",
-        });
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      }
+      if (error) throw error;
+    } catch (error: any) {
+      updateState({ error: error.message });
+      throw error;
     } finally {
-      setLoading(false);
+      updateState({ loading: false });
     }
   };
 
   const signOut = async () => {
     try {
-      setLoading(true);
+      updateState({ loading: true, error: null });
       const { error } = await supabase.auth.signOut();
       
-      if (error) {
-        toast({
-          title: "Logout failed",
-          description: error.message,
-          variant: "destructive"
-        });
-        setError(error.message);
-      } else {
-        setUser(null);
-        setSession(null);
-        setUserProfile(null);
-        
-        toast({
-          title: "Logged out successfully",
-          description: "You have been logged out of your account."
-        });
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      }
+      if (error) throw error;
+      
+      updateState({
+        user: null,
+        userProfile: null,
+        session: null,
+        isAuthenticated: false,
+      });
+    } catch (error: any) {
+      updateState({ error: error.message });
+      throw error;
     } finally {
-      setLoading(false);
+      updateState({ loading: false });
     }
   };
-  
-  // Alias methods for consistency
-  const login = signIn;
-  const logout = signOut;
-  
-  // Super admin elevation
-  const elevateToSuperAdmin = async () => {
-    return elevateUserToSuperAdmin(userProfile, user, setUser, setUserProfile);
+
+  // Role and permission checks
+  const hasRole = (requiredRole: UserRoleType) => {
+    return checkUserHasRole(state.userProfile, requiredRole);
   };
 
-  // Construct the full context value
+  const hasPermission = (permission: string) => {
+    return checkUserHasPermission(state.userProfile, permission);
+  };
+
+  const checkRoleAccess = async (role: UserRoleType): Promise<boolean> => {
+    try {
+      updateState({ loading: true });
+      const userRoleValue = state.userProfile?.role ? USER_ROLES[state.userProfile.role]?.level || 0 : 0;
+      const requiredRoleValue = USER_ROLES[role]?.level || 0;
+      
+      return userRoleValue >= requiredRoleValue;
+    } catch (error) {
+      console.error('Error checking role access:', error);
+      return false;
+    } finally {
+      updateState({ loading: false });
+    }
+  };
+
+  // Legacy method aliases
+  const login = signIn;
+  const logout = signOut;
+
+  // Super admin elevation
+  const elevateToSuperAdmin = async () => {
+    return await elevateUserToSuperAdmin(
+      state.userProfile,
+      state.user,
+      (user) => updateState({ user }),
+      (profile) => updateState({ userProfile: profile })
+    );
+  };
+
+  // Prepare the context value
   const contextValue: AuthContextType = {
-    session,
-    user,
-    userProfile,
-    loading,
-    error,
-    isAuthenticated,
-    isLoading,
+    ...state,
     signIn,
     signUp,
     signOut,
-    hasPermission,
     hasRole,
+    hasPermission,
     checkRoleAccess,
-    login,
-    logout,
-    elevateToSuperAdmin
+    login, // Legacy
+    logout, // Legacy
+    elevateToSuperAdmin,
   };
 
   return (
