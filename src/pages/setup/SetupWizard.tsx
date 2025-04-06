@@ -1,199 +1,143 @@
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Key, Plus, Copy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import SetupHeader from '@/components/setup/SetupHeader';
-import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
-import AssociationForm from '@/components/setup/AssociationForm';
-import { useEffect, useState } from 'react';
-import { useAssociation } from '@/contexts/AssociationContext';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/auth/useAuth';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import AssociationForm from '@/components/setup/AssociationForm';
+import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
+import SetupHeader from '@/components/setup/SetupHeader';
+
+type SetupStep = 'choose' | 'create' | 'join';
 
 const SetupWizard = () => {
+  const [currentStep, setCurrentStep] = useState<SetupStep>('choose');
+  const [loading, setLoading] = useState(false);
+  const { user, isLoading, userProfile } = useAuth();
   const navigate = useNavigate();
-  const { currentAssociation, isLoading } = useAssociation();
-  const { userProfile, user } = useAuth();
-  const [setupCompleted, setSetupCompleted] = useState(false);
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
-  const [invitationCode, setInvitationCode] = useState<string | null>(null);
-  const { toast } = useToast();
   
+  // Redirect based on user role if they're already in an association
   useEffect(() => {
-    if (!isLoading && (currentAssociation || setupCompleted)) {
-      toast({
-        title: "Setup completed",
-        description: "Redirecting you to dashboard..."
-      });
-      navigate('/dashboard');
+    if (!isLoading && user) {
+      if (userProfile?.role === 'system_admin' || userProfile?.role === 'super_admin') {
+        // For admins, redirect to dashboard
+        navigate('/dashboard');
+      } else if (userProfile?.association_id) {
+        // If user is already in an association, redirect to dashboard
+        navigate('/dashboard');
+      }
     }
-  }, [currentAssociation, isLoading, setupCompleted, navigate, toast]);
+  }, [user, isLoading, userProfile, navigate]);
   
-  const updateUserRole = async () => {
-    if (!user) return;
-    
-    try {
-      setIsUpdatingRole(true);
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', user.id);
-        
-      if (profileError) throw profileError;
-      
-      await supabase
-        .from('audit_logs')
-        .insert({
-          action: 'role_update',
-          entity: 'profiles',
-          entity_id: user.id,
-          user_id: user.id,
-          changes: { role: 'admin', previous_role: userProfile?.role || 'guest' }
-        });
-      
-      console.log('User role updated to admin');
-      
-    } catch (error) {
-      console.error('Error updating user role:', error);
-    } finally {
-      setIsUpdatingRole(false);
-    }
-  };
-
-  const generateInvitationCode = async () => {
-    if (!currentAssociation || !user) return;
-
-    try {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      
-      const { error } = await supabase
-        .from('association_invitations')
-        .insert({
-          code,
-          association_id: currentAssociation.id,
-          role: 'member',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        });
-      
-      if (error) throw error;
-      
-      setInvitationCode(code);
-      
-    } catch (error) {
-      console.error('Error generating invitation code:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate invitation code',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const copyInviteCode = () => {
-    if (invitationCode) {
-      navigator.clipboard.writeText(invitationCode);
-      toast({
-        title: 'Copied',
-        description: 'Invitation code copied to clipboard',
-      });
-    }
+  const handleCreateSuccess = () => {
+    toast({
+      title: "Association created successfully",
+      description: "You're now the admin of this association",
+    });
+    navigate('/dashboard');
   };
   
-  const handleAssociationCreated = async () => {
-    await updateUserRole();
-    setSetupCompleted(true);
+  const handleJoinSuccess = () => {
+    toast({
+      title: "Joined association",
+      description: "You've successfully joined the association",
+    });
+    navigate('/dashboard');
   };
   
-  const handleAssociationJoined = () => {
-    setSetupCompleted(true);
-  };
-
-  const handleContinueToDashboard = () => {
-    setSetupCompleted(true);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
   
   return (
-    <div className="container max-w-4xl mx-auto py-8">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-5xl min-h-screen flex flex-col">
       <SetupHeader />
       
-      {invitationCode ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Invitation Code Generated</CardTitle>
-            <CardDescription>Share this code with others to join your association</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertDescription>
-                Share this code with others to join your association:
-              </AlertDescription>
-            </Alert>
-            <div className="flex items-center gap-2 p-2 mt-4 bg-background border rounded-md">
-              <span className="font-mono text-lg font-bold flex-1">{invitationCode}</span>
-              <Button variant="outline" size="sm" onClick={copyInviteCode}>
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              The code will expire in 7 days. The user will need to sign up or log in to use this code.
-            </p>
-            <div className="mt-4">
-              <Button onClick={() => navigate('/dashboard')}>
-                Continue to Dashboard
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Tabs defaultValue="invitation" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="invitation" className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Use Invitation Code
-            </TabsTrigger>
-            <TabsTrigger value="create" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create New Association
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="invitation" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Join with Invitation Code</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <InvitationCodeForm onSuccess={handleAssociationJoined} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="create" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create New Association</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <AssociationForm onSuccess={handleAssociationCreated} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
-      <div className="mt-6">
-        <Button 
-          variant="outline" 
-          onClick={handleContinueToDashboard}
-          className="mt-4"
-        >
-          Complete Setup
-        </Button>
+      <div className="flex-1 flex items-center justify-center py-12">
+        {currentStep === 'choose' && (
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Get Started</CardTitle>
+              <CardDescription>
+                Create a new association or join an existing one
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setCurrentStep('create')}
+                >
+                  Create a New Association
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setCurrentStep('join')}
+                >
+                  Join an Existing Association
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {currentStep === 'create' && (
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle>Create Association</CardTitle>
+              <CardDescription>
+                Set up your new association
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AssociationForm onSuccess={handleCreateSuccess} />
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep('choose')}
+                >
+                  Back
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {currentStep === 'join' && (
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Join Association</CardTitle>
+              <CardDescription>
+                Enter your invitation code to join an association
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InvitationCodeForm onSuccess={handleJoinSuccess} />
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep('choose')}
+                >
+                  Back
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
