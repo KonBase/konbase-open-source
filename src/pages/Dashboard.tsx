@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
@@ -72,7 +71,7 @@ const Dashboard = () => {
     },
     {
       enabled: !!currentAssociation?.id,
-      staleTime: 30000 as unknown as string, // Fixed type error by casting
+      staleTime: 30000,
       onError: (error) => {
         logDebug('Error fetching recent activity', error, 'error');
         setLastError(error);
