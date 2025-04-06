@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
@@ -23,13 +22,15 @@ import {
   ToggleRight,
   Maximize,
   MessageSquare,
-  Eye
+  Eye,
+  Accessibility
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { enableDebugMode, isDebugModeEnabled } from '@/utils/debug';
 import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import AccessibilitySettings from '@/components/settings/AccessibilitySettings';
 
 const Settings = () => {
   const { profile, loading, refreshProfile } = useUserProfile();
@@ -107,7 +108,7 @@ const Settings = () => {
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         
         <Tabs defaultValue="account" className="w-full">
-          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-5 mb-4">
+          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-6 mb-4">
             <TabsTrigger value="account" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span className="hidden md:inline">Account</span>
@@ -115,6 +116,10 @@ const Settings = () => {
             <TabsTrigger value="appearance" className="flex items-center gap-2">
               <Moon className="h-4 w-4" />
               <span className="hidden md:inline">Appearance</span>
+            </TabsTrigger>
+            <TabsTrigger value="accessibility" className="flex items-center gap-2">
+              <Accessibility className="h-4 w-4" />
+              <span className="hidden md:inline">Accessibility</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -216,64 +221,13 @@ const Settings = () => {
                       </Button>
                     </div>
                   </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="animations">Animations</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Enable UI animations and transitions
-                      </p>
-                    </div>
-                    <Switch 
-                      id="animations" 
-                      checked={animations}
-                      onCheckedChange={setAnimations}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="large-text">Large Text</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Increase the size of text for better readability
-                      </p>
-                    </div>
-                    <Switch 
-                      id="large-text" 
-                      checked={largeText}
-                      onCheckedChange={setLargeText}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="contrast">High Contrast Mode</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Enhance visibility with higher contrast colors
-                      </p>
-                    </div>
-                    <Switch 
-                      id="contrast" 
-                      checked={highContrast}
-                      onCheckedChange={setHighContrast}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <Label>Density</Label>
-                    <ToggleGroup type="single" defaultValue="comfortable" className="justify-start">
-                      <ToggleGroupItem value="compact">Compact</ToggleGroupItem>
-                      <ToggleGroupItem value="comfortable">Comfortable</ToggleGroupItem>
-                      <ToggleGroupItem value="spacious">Spacious</ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="accessibility">
+            <AccessibilitySettings />
           </TabsContent>
           
           <TabsContent value="notifications">
