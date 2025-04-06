@@ -1,29 +1,36 @@
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, createContext, useContext } from 'react';
 import useNetworkStatus from '@/hooks/useNetworkStatus';
+
+// Create a context for network status
+const NetworkStatusContext = createContext<ReturnType<typeof useNetworkStatus> | null>(null);
 
 interface NetworkStatusProviderProps {
   children: ReactNode;
-  networkStatus: ReturnType<typeof useNetworkStatus>;
 }
 
-const NetworkStatusProvider: React.FC<NetworkStatusProviderProps> = ({ 
-  children, 
-  networkStatus 
-}) => {
-  return (
-    <>{children}</>
-  );
-};
-
-export const useNetworkStatusContext = () => {
+const NetworkStatusProvider: React.FC<NetworkStatusProviderProps> = ({ children }) => {
   const networkStatus = useNetworkStatus({
     showToasts: true,
     testInterval: 30000,
     testEndpoint: 'https://www.google.com'
   });
   
-  return networkStatus;
+  return (
+    <NetworkStatusContext.Provider value={networkStatus}>
+      {children}
+    </NetworkStatusContext.Provider>
+  );
+};
+
+export const useNetworkStatusContext = () => {
+  const context = useContext(NetworkStatusContext);
+  
+  if (!context) {
+    throw new Error('useNetworkStatusContext must be used within a NetworkStatusProvider');
+  }
+  
+  return context;
 };
 
 export default NetworkStatusProvider;
