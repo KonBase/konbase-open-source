@@ -1,8 +1,9 @@
 
 import React, { createContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { AuthContextType, AuthState, AuthUser, AuthUserProfile } from './AuthTypes';
-import { checkUserHasPermission, checkUserHasRole, elevateUserToSuperAdmin, fetchAndEnhanceUserProfile } from './AuthUtils';
+import { supabase } from '@/lib/supabase';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { toast } from '@/components/ui/use-toast';
 import { USER_ROLES, UserRoleType } from '@/types/user';
 
 // Create the context with a default undefined value
@@ -20,140 +21,255 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading: true,
   });
 
-  // Update state helper function
-  const updateState = (newState: Partial<AuthState>) => {
-    setState(prevState => ({ ...prevState, ...newState }));
-  };
-
-  // Fetch user profile when user changes
+  // Get user session and set up auth subscription
   useEffect(() => {
-    if (state.user?.id) {
-      fetchAndEnhanceUserProfile(
-        state.user.id,
-        state.user,
-        (profile) => updateState({ userProfile: profile }),
-        (user) => updateState({ user })
-      );
-    }
-  }, [state.user?.id]);
-
-  // Set up auth state listener
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        updateState({
-          session,
-          user: session?.user ?? null,
-          isAuthenticated: !!session,
+    const setupAuth = async () => {
+      setState(prev => ({ ...prev, isLoading: true }));
+      try {
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          await updateUserState(session);
+        } else {
+          setState(prev => ({
+            ...prev, 
+            isLoading: false, 
+            loading: false, 
+            isAuthenticated: false
+          }));
+        }
+        
+        // Listen for auth changes
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (session?.user) {
+              await updateUserState(session);
+            } else {
+              setState({
+                session: null,
+                user: null,
+                userProfile: null,
+                loading: false,
+                error: null,
+                isAuthenticated: false,
+                isLoading: false,
+              });
+            }
+          }
+        );
+        
+        // Cleanup subscription on unmount
+        return () => subscription.unsubscribe();
+      } catch (error: any) {
+        console.error("Error setting up auth:", error);
+        setState(prev => ({
+          ...prev,
+          error: error.message,
           loading: false,
-          isLoading: false
-        });
+          isLoading: false,
+        }));
       }
-    );
-
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      updateState({
-        session,
-        user: session?.user ?? null,
-        isAuthenticated: !!session,
-        loading: false,
-        isLoading: false
-      });
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
+
+    setupAuth();
   }, []);
 
-  // Auth methods
-  const signIn = async (email: string, password: string) => {
+  // Fetch user profile and update state
+  const updateUserState = async (session: Session) => {
     try {
-      updateState({ loading: true, error: null });
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      // Basic user info from session
+      const supabaseUser = session.user;
       
+      // Fetch user profile from the database
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+        
       if (error) throw error;
-    } catch (error: any) {
-      updateState({ error: error.message });
-      throw error;
-    } finally {
-      updateState({ loading: false });
-    }
-  };
 
-  const signUp = async (email: string, password: string) => {
-    try {
-      updateState({ loading: true, error: null });
-      const { error } = await supabase.auth.signUp({ email, password });
+      // Create extended user object with profile data
+      const user: AuthUser = {
+        ...supabaseUser,
+        name: profile?.name || "",
+        profileImage: profile?.profile_image || "",
+        // Convert string role to UserRoleType
+        role: (profile?.role as UserRoleType) || "guest",
+        email: profile?.email || supabaseUser.email || "",
+      };
       
-      if (error) throw error;
-    } catch (error: any) {
-      updateState({ error: error.message });
-      throw error;
-    } finally {
-      updateState({ loading: false });
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      updateState({ loading: true, error: null });
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) throw error;
-      
-      updateState({
-        user: null,
-        userProfile: null,
-        session: null,
-        isAuthenticated: false,
+      // Update all state at once
+      setState({
+        session,
+        user,
+        userProfile: profile as AuthUserProfile,
+        loading: false,
+        error: null,
+        isAuthenticated: true,
+        isLoading: false,
       });
     } catch (error: any) {
-      updateState({ error: error.message });
-      throw error;
-    } finally {
-      updateState({ loading: false });
+      console.error("Error getting user profile:", error);
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error.message,
+        isLoading: false,
+      }));
     }
   };
 
-  // Role and permission checks
-  const hasRole = (requiredRole: UserRoleType) => {
-    return checkUserHasRole(state.userProfile, requiredRole);
-  };
-
-  const hasPermission = (permission: string) => {
-    return checkUserHasPermission(state.userProfile, permission);
-  };
-
-  const checkRoleAccess = async (role: UserRoleType): Promise<boolean> => {
+  // Sign in with email/password
+  const signIn = async (email: string, password: string) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      updateState({ loading: true });
-      const userRoleValue = state.userProfile?.role ? USER_ROLES[state.userProfile.role]?.level || 0 : 0;
-      const requiredRoleValue = USER_ROLES[role]?.level || 0;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      return userRoleValue >= requiredRoleValue;
-    } catch (error) {
-      console.error('Error checking role access:', error);
-      return false;
-    } finally {
-      updateState({ loading: false });
+      if (error) throw error;
+      
+      // Session updates will be handled by the auth state change listener
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      setState(prev => ({ ...prev, loading: false, error: error.message }));
+      toast({
+        title: "Sign in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
-  // Legacy method aliases
+  // Sign up with email/password
+  const signUp = async (email: string, password: string) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Account created",
+        description: "Please check your email to confirm your account.",
+      });
+      
+      // Redirect or update state as needed
+    } catch (error: any) {
+      console.error("Error signing up:", error);
+      setState(prev => ({ ...prev, loading: false, error: error.message }));
+      toast({
+        title: "Sign up failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  // Sign out
+  const signOut = async () => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Auth state change listener will handle state updates
+    } catch (error: any) {
+      console.error("Error signing out:", error);
+      setState(prev => ({ ...prev, loading: false, error: error.message }));
+      toast({
+        title: "Sign out failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Check if user has required role
+  const hasRole = (requiredRole: UserRoleType): boolean => {
+    // If no user, return false
+    if (!state.user || !state.user.role) return false;
+    
+    // Get the role levels for comparison
+    const userRoleLevel = USER_ROLES[state.user.role as UserRoleType]?.level || 0;
+    const requiredRoleLevel = USER_ROLES[requiredRole]?.level || 0;
+    
+    // User's role level must be >= required role level
+    return userRoleLevel >= requiredRoleLevel;
+  };
+
+  // Check if user has permission
+  const hasPermission = (permission: string): boolean => {
+    // If no user, return false
+    if (!state.user || !state.user.role) return false;
+    
+    // Get the role definition
+    const role = USER_ROLES[state.user.role as UserRoleType];
+    if (!role) return false;
+    
+    // Check if the role has the permission
+    return role.permissions.includes(permission) || role.permissions.includes('admin:all');
+  };
+
+  // Check role access with server validation
+  const checkRoleAccess = async (role: UserRoleType): Promise<boolean> => {
+    if (!state.session) return false;
+    
+    try {
+      // Here you'd typically make a server request to validate role
+      // For now, we'll use the client-side check
+      return hasRole(role);
+    } catch (error) {
+      console.error("Error checking role access:", error);
+      return false;
+    }
+  };
+
+  // Function to elevate user to super admin (for testing)
+  const elevateToSuperAdmin = async (): Promise<{success: boolean, message: string}> => {
+    if (!state.isAuthenticated || !state.user) {
+      return { success: false, message: 'You must be logged in to perform this action' };
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: 'super_admin' })
+        .eq('id', state.user.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        user: prev.user ? {
+          ...prev.user,
+          role: 'super_admin' as UserRoleType
+        } : null,
+        userProfile: prev.userProfile ? {
+          ...prev.userProfile,
+          role: 'super_admin' as UserRoleType
+        } : null
+      }));
+      
+      return { success: true, message: 'You are now a super admin' };
+    } catch (error: any) {
+      console.error("Error elevating to super admin:", error);
+      return { success: false, message: error.message };
+    }
+  };
+
+  // Legacy/convenience methods
   const login = signIn;
   const logout = signOut;
-
-  // Super admin elevation
-  const elevateToSuperAdmin = async () => {
-    return await elevateUserToSuperAdmin(
-      state.userProfile,
-      state.user,
-      (user) => updateState({ user }),
-      (profile) => updateState({ userProfile: profile })
-    );
-  };
 
   // Prepare the context value
   const contextValue: AuthContextType = {
@@ -161,11 +277,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
-    hasRole,
     hasPermission,
+    hasRole,
     checkRoleAccess,
-    login, // Legacy
-    logout, // Legacy
+    login,
+    logout,
     elevateToSuperAdmin,
   };
 
