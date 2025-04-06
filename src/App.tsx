@@ -6,7 +6,6 @@ import { Toaster } from './components/ui/toaster';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
-import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
