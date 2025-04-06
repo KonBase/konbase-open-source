@@ -1,44 +1,37 @@
-import React, { useState, useCallback, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/lib/supabase';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
-import { LoadingError } from '@/components/ui/spinner';
-import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
-import CommunicationSection from '@/components/dashboard/CommunicationSection';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { logDebug } from '@/utils/debug';
-import DebugPanel from '@/utils/debug-panel';
+import { useDashboardActivity } from '@/hooks/useDashboardActivity';
 import useNetworkStatus from '@/hooks/useNetworkStatus';
-import { AlertTriangle } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import ErrorBoundary from '@/components/ErrorBoundary';
-import MemberManager from '@/components/association/MemberManager';
-import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
-import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
-import DebugModeToggle from '@/components/dashboard/DebugModeToggle';
-
-interface AuditLog {
-  id: string;
-  action: string;
-  created_at: string;
-  entity: string;
-  entity_id: string;
-}
+import DashboardError from '@/components/dashboard/DashboardError';
+import DashboardContent from '@/components/dashboard/DashboardContent';
+import DashboardLocationView from '@/components/dashboard/DashboardLocationView';
+import DashboardEmptyState from '@/components/dashboard/DashboardEmptyState';
+import DebugPanel from '@/utils/debug-panel';
 
 const Dashboard = () => {
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
   const { user } = useAuth();
-  const [retryCount, setRetryCount] = useState(0);
-  const [lastError, setLastError] = useState<any>(null);
   const [isDebugMode, setIsDebugMode] = useState(false);
+  const [showLocationManager, setShowLocationManager] = useState(false);
   
   const networkStatus = useNetworkStatus({
     showToasts: true,
     testInterval: 30000,
     testEndpoint: 'https://www.google.com'
   });
+  
+  const {
+    isLoadingActivity,
+    activityError,
+    handleRetry,
+    retryCount,
+    lastError,
+    safeRecentActivity
+  } = useDashboardActivity(currentAssociation);
   
   useEffect(() => {
     logDebug('Dashboard component state', {
@@ -49,49 +42,22 @@ const Dashboard = () => {
       retryCount
     }, 'info');
   }, [associationLoading, user, currentAssociation, networkStatus.status, retryCount]);
-  
-  const { 
-    data: recentActivity, 
-    isLoading: isLoadingActivity,
-    error: activityError,
-    refetch: refetchActivity
-  } = useSupabaseQuery<AuditLog[]>(
-    ['recent-activity', currentAssociation?.id, retryCount],
-    async () => {
-      if (!currentAssociation?.id) return { data: [] as AuditLog[], error: null };
-      
-      logDebug(`Fetching recent activity for association ${currentAssociation.id}`, null, 'info');
-      
-      return await supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('entity', 'associations')
-        .eq('entity_id', currentAssociation.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-    },
-    {
-      enabled: !!currentAssociation?.id,
-      staleTime: 30000, // Removed type casting
-      onError: (error) => {
-        logDebug('Error fetching recent activity', error, 'error');
-        setLastError(error);
-      }
-    }
-  );
-
-  const handleRetry = useCallback(() => {
-    logDebug('Manually retrying data fetch', null, 'info');
-    setRetryCount(count => count + 1);
-    refetchActivity();
-  }, [refetchActivity]);
 
   const toggleDebugMode = useCallback(() => {
     setIsDebugMode(prev => !prev);
   }, []);
 
+  const handleShowLocationManager = useCallback(() => {
+    setShowLocationManager(true);
+  }, []);
+
+  const handleBackFromLocationManager = useCallback(() => {
+    setShowLocationManager(false);
+  }, []);
+
   const error = activityError;
   
+  // Loading state
   if (associationLoading) {
     return (
       <div className="container mx-auto py-6">
@@ -113,119 +79,65 @@ const Dashboard = () => {
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="container mx-auto py-6 space-y-4">
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error loading dashboard</AlertTitle>
-          <AlertDescription>
-            There was a problem loading your dashboard data. Please try again.
-          </AlertDescription>
-        </Alert>
-        
-        <LoadingError 
-          error={error} 
-          retry={handleRetry} 
-        />
-        
-        <DebugModeToggle 
-          isDebugMode={isDebugMode} 
-          toggleDebugMode={toggleDebugMode} 
-        />
-        
-        {isDebugMode && (
-          <DebugPanel 
-            networkStatus={networkStatus.status}
-            testConnection={networkStatus.testConnection}
-            isTestingConnection={networkStatus.isTestingConnection}
-            lastTestedAt={networkStatus.lastTestedAt}
-            testResults={networkStatus.testResults}
-            userData={{ 
-              userId: user?.id,
-              associationId: currentAssociation?.id
-            }}
-            errorData={error}
-            onRetry={handleRetry}
-          />
-        )}
-      </div>
+      <DashboardError
+        error={error}
+        handleRetry={handleRetry}
+        isDebugMode={isDebugMode}
+        toggleDebugMode={toggleDebugMode}
+        networkStatus={networkStatus}
+        user={user}
+        currentAssociation={currentAssociation}
+        lastError={lastError}
+        retryCount={retryCount}
+      />
     );
   }
 
-  const isHome = true;
+  // No association state
+  if (!currentAssociation) {
+    return (
+      <DashboardEmptyState
+        networkStatus={networkStatus}
+        isDebugMode={isDebugMode}
+        toggleDebugMode={toggleDebugMode}
+        user={user}
+        currentAssociation={currentAssociation}
+        handleRetry={handleRetry}
+        lastError={lastError}
+        retryCount={retryCount}
+      />
+    );
+  }
 
-  const showLocationManager = () => {
-    console.log('Location manager should open');
-  };
+  // Location manager view
+  if (showLocationManager) {
+    return (
+      <DashboardLocationView
+        currentAssociation={currentAssociation}
+        onBack={handleBackFromLocationManager}
+      />
+    );
+  }
 
-  // Ensure recentActivity is always an array
-  const safeRecentActivity = Array.isArray(recentActivity?.data) ? recentActivity.data : [];
-
+  // Main dashboard view
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6 space-y-8">
-        <DashboardHeader 
-          currentAssociation={currentAssociation} 
-          user={user} 
-          isHome={isHome} 
-        />
-
-        <ErrorBoundary>
-          <DashboardOverviewSection 
-            currentAssociation={currentAssociation}
-            isLoadingActivity={isLoadingActivity}
-            recentActivity={safeRecentActivity}
-            activityError={activityError}
-            handleRetry={handleRetry}
-          />
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <AssociationManagementSection onShowLocationManager={showLocationManager} />
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <ConventionManagementSection />
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <CommunicationSection unreadNotifications={0} />
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <div className="py-6">
-            <MemberManager minimal />
-          </div>
-        </ErrorBoundary>
-        
-        <div className="mt-8">
-          <DebugModeToggle 
-            isDebugMode={isDebugMode} 
-            toggleDebugMode={toggleDebugMode} 
-          />
-          
-          {isDebugMode && (
-            <DebugPanel 
-              networkStatus={networkStatus.status}
-              testConnection={networkStatus.testConnection}
-              isTestingConnection={networkStatus.isTestingConnection}
-              lastTestedAt={networkStatus.lastTestedAt}
-              testResults={networkStatus.testResults}
-              userData={{ 
-                userId: user?.id,
-                associationId: currentAssociation?.id
-              }}
-              errorData={lastError}
-              onRetry={handleRetry}
-              requestInfo={{
-                retryCount,
-              }}
-            />
-          )}
-        </div>
-      </div>
-    </div>
+    <DashboardContent
+      currentAssociation={currentAssociation}
+      user={user}
+      isLoadingActivity={isLoadingActivity}
+      safeRecentActivity={safeRecentActivity}
+      activityError={activityError}
+      handleRetry={handleRetry}
+      onShowLocationManager={handleShowLocationManager}
+      isDebugMode={isDebugMode}
+      toggleDebugMode={toggleDebugMode}
+      networkStatus={networkStatus}
+      lastError={lastError}
+      retryCount={retryCount}
+    />
   );
 };
 
