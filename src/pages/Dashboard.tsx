@@ -1,13 +1,10 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
 import { useAssociation } from '@/contexts/AssociationContext';
-import MemberManager from '@/components/association/MemberManager';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/lib/supabase';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
-import { Spinner, LoadingError } from '@/components/ui/spinner';
+import { LoadingError } from '@/components/ui/spinner';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import CommunicationSection from '@/components/dashboard/CommunicationSection';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -18,6 +15,10 @@ import useNetworkStatus from '@/hooks/useNetworkStatus';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import MemberManager from '@/components/association/MemberManager';
+import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
+import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
+import DebugModeToggle from '@/components/dashboard/DebugModeToggle';
 
 interface AuditLog {
   id: string;
@@ -129,12 +130,10 @@ const Dashboard = () => {
           retry={handleRetry} 
         />
         
-        <button 
-          onClick={toggleDebugMode} 
-          className="text-xs text-muted-foreground underline"
-        >
-          {isDebugMode ? 'Hide' : 'Show'} Debug Information
-        </button>
+        <DebugModeToggle 
+          isDebugMode={isDebugMode} 
+          toggleDebugMode={toggleDebugMode} 
+        />
         
         {isDebugMode && (
           <DebugPanel 
@@ -170,83 +169,15 @@ const Dashboard = () => {
           isHome={isHome} 
         />
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
-          <ErrorBoundary>
-            <Card>
-              <CardHeader>
-                <CardTitle>Association Overview</CardTitle>
-                <CardDescription>Current status of your association</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {currentAssociation ? (
-                    <>
-                      <p><span className="font-medium">Name:</span> {currentAssociation.name}</p>
-                      <p><span className="font-medium">Email:</span> {currentAssociation.contactEmail || 'Not provided'}</p>
-                      {currentAssociation.description && (
-                        <p><span className="font-medium">Description:</span> {currentAssociation.description}</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Manage your association details, members and equipment</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </ErrorBoundary>
-          
-          <ErrorBoundary>
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest actions and events</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {isLoadingActivity ? (
-                    <div className="flex justify-center">
-                      <Spinner size="sm" />
-                    </div>
-                  ) : recentActivity && Array.isArray(recentActivity) && recentActivity.length > 0 ? (
-                    <ul className="space-y-2">
-                      {recentActivity.map((activity) => (
-                        <li key={activity.id} className="text-sm">
-                          <span className="font-medium">{activity.action}</span>: {activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No recent activities to display</p>
-                  )}
-                  
-                  {activityError && (
-                    <button 
-                      onClick={handleRetry}
-                      className="text-xs text-primary underline"
-                    >
-                      Error loading activities. Click to retry.
-                    </button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </ErrorBoundary>
-          
-          <ErrorBoundary>
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Common tasks for fast access</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Quick action buttons will go here */}
-                  <p className="text-sm text-muted-foreground">Access your most common tasks quickly</p>
-                </div>
-              </CardContent>
-            </Card>
-          </ErrorBoundary>
-        </div>
+        <ErrorBoundary>
+          <DashboardOverviewSection 
+            currentAssociation={currentAssociation}
+            isLoadingActivity={isLoadingActivity}
+            recentActivity={recentActivity}
+            activityError={activityError}
+            handleRetry={handleRetry}
+          />
+        </ErrorBoundary>
         
         <ErrorBoundary>
           <AssociationManagementSection onShowLocationManager={showLocationManager} />
@@ -267,12 +198,10 @@ const Dashboard = () => {
         </ErrorBoundary>
         
         <div className="mt-8">
-          <button 
-            onClick={toggleDebugMode} 
-            className="text-xs text-muted-foreground underline"
-          >
-            {isDebugMode ? 'Hide' : 'Show'} Debug Information
-          </button>
+          <DebugModeToggle 
+            isDebugMode={isDebugMode} 
+            toggleDebugMode={toggleDebugMode} 
+          />
           
           {isDebugMode && (
             <DebugPanel 
