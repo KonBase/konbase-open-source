@@ -104,6 +104,7 @@ const SetupWizard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Pass the onSuccess prop correctly to AssociationForm */}
               <AssociationForm onSuccess={handleCreateSuccess} />
               <div className="mt-4">
                 <Button

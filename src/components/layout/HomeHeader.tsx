@@ -1,11 +1,18 @@
 
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LayoutDashboard, Github, MessageCircle } from 'lucide-react';
+import UserMenu from './shared/UserMenu';
+import { 
+  Sheet, 
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose
+} from '@/components/ui/sheet';
 import { 
   NavigationMenu,
   NavigationMenuContent,
@@ -13,55 +20,21 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
-import { 
-  User, 
-  LogOut, 
-  Settings, 
-  LayoutDashboard, 
-  Github, 
-  MessageCircle, 
-  Shield 
-} from 'lucide-react';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import LogoutButton from '../auth/LogoutButton';
+import { useMobileDetect } from '@/hooks/useMobileDetect';
+import MobileMenuButton from './shared/MobileMenuButton';
 
 const HomeHeader = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, signOut, isAuthenticated, hasRole } = useAuth();
-  const { toast } = useToast();
+  const { user, isAuthenticated, hasRole } = useAuth();
+  const { isMobile } = useMobileDetect();
   
   // Extract user display values with fallbacks
-  const userName = user?.name || 'User';
+  const userName = user?.name || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email || '';
-  const userInitial = userName && userName.length > 0 ? userName.charAt(0) : 'U';
   
   // Check if user has admin access
   const isAdmin = hasRole('admin') || hasRole('system_admin') || hasRole('super_admin');
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account."
-      });
-      navigate('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      toast({
-        title: "Logout failed",
-        description: "An error occurred during logout. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleLogin = () => {
     navigate('/login');
@@ -75,18 +48,106 @@ const HomeHeader = () => {
     navigate('/dashboard');
   };
 
+  const renderMobileMenu = () => (
+    <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+      <SheetContent side="left" className="w-[80vw] max-w-[300px] p-0">
+        <SheetHeader className="p-4 border-b">
+          <SheetTitle>Menu</SheetTitle>
+        </SheetHeader>
+        <div className="py-4 px-4">
+          <nav className="flex flex-col space-y-4">
+            <Link to="/#features" className="px-4 py-2 hover:bg-accent rounded-md" onClick={() => setMobileMenuOpen(false)}>
+              Features
+            </Link>
+            <Link to="/#about" className="px-4 py-2 hover:bg-accent rounded-md" onClick={() => setMobileMenuOpen(false)}>
+              About
+            </Link>
+            <div className="px-4 py-2">
+              <h3 className="font-medium mb-2">Community</h3>
+              <div className="ml-2 space-y-2">
+                <a 
+                  href="https://github.com/KonBase/KonBase" 
+                  className="flex items-center gap-2 px-4 py-2 hover:bg-accent rounded-md"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <Github className="h-4 w-4" />
+                  <span>GitHub</span>
+                </a>
+                <a 
+                  href="https://discord.gg/konbase" 
+                  className="flex items-center gap-2 px-4 py-2 hover:bg-accent rounded-md"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Discord</span>
+                </a>
+              </div>
+            </div>
+            <div className="pt-4 border-t">
+              {isAuthenticated ? (
+                <Button 
+                  className="w-full"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/dashboard');
+                  }}
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLogin();
+                    }}
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleRegister();
+                    }}
+                  >
+                    Register
+                  </Button>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+
   return (
-    <header className="w-full border-b bg-konbase-blue text-konbase-white">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center space-x-2">
-            <img 
-              src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
-              alt="KonBase Logo" 
-              className="h-10 w-10" 
-            />
-            <h1 className="text-2xl font-bold text-konbase-yellow">KonBase</h1>
-          </Link>
+    <>
+      <header className="w-full border-b bg-konbase-blue text-konbase-white">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <Button variant="ghost" size="icon" className="text-konbase-white mr-2 md:hidden" onClick={() => setMobileMenuOpen(true)}>
+              <span className="sr-only">Open menu</span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </Button>
+            
+            <Link to="/" className="flex items-center space-x-2">
+              <img 
+                src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+                alt="KonBase Logo" 
+                className="h-10 w-10" 
+              />
+              <h1 className="text-2xl font-bold text-konbase-yellow">KonBase</h1>
+            </Link>
+          </div>
           
           <NavigationMenu className="hidden md:flex">
             <NavigationMenuList>
@@ -133,85 +194,58 @@ const HomeHeader = () => {
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleDashboard}
-                className="text-konbase-white bg-transparent border-konbase-white/30 hover:bg-konbase-blue-800/40 hover:text-konbase-yellow"
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
+          
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleDashboard}
+                  className="text-konbase-white bg-transparent border-konbase-white/30 hover:bg-konbase-blue-800/40 hover:text-konbase-yellow hidden sm:flex"
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
 
-              <ThemeToggle />
-
-              <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>{userInitial}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{userName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                <div className="hidden sm:block">
+                  <ThemeToggle />
                 </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/admin">
-                  <Shield className="mr-2 h-4 w-4" />
-                  <span>Admin</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <LogoutButton variant="ghost" size="sm" />
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Button 
-                variant="ghost" 
-                onClick={handleLogin}
-                className="text-konbase-white hover:text-konbase-yellow hover:bg-konbase-blue-800/40"
-              >
-                Login
-              </Button>
-              <Button 
-                onClick={handleRegister}
-                className="bg-konbase-yellow text-konbase-blue hover:bg-konbase-yellow/90"
-              >
-                Register
-              </Button>
-            </div>
-          )}
+
+                <UserMenu 
+                  userName={userName}
+                  userEmail={userEmail}
+                  isAdmin={isAdmin}
+                  variant="ghost"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:block">
+                  <ThemeToggle />
+                </div>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleLogin}
+                  className="text-konbase-white hover:text-konbase-yellow hover:bg-konbase-blue-800/40 hidden sm:inline-flex"
+                >
+                  Login
+                </Button>
+                <Button 
+                  onClick={handleRegister}
+                  className="bg-konbase-yellow text-konbase-blue hover:bg-konbase-yellow/90"
+                >
+                  Register
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      
+      {/* Mobile Navigation Menu */}
+      {renderMobileMenu()}
+    </>
   );
 };
 
