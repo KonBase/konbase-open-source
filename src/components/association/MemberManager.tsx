@@ -7,6 +7,7 @@ import { UserRoleType } from '@/types/user';
 import { UserRoundPlus } from 'lucide-react';
 import MemberList from './MemberList';
 import MemberLoadingState from './MemberLoadingState';
+import MemberListMinimal from './MemberListMinimal';
 
 interface MemberManagerProps {
   associationId: string;
@@ -15,6 +16,7 @@ interface MemberManagerProps {
   onUpdateRole: (memberId: string, role: UserRoleType) => Promise<{ success: boolean, error?: any }>;
   onRemoveMember: (memberId: string) => Promise<{ success: boolean, error?: any }>;
   onInviteMember?: () => void;
+  minimal?: boolean;
 }
 
 const MemberManager = ({ 
@@ -23,8 +25,20 @@ const MemberManager = ({
   loading, 
   onUpdateRole, 
   onRemoveMember, 
-  onInviteMember 
+  onInviteMember,
+  minimal = false
 }: MemberManagerProps) => {
+  
+  const handleUpdateRole = async (memberId: string, role: UserRoleType) => {
+    await onUpdateRole(memberId, role);
+  };
+
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (confirm(`Are you sure you want to remove ${memberName} from the association?`)) {
+      await onRemoveMember(memberId);
+    }
+  };
+  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -39,11 +53,13 @@ const MemberManager = ({
       <CardContent>
         {loading ? (
           <MemberLoadingState />
+        ) : minimal ? (
+          <MemberListMinimal members={members} />
         ) : (
           <MemberList 
             members={members} 
-            onUpdateRole={onUpdateRole} 
-            onRemoveMember={onRemoveMember} 
+            onUpdateRole={handleUpdateRole} 
+            onRemoveMember={handleRemoveMember} 
           />
         )}
       </CardContent>

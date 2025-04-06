@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { USER_ROLES, UserRoleType } from '@/types/user';
 import { AuthUserProfile, AuthUser } from './AuthTypes';
 import { enhanceUserWithProfile, fetchUserProfile } from '@/utils/auth-utils';
+import { User } from '@supabase/supabase-js';
 
 /**
  * Check if user has a specific role
@@ -44,7 +45,7 @@ export const checkUserHasPermission = (
  */
 export const fetchAndEnhanceUserProfile = async (
   userId: string,
-  currentUser: AuthUser | null,
+  currentUser: User | null,
   setUserProfile: (profile: AuthUserProfile | null) => void,
   setUser: (user: AuthUser | null) => void
 ) => {
@@ -64,8 +65,16 @@ export const fetchAndEnhanceUserProfile = async (
       setUserProfile(typedProfile);
       
       if (currentUser) {
-        const enhancedUser = enhanceUserWithProfile(currentUser, typedProfile);
-        setUser(enhancedUser);
+        // Create an AuthUser object with the required properties
+        const authUser: AuthUser = {
+          ...currentUser,
+          name: typedProfile.name || '',
+          profileImage: typedProfile.profile_image,
+          role: typedProfile.role,
+          email: typedProfile.email || currentUser.email || '',
+        };
+        
+        setUser(authUser);
       }
       
       console.log('Profile fetched successfully:', typedProfile.role);

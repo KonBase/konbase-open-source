@@ -58,7 +58,7 @@ export const useAssociationMembers = (associationId: string) => {
         // Handle profile data safely
         let profile: ProfileData | undefined = undefined;
         
-        if (member.profiles && !('error' in member.profiles)) {
+        if (member.profiles && typeof member.profiles === 'object' && !Array.isArray(member.profiles)) {
           profile = {
             id: member.profiles.id,
             name: member.profiles.name,

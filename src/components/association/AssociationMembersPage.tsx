@@ -6,6 +6,7 @@ import { useAssociationMembers } from '@/hooks/useAssociationMembers';
 import { UserRoundPlus } from 'lucide-react';
 import MemberList from './MemberList';
 import MemberLoadingState from './MemberLoadingState';
+import { UserRoleType } from '@/types/user';
 
 interface AssociationMembersPageProps {
   associationId: string;
@@ -17,6 +18,16 @@ const AssociationMembersPage = ({ associationId }: AssociationMembersPageProps) 
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
+
+  const handleUpdateRole = async (memberId: string, role: UserRoleType) => {
+    await updateMemberRole(memberId, role);
+  };
+
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (confirm(`Are you sure you want to remove ${memberName} from the association?`)) {
+      await removeMember(memberId);
+    }
+  };
 
   return (
     <Card>
@@ -33,8 +44,8 @@ const AssociationMembersPage = ({ associationId }: AssociationMembersPageProps) 
         ) : (
           <MemberList 
             members={members} 
-            onUpdateRole={updateMemberRole} 
-            onRemoveMember={removeMember} 
+            onUpdateRole={handleUpdateRole} 
+            onRemoveMember={handleRemoveMember} 
           />
         )}
       </CardContent>

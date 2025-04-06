@@ -1,175 +1,157 @@
 
-import { useState } from 'react';
+import React from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
-interface AssociationFormProps {
-  onSuccess?: () => void;
+// Schema for association creation form
+const associationSchema = z.object({
+  name: z.string().min(3, { message: 'Association name must be at least 3 characters' }),
+  description: z.string().optional(),
+  contactEmail: z.string().email({ message: 'Please enter a valid email address' }),
+  contactPhone: z.string().optional(),
+  website: z.string().url({ message: 'Please enter a valid URL' }).optional().or(z.literal('')),
+  address: z.string().optional(),
+});
+
+type AssociationFormValues = z.infer<typeof associationSchema>;
+
+export interface AssociationFormProps {
+  onSuccess?: () => Promise<void> | void;
 }
 
-const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [website, setWebsite] = useState('');
-  const [address, setAddress] = useState('');
-  const [loading, setLoading] = useState(false);
+const AssociationForm: React.FC<AssociationFormProps> = ({ onSuccess }) => {
+  const { createAssociation, isLoading } = useAssociation();
   
-  const { createAssociation } = useAssociation();
-  const { user, userProfile } = useAuth();
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!name.trim()) {
-      toast({
-        title: "Error",
-        description: "Association name is required",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!contactEmail.trim()) {
-      toast({
-        title: "Error",
-        description: "Contact email is required",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+  const form = useForm<AssociationFormValues>({
+    resolver: zodResolver(associationSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      contactEmail: '',
+      contactPhone: '',
+      website: '',
+      address: '',
+    },
+  });
+
+  const onSubmit = async (values: AssociationFormValues) => {
     try {
-      setLoading(true);
+      const newAssociation = await createAssociation(values);
       
-      // Use the context method to create the association
-      const newAssociation = await createAssociation({
-        name: name.trim(),
-        description: description.trim(),
-        contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone.trim(),
-        website: website.trim(),
-        address: address.trim()
-      });
-      
-      if (!newAssociation) {
-        throw new Error("Failed to create association");
+      if (newAssociation && onSuccess) {
+        await onSuccess();
       }
-      
-      // Show success message
-      toast({
-        title: "Success",
-        description: `${name} has been created successfully`,
-      });
-      
-      // Call the onSuccess callback if provided
-      onSuccess?.();
-      
-    } catch (error: any) {
-      console.error("Error creating association:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create association",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Failed to create association:', error);
     }
   };
-  
-  // Pre-fill contact email with user's email if available
-  useState(() => {
-    if (user?.email && contactEmail === '') {
-      setContactEmail(user.email);
-    }
-  });
-  
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Association Name</Label>
-        <Input
-          id="name"
-          placeholder="Enter association name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={loading}
-          required
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Association Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter association name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          placeholder="Describe your association"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={loading}
-          rows={3}
-        />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="contactEmail">Contact Email</Label>
-          <Input
-            id="contactEmail"
-            type="email"
-            placeholder="contact@example.com"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            disabled={loading}
-            required
-          />
-        </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="contactPhone">Contact Phone</Label>
-          <Input
-            id="contactPhone"
-            placeholder="Phone number"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="website">Website</Label>
-        <Input
-          id="website"
-          placeholder="https://example.com"
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-          disabled={loading}
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Describe your association" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
-        <Textarea
-          id="address"
-          placeholder="Physical address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          disabled={loading}
-          rows={2}
+        
+        <FormField
+          control={form.control}
+          name="contactEmail"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contact Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="contact@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-      
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Creating...' : 'Create Association'}
-      </Button>
-    </form>
+        
+        <FormField
+          control={form.control}
+          name="contactPhone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contact Phone (optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="+1 123 456 7890" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="website"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Website (optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address (optional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Address" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            'Create Association'
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 };
 
