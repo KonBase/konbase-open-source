@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
@@ -73,7 +72,7 @@ const Dashboard = () => {
     },
     {
       enabled: !!currentAssociation?.id,
-      staleTime: 30000 as unknown as string, // Fix Type error by casting
+      staleTime: 30000, // Removed type casting
       onError: (error) => {
         logDebug('Error fetching recent activity', error, 'error');
         setLastError(error);
@@ -161,7 +160,7 @@ const Dashboard = () => {
   };
 
   // Ensure recentActivity is always an array
-  const safeRecentActivity = Array.isArray(recentActivity) ? recentActivity : [];
+  const safeRecentActivity = Array.isArray(recentActivity?.data) ? recentActivity.data : [];
 
   return (
     <div className="min-h-screen bg-background">
