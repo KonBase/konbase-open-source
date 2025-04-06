@@ -254,7 +254,7 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
             <div className="text-xs bg-muted p-2 rounded">
               <p className="mb-1 font-medium">Troubleshooting Tips:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>High Supabase latency (>800ms) may indicate database connection issues</li>
+                <li>High Supabase latency ({`>`}800ms) may indicate database connection issues</li>
                 <li>API failures with long load times could mean rate limiting</li>
                 <li>Multiple retries suggest intermittent connectivity</li>
                 <li>Check browser console for detailed error logs</li>
