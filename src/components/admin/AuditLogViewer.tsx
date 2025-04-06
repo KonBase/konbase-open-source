@@ -35,6 +35,7 @@ export function AuditLogViewer() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const perPage = 10;
+  const { toast } = useToast();
   
   const fetchLogs = async () => {
     setLoading(true);
@@ -61,17 +62,20 @@ export function AuditLogViewer() {
       if (error) throw error;
       
       // Format the logs with user information
-      const formattedLogs: AuditLog[] = data.map(log => ({
-        id: log.id,
-        action: log.action,
-        entity: log.entity,
-        entity_id: log.entity_id,
-        user_id: log.user_id,
-        changes: log.changes,
-        created_at: log.created_at,
-        ip_address: log.ip_address,
-        user_name: log.profiles?.name || 'Unknown User'
-      }));
+      const formattedLogs: AuditLog[] = data.map(log => {
+        const profileData = log.profiles as any;
+        return {
+          id: log.id,
+          action: log.action,
+          entity: log.entity,
+          entity_id: log.entity_id,
+          user_id: log.user_id,
+          changes: log.changes,
+          created_at: log.created_at,
+          ip_address: log.ip_address,
+          user_name: profileData?.name || 'Unknown User'
+        };
+      });
       
       setLogs(formattedLogs);
     } catch (error: any) {

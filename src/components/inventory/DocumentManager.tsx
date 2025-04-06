@@ -114,7 +114,7 @@ const DocumentManager = () => {
       
       const formattedDocuments: Document[] = data.map(doc => ({
         ...doc,
-        item_name: doc.items.name
+        item_name: doc.items?.name
       }));
       
       setDocuments(formattedDocuments);

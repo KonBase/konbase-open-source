@@ -126,6 +126,7 @@ export type Database = {
           entity: string
           entity_id: string
           id: string
+          ip_address: string | null
           user_id: string
         }
         Insert: {
@@ -135,6 +136,7 @@ export type Database = {
           entity: string
           entity_id: string
           id?: string
+          ip_address?: string | null
           user_id: string
         }
         Update: {
@@ -144,6 +146,7 @@ export type Database = {
           entity?: string
           entity_id?: string
           id?: string
+          ip_address?: string | null
           user_id?: string
         }
         Relationships: []
@@ -228,6 +231,80 @@ export type Database = {
           },
         ]
       }
+      convention_access: {
+        Row: {
+          convention_id: string
+          created_at: string
+          id: string
+          invitation_code: string | null
+          user_id: string
+        }
+        Insert: {
+          convention_id: string
+          created_at?: string
+          id?: string
+          invitation_code?: string | null
+          user_id: string
+        }
+        Update: {
+          convention_id?: string
+          created_at?: string
+          id?: string
+          invitation_code?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_access_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convention_access_invitation_code_fkey"
+            columns: ["invitation_code"]
+            isOneToOne: false
+            referencedRelation: "convention_invitations"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      convention_invitations: {
+        Row: {
+          code: string
+          convention_id: string
+          created_by: string
+          expires_at: string
+          id: string
+          uses_remaining: number
+        }
+        Insert: {
+          code: string
+          convention_id: string
+          created_by: string
+          expires_at: string
+          id?: string
+          uses_remaining?: number
+        }
+        Update: {
+          code?: string
+          convention_id?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          uses_remaining?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convention_invitations_convention_id_fkey"
+            columns: ["convention_id"]
+            isOneToOne: false
+            referencedRelation: "conventions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conventions: {
         Row: {
           association_id: string
@@ -268,6 +345,121 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "conventions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          file_type: string
+          file_url: string
+          id: string
+          item_id: string
+          name: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_type: string
+          file_url: string
+          id?: string
+          item_id: string
+          name: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          item_id?: string
+          name?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_set_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          quantity: number
+          set_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          quantity?: number
+          set_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          quantity?: number
+          set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_set_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_set_items_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_sets: {
+        Row: {
+          association_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_sets_association_id_fkey"
             columns: ["association_id"]
             isOneToOne: false
             referencedRelation: "associations"
@@ -410,6 +602,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
