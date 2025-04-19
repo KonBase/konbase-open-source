@@ -1,21 +1,23 @@
-
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Routes, Route } from 'react-router-dom';
+// Import useNavigate and useLocation
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from './components/ui/toaster';
 import { SessionRecovery } from '@/components/SessionRecovery';
 import AuthGuard from './components/guards/AuthGuard';
 import { UserRoleType } from '@/types/user';
+import { isConfigured } from '@/lib/config-store';
+import { useEffect } from 'react';
 
 // Pages
 import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
 import ErrorPage from './pages/ErrorPage';
-import Home from './pages/Index';
+
 import NotFound from './pages/NotFound';
 import Unauthorized from './pages/error/Unauthorized';
 
@@ -59,7 +61,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 
 // Setup pages
-import SetupWizard from './pages/setup/SetupWizard';
+import FirstTimeSetup from './pages/setup/FirstTimeSetup';
 
 // Layouts
 import RootLayout from './layouts/RootLayout';
@@ -83,173 +85,207 @@ function App() {
   const systemAdminRoles: UserRoleType[] = ['system_admin', 'super_admin'];
   const superAdminRoles: UserRoleType[] = ['super_admin'];
 
+  // Use hooks from react-router-dom
+  const navigate = useNavigate();
+  const location = useLocation();
+  const setupCompleted = isConfigured();
+
+  useEffect(() => {
+    const isAuthOrSetupPath = ['/setup', '/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path));
+
+    // If setup is not completed and we are not on an allowed path, redirect using navigate
+    if (!setupCompleted && !isAuthOrSetupPath) {
+      navigate('/setup', { replace: true }); // Use navigate for client-side redirect
+    }
+    // Add location.pathname to dependency array to re-run check if path changes
+  }, [setupCompleted, navigate, location.pathname]);
+
+  // Conditionally render based on setupCompleted ONLY for the root path initially
+  // The useEffect handles redirection for other paths if needed.
+  // This prevents rendering protected routes before the redirect effect runs.
+  if (!setupCompleted && location.pathname === '/') {
+     return <Navigate to="/setup" replace />;
+  }
+
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
           <AuthProvider>
             <AssociationProvider>
-              <SessionRecovery />
+              {/* SessionRecovery might need config, so ensure it runs after potential redirect */}
+              {setupCompleted && <SessionRecovery />}
               <Routes>
-                <Route path="/" element={<RootLayout />}>
-                  <Route index element={<Home />} />
-                  
-                  {/* Routes requiring member role or higher */}
-                  <Route path="dashboard" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <Dashboard />
-                    </AuthGuard>
-                  } />
-                  <Route path="profile" element={
-                    <AuthGuard>
-                      <ProfilePage />
-                    </AuthGuard>
-                  } />
-                  <Route path="settings" element={
-                    <AuthGuard>
-                      <Settings />
-                    </AuthGuard>
-                  } />
-                  
-                  {/* Admin routes requiring admin role or higher */}
-                  <Route path="admin" element={
-                    <AuthGuard requiredRoles={adminRoles}>
-                      <AdminPanel />
-                    </AuthGuard>
-                  } />
-                  
-                  {/* Association routes requiring member role or higher */}
-                  <Route path="associations" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <AssociationsList />
-                    </AuthGuard>
-                  } />
-                  <Route path="association/profile" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <AssociationProfile />
-                    </AuthGuard>
-                  } />
-                  <Route path="association/members" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <AssociationMembers />
-                    </AuthGuard>
-                  } />
-                  <Route path="association/:id" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <AssociationDetails />
-                    </AuthGuard>
-                  } />
-                  
-                  {/* Convention routes requiring member role or higher */}
-                  <Route path="conventions" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionsList />
-                    </AuthGuard>
-                  } />
-                  <Route path="conventions/archive" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionArchive />
-                    </AuthGuard>
-                  } />
-                  <Route path="conventions/templates" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionTemplates />
-                    </AuthGuard>
-                  } />
-                  <Route path="convention/:id" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionDetails />
-                    </AuthGuard>
-                  } />
-                  <Route path="convention/:id/equipment" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionEquipment />
-                    </AuthGuard>
-                  } />
-                  <Route path="convention/:id/locations" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionLocations />
-                    </AuthGuard>
-                  } />
-                  <Route path="convention/:id/logs" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionLogs />
-                    </AuthGuard>
-                  } />
-                  <Route path="convention/:id/requirements" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionRequirements />
-                    </AuthGuard>
-                  } />
-                  <Route path="convention/:id/consumables" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ConventionConsumables />
-                    </AuthGuard>
-                  } />
-                  
-                  {/* Inventory routes requiring member role or higher */}
-                  <Route path="inventory" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <InventoryList />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/items" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <InventoryItems />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/categories" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ItemCategories />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/locations" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ItemLocations />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/storage" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <StorageLocations />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/documents" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <WarrantiesDocuments />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/sets" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <EquipmentSets />
-                    </AuthGuard>
-                  } />
-                  <Route path="inventory/import-export" element={
-                    <AuthGuard requiredRoles={memberRoles}>
-                      <ImportExport />
-                    </AuthGuard>
-                  } />
-                  
-                  {/* Reports routes requiring manager role or higher */}
-                  <Route path="reports" element={
-                    <AuthGuard requiredRoles={managerRoles}>
-                      <ReportsList />
-                    </AuthGuard>
-                  } />
-                  
-                  {/* Error routes */}
-                  <Route path="unauthorized" element={<Unauthorized />} />
-                  
-                  {/* Catch-all route for 404 */}
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-                {/* Authentication routes */}
+                {/* Update Setup route */}
+                <Route path="/setup" element={<FirstTimeSetup />} />
+
+                {/* Keep Auth routes accessible */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                
-                {/* Setup wizard route */}
-                <Route path="/setup" element={<SetupWizard />} />
+
+                {/* Conditionally render RootLayout only if setup is complete OR if on an auth/setup path initially handled by useEffect */}
+                {/* The main routing logic now assumes setup is potentially complete or handled */}
+                <Route path="/" element={setupCompleted ? <RootLayout /> : null}>
+                   {/* Redirect logic based on setup status for index */}
+                   {/* If setup is complete, navigate to dashboard, otherwise this route won't match if RootLayout is null */}
+                   <Route index element={setupCompleted ? <Navigate to="/dashboard" replace /> : null} />
+
+                   {/* Routes requiring member role or higher */}
+                   <Route path="dashboard" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <Dashboard />
+                     </AuthGuard>
+                   } />
+                   <Route path="profile" element={
+                     <AuthGuard>
+                       <ProfilePage />
+                     </AuthGuard>
+                   } />
+                   <Route path="settings" element={
+                     <AuthGuard>
+                       <Settings />
+                     </AuthGuard>
+                   } />
+
+                   {/* Admin routes requiring admin role or higher */}
+                   <Route path="admin" element={
+                     <AuthGuard requiredRoles={adminRoles}>
+                       <AdminPanel />
+                     </AuthGuard>
+                   } />
+
+                   {/* Association routes requiring member role or higher */}
+                   <Route path="associations" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <AssociationsList />
+                     </AuthGuard>
+                   } />
+                   <Route path="association/profile" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <AssociationProfile />
+                     </AuthGuard>
+                   } />
+                   <Route path="association/members" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <AssociationMembers />
+                     </AuthGuard>
+                   } />
+                   <Route path="association/:id" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <AssociationDetails />
+                     </AuthGuard>
+                   } />
+
+                   {/* Convention routes requiring member role or higher */}
+                   <Route path="conventions" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionsList />
+                     </AuthGuard>
+                   } />
+                   <Route path="conventions/archive" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionArchive />
+                     </AuthGuard>
+                   } />
+                   <Route path="conventions/templates" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionTemplates />
+                     </AuthGuard>
+                   } />
+                   <Route path="convention/:id" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionDetails />
+                     </AuthGuard>
+                   } />
+                   <Route path="convention/:id/equipment" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionEquipment />
+                     </AuthGuard>
+                   } />
+                   <Route path="convention/:id/locations" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionLocations />
+                     </AuthGuard>
+                   } />
+                   <Route path="convention/:id/logs" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionLogs />
+                     </AuthGuard>
+                   } />
+                   <Route path="convention/:id/requirements" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionRequirements />
+                     </AuthGuard>
+                   } />
+                   <Route path="convention/:id/consumables" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ConventionConsumables />
+                     </AuthGuard>
+                   } />
+
+                   {/* Inventory routes requiring member role or higher */}
+                   <Route path="inventory" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <InventoryList />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/items" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <InventoryItems />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/categories" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ItemCategories />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/locations" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ItemLocations />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/storage" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <StorageLocations />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/documents" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <WarrantiesDocuments />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/sets" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <EquipmentSets />
+                     </AuthGuard>
+                   } />
+                   <Route path="inventory/import-export" element={
+                     <AuthGuard requiredRoles={memberRoles}>
+                       <ImportExport />
+                     </AuthGuard>
+                   } />
+
+                   {/* Reports routes requiring manager role or higher */}
+                   <Route path="reports" element={
+                     <AuthGuard requiredRoles={managerRoles}>
+                       <ReportsList />
+                     </AuthGuard>
+                   } />
+
+                   {/* Error routes */}
+                   <Route path="unauthorized" element={<Unauthorized />} />
+
+                   {/* Catch-all route for 404 */}
+                   <Route path="*" element={<NotFound />} />
+                 </Route>
+
+                 {/* Fallback for when setup is not complete and not on allowed paths (handled by useEffect redirect) */}
+                 {/* This might not be strictly necessary due to the useEffect redirect */}
+                 {!setupCompleted && <Route path="*" element={<Navigate to="/setup" replace />} />}
+
               </Routes>
               <Toaster />
             </AssociationProvider>

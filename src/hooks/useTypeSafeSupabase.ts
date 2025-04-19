@@ -62,7 +62,9 @@ export function useTypeSafeSupabase() {
     values: Database['public']['Tables'][T]['Insert']
   ) => {
     try {
-      const { data, error } = await supabase.from(table).insert(values).select();
+      // Type assertion needed here because TypeScript struggles to narrow the union type
+      // based on the generic table 'T' within the supabase client's method signature.
+      const { data, error } = await supabase.from(table).insert(values as any).select();
       
       if (error) throw error;
       
@@ -82,9 +84,10 @@ export function useTypeSafeSupabase() {
     filter: { column: string; value: any }
   ) => {
     try {
+      // Type assertion needed here similar to safeInsert
       const { data, error } = await supabase
         .from(table)
-        .update(values)
+        .update(values as any) 
         .eq(filter.column, filter.value)
         .select();
       

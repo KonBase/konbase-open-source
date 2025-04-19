@@ -1,44 +1,36 @@
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
-
-const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
-  {
-    variants: {
-      variant: {
-        default: "bg-background text-foreground",
-        destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
-        warning: 
-          "border-orange-500/50 text-orange-500 dark:border-orange-400 [&>svg]:text-orange-500",
-        info: 
-          "border-blue-500/50 text-blue-500 dark:border-blue-400 [&>svg]:text-blue-500",
-        success: 
-          "border-green-500/50 text-green-500 dark:border-green-400 [&>svg]:text-green-500",
-        debug: 
-          "border-purple-500/50 text-purple-500 dark:border-purple-400 [&>svg]:text-purple-500 bg-purple-500/5",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
+interface AlertProps {
+  variant?: "default" | "destructive" | "success";
+  className?: string;
+  children?: React.ReactNode;
+}
 
 const Alert = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
-  <div
-    ref={ref}
-    role="alert"
-    className={cn(alertVariants({ variant }), className)}
-    {...props}
-  />
-))
-Alert.displayName = "Alert"
+  React.HTMLAttributes<HTMLDivElement> & AlertProps
+>(({ className, variant = "default", ...props }, ref) => {
+  const variantStyles = {
+    default: "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50",
+    destructive: "border-red-500/50 text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/20",
+    success: "border-green-500/50 text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20"
+  };
+
+  return (
+    <div
+      ref={ref}
+      role="alert"
+      className={cn(
+        "relative w-full rounded-lg border p-4",
+        variantStyles[variant],
+        className
+      )}
+      {...props}
+    />
+  );
+});
+Alert.displayName = "Alert";
 
 const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
@@ -49,8 +41,8 @@ const AlertTitle = React.forwardRef<
     className={cn("mb-1 font-medium leading-none tracking-tight", className)}
     {...props}
   />
-))
-AlertTitle.displayName = "AlertTitle"
+));
+AlertTitle.displayName = "AlertTitle";
 
 const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
@@ -61,7 +53,7 @@ const AlertDescription = React.forwardRef<
     className={cn("text-sm [&_p]:leading-relaxed", className)}
     {...props}
   />
-))
-AlertDescription.displayName = "AlertDescription"
+));
+AlertDescription.displayName = "AlertDescription";
 
-export { Alert, AlertTitle, AlertDescription }
+export { Alert, AlertTitle, AlertDescription };

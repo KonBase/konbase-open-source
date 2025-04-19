@@ -1,3 +1,5 @@
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/lib/database.types'; // Ensure Database type is imported
 import { supabase } from '@/lib/supabase';
 import { Association } from '@/types/association';
 import { toast } from '@/components/ui/use-toast';
@@ -65,25 +67,39 @@ export const fetchUserAssociations = async (profileId: string): Promise<Associat
       const { data, error } = await supabase
         .rpc('get_user_association_memberships', { user_id_param: profileId });
       
-      if (!error) {
-        membershipData = data;
+      if (!error && data) {
+        membershipData = data; // Assign data directly
+      } else if (error) {
+        console.warn('RPC method get_user_association_memberships failed, falling back to direct query:', error.message);
+        // Fallback logic below
       } else {
-        console.warn('RPC method failed, falling back to direct query:', error);
-        throw error; // Trigger the fallback
+         console.warn('RPC method get_user_association_memberships returned no data, falling back.');
       }
     } catch (rpcError) {
-      // Fallback to direct query if RPC fails
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('association_members')
-        .select('association_id')
-        .eq('user_id', profileId);
-      
-      if (fallbackError) {
-        console.error("Both RPC and fallback queries failed:", fallbackError);
+      console.error('Exception calling RPC get_user_association_memberships:', rpcError);
+      // Fallback logic below
+    }
+
+    // Fallback: Direct query on memberships table (respects RLS)
+    if (!membershipData) {
+      console.log('Falling back to direct query for memberships for user:', profileId);
+      const { data: directData, error: directError } = await supabase
+        .from('memberships')
+        .select(`
+          *,
+          associations (
+            id,
+            name,
+            slug
+          )
+        `)
+        .eq('profile_id', profileId);
+
+      if (directError) {
+        console.error('Direct membership query failed:', directError.message);
         return []; // Return empty if both methods fail
       }
-      
-      membershipData = fallbackData;
+      membershipData = directData;
     }
     
     // If we have no memberships, return empty array

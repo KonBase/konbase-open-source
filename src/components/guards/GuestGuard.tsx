@@ -8,7 +8,7 @@ interface GuestGuardProps {
 }
 
 const GuestGuard: React.FC<GuestGuardProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, loading: isLoading } = useAuth(); // Use 'user' and rename 'loading' to 'isLoading' for consistency if needed, or just use 'loading'
   
   if (isLoading) {
     return (
@@ -18,7 +18,8 @@ const GuestGuard: React.FC<GuestGuardProps> = ({ children }) => {
     );
   }
   
-  if (isAuthenticated) {
+  // Check if the user object exists to determine authentication
+  if (!!user) { 
     return <Navigate to="/dashboard" replace />;
   }
   

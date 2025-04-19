@@ -893,3 +893,15 @@ FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 -- Make sure the profiles table has proper index for faster joins
 CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles(id);
+
+-- Function to execute SQL (for admin use only during setup)
+-- This function allows the setup wizard to execute the schema SQL
+CREATE OR REPLACE FUNCTION public.execute_sql(sql_query TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+END;
+$$;

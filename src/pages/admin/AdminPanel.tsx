@@ -14,13 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('users');
-  const { hasRole, user } = useAuth();
+  const { user } = useAuth(); // Removed hasRole
   const { toast } = useToast();
   
   // Determine if the user has access to specific admin sections
-  const canAccessSettings = hasRole('super_admin');
-  const canAccessAuditLogs = hasRole('super_admin');
-  const isSystemAdmin = hasRole('system_admin') && !hasRole('super_admin');
+  const canAccessSettings = user?.role === 'super_admin';
+  const canAccessAuditLogs = user?.role === 'super_admin';
+  const isSystemAdmin = user?.role === 'system_admin';
   
   // Effect to check for elevation success on page load (useful after page refreshes)
   useEffect(() => {

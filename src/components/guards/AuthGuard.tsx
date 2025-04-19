@@ -1,188 +1,90 @@
-import { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Spinner } from '@/components/ui/spinner';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
-import { logDebug, handleError } from '@/utils/debug';
-import { saveCurrentPath, getLastVisitedPath } from '@/utils/session-utils';
-import { UserRoleType } from '@/types/user';
-import { useAssociation } from '@/contexts/AssociationContext';
+import { UserRoleType } from '@/types/user'; // Assuming UserRoleType is defined here
+import { checkUserHasRole } from '@/contexts/auth/AuthUtils'; // Import the utility function
+import { logDebug } from '@/utils/debug'; // Assuming logDebug is here
+import { Spinner } from '../ui/spinner'; // Correct named import
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRoles?: UserRoleType[];
+  requiredRoles?: UserRoleType[]; // Roles required to access the route
 }
 
-const AuthGuard = ({ children, requiredRoles }: AuthGuardProps) => {
-  const { isAuthenticated, isLoading, user, userProfile, hasRole } = useAuth();
-  const { currentAssociation, userAssociations, setCurrentAssociation, isLoading: associationLoading } = useAssociation();
+const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRoles }) => {
+  const { user, userProfile, loading } = useAuth(); // Removed isAuthenticated
   const location = useLocation();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [hasRequiredRole, setHasRequiredRole] = useState(false);
-  const { toast } = useToast();
+  const [hasRequiredRole, setHasRequiredRole] = useState<boolean | null>(null); // null initially
 
   useEffect(() => {
-    const selectFirstAssociationForAdmins = async () => {
-      if (
-        !associationLoading && 
-        userProfile && 
-        (userProfile.role === 'system_admin' || userProfile.role === 'super_admin') && 
-        !currentAssociation && 
-        userAssociations && 
-        userAssociations.length > 0
-      ) {
-        logDebug('Auto-selecting first association for admin user', { 
-          role: userProfile.role, 
-          associationName: userAssociations[0].name 
-        }, 'info');
-        
-        setCurrentAssociation(userAssociations[0]);
-      }
-    };
-
-    if (isAuthenticated && !isLoading && !isChecking && userProfile) {
-      selectFirstAssociationForAdmins();
+    if (loading) {
+      setHasRequiredRole(null); // Still loading, don't make a decision yet
+      return;
     }
-  }, [
-    userProfile, 
-    isAuthenticated, 
-    isLoading, 
-    isChecking, 
-    associationLoading, 
-    currentAssociation, 
-    userAssociations, 
-    setCurrentAssociation
-  ]);
 
-  useEffect(() => {
-    const checkEmailVerification = async () => {
-      if (!user) {
-        setIsChecking(false);
-        setIsEmailVerified(false);
-        return;
-      }
+    // Check if user exists instead of isAuthenticated
+    if (!user) {
+      setHasRequiredRole(false); // Not authenticated, definitely no access
+      return;
+    }
 
-      try {
-        logDebug(`Checking email verification for user: ${user.id}`, { email: user.email }, 'info');
-        const { data, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          handleError(error, 'AuthGuard.checkEmailVerification');
-          setIsChecking(false);
-          return;
-        }
-        
-        const isVerified = data?.user?.email_confirmed_at || 
-                          data?.user?.user_metadata?.email_verified || 
-                          false;
-        
-        if (isVerified) {
-          logDebug('Email verified', { 
-            email: user.email, 
-            confirmed_at: data.user.email_confirmed_at 
-          }, 'info');
-          setIsEmailVerified(true);
-        } else {
-          logDebug('Email not verified', { email: user.email }, 'warn');
-          setIsEmailVerified(false);
-          
-          toast({
-            title: "Email Verification Required",
-            description: "Please check your inbox and verify your email before continuing.",
-            variant: "destructive"
-          });
-          
-          try {
-            await supabase.auth.signOut();
-            logDebug('Signed out unverified user', { email: user.email }, 'info');
-          } catch (error) {
-            handleError(error, 'AuthGuard.signOutUnverifiedUser');
-          }
-        }
-      } catch (error) {
-        handleError(error, 'AuthGuard.checkEmailVerification');
-      } finally {
-        setIsChecking(false);
-      }
-    };
-    
+    // If no specific roles are required, authentication is enough
+    if (!requiredRoles || requiredRoles.length === 0) {
+      setHasRequiredRole(true);
+      return;
+    }
+
+    // Check roles only if authenticated and roles are required
     const checkRoleAccess = () => {
-      if (!userProfile || !requiredRoles || requiredRoles.length === 0) {
-        setHasRequiredRole(true);
-        return;
+      // Ensure userProfile is loaded before checking roles
+      if (!userProfile) {
+         logDebug('AuthGuard: User profile not yet loaded for role check.', {}, 'info');
+         setHasRequiredRole(null); // Wait for profile
+         return;
       }
 
-      const hasAccess = requiredRoles.some(role => hasRole(role));
+      // Use checkUserHasRole utility function with userProfile
+      const hasAccess = requiredRoles.some(role => checkUserHasRole(userProfile, role));
       setHasRequiredRole(hasAccess);
 
       if (!hasAccess) {
-        logDebug('Access denied - insufficient role', { 
-          userRole: userProfile.role,
-          requiredRoles 
+        logDebug('Access denied - insufficient role', {
+          userRole: userProfile.role, // Assuming role is on userProfile
+          requiredRoles
         }, 'warn');
-        
-        toast({
-          title: "Access Denied",
-          description: "You don't have sufficient permissions to access this area.",
-          variant: "destructive"
-        });
+      } else {
+         logDebug('Access granted - sufficient role', {
+           userRole: userProfile.role,
+           requiredRoles
+         }, 'info');
       }
     };
-    
-    if (!isLoading) {
-      logDebug('Auth state check complete', { isAuthenticated, userId: user?.id }, 'info');
-      if (isAuthenticated && user) {
-        checkEmailVerification();
-        checkRoleAccess();
-      } else {
-        setIsChecking(false);
-      }
-    }
-  }, [isLoading, isAuthenticated, user, toast, userProfile, requiredRoles, hasRole]);
+    checkRoleAccess();
 
-  useEffect(() => {
-    if (isAuthenticated && !isLoading && !isChecking && user) {
-      saveCurrentPath(location.pathname);
-    }
-  }, [location.pathname, isAuthenticated, isLoading, isChecking, user]);
+  }, [loading, user, userProfile, requiredRoles]); // Use user instead of isAuthenticated
 
-  const isSetupPage = location.pathname === '/setup';
-
-  if (!isLoading && !isChecking && isAuthenticated && userProfile?.role === 'guest' && !isSetupPage) {
-    logDebug('Redirecting guest user to setup page', { userId: user?.id, role: userProfile?.role }, 'info');
-    return <Navigate to="/setup" state={{ from: location }} replace />;
+  if (loading || hasRequiredRole === null) {
+    // Show loading indicator while checking auth status or waiting for profile
+    // Show loading indicator while checking auth status or waiting for profile
+    return <Spinner loadingText="Checking access..." />; // Changed LoadingSpinner to Spinner and passed message as loadingText
   }
 
-  if (isLoading || isChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
+  // Check if user exists instead of isAuthenticated
+  if (!user) {
+    // Redirect to login page if not authenticated
+    logDebug('Redirecting to login - not authenticated', { from: location.pathname }, 'info');
+    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!isAuthenticated) {
-    logDebug('Redirecting unauthenticated user to login', { from: location.pathname }, 'info');
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (!hasRequiredRole) {
+    // Redirect to an unauthorized page or dashboard if roles don't match
+    logDebug('Redirecting to unauthorized/dashboard - insufficient role', { from: location.pathname }, 'warn');
+    // You might want a specific '/unauthorized' page
+    return <Navigate to="/dashboard" state={{ unauthorized: true, from: location }} replace />;
   }
 
-  if (!isEmailVerified) {
-    logDebug('Redirecting user with unverified email to login', { email: user?.email }, 'info');
-    return <Navigate to="/login" state={{ emailVerification: true }} replace />;
-  }
-
-  if (!hasRequiredRole && requiredRoles && requiredRoles.length > 0) {
-    logDebug('Redirecting user due to insufficient role', { 
-      userRole: userProfile?.role,
-      requiredRoles
-    }, 'info');
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  logDebug('User authenticated, email verified, and has required role - rendering protected content', 
-    { userId: user?.id, role: userProfile?.role }, 'info');
+  // If authenticated and has required role (or no specific role required), render the children
   return <>{children}</>;
 };
 

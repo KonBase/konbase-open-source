@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,14 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { LayoutDashboard, Github, MessageCircle } from 'lucide-react';
 import UserMenu from './shared/UserMenu';
-import { 
-  Sheet, 
+import {
+  Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetClose
 } from '@/components/ui/sheet';
-import { 
+import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
@@ -22,19 +21,28 @@ import {
 } from '@/components/ui/navigation-menu';
 import { useMobileDetect } from '@/hooks/useMobileDetect';
 import MobileMenuButton from './shared/MobileMenuButton';
+import { checkUserHasRole } from '@/contexts/auth/AuthUtils'; // Import the utility function
+import { UserProfile } from '@/types/user'; // Import UserProfile type if needed for checkUserHasRole
 
 const HomeHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, isAuthenticated, hasRole } = useAuth();
+  const { user, userProfile } = useAuth(); // Get user and userProfile from context
   const { isMobile } = useMobileDetect();
-  
+
   // Extract user display values with fallbacks
-  const userName = user?.name || user?.email?.split('@')[0] || 'User';
+  // Access name from user_metadata
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email || '';
-  
-  // Check if user has admin access
-  const isAdmin = hasRole('admin') || hasRole('system_admin') || hasRole('super_admin');
+
+  // Check if user has admin access using the utility function
+  // Pass 'userProfile' which should contain the role information
+  // Ensure checkUserHasRole expects UserProfile or adapt the function/type
+  const isAdmin = userProfile && (
+                   checkUserHasRole(userProfile, 'admin') ||
+                   checkUserHasRole(userProfile, 'system_admin') ||
+                   checkUserHasRole(userProfile, 'super_admin')
+                 );
 
   const handleLogin = () => {
     navigate('/login');
@@ -86,7 +94,7 @@ const HomeHeader = () => {
               </div>
             </div>
             <div className="pt-4 border-t">
-              {isAuthenticated ? (
+              {!!user ? (
                 <Button 
                   className="w-full"
                   onClick={() => {
@@ -196,7 +204,7 @@ const HomeHeader = () => {
           </NavigationMenu>
           
           <div className="flex items-center gap-2">
-            {isAuthenticated ? (
+            {!!user ? (
               <div className="flex items-center gap-2">
                 <Button 
                   variant="outline" 

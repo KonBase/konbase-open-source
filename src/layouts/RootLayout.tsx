@@ -10,7 +10,7 @@ import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
 import { SessionRecovery } from '@/components/SessionRecovery';
 
 export default function RootLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, loading: isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const location = useLocation();
@@ -56,11 +56,11 @@ export default function RootLayout() {
 
   // Only redirect unauthenticated users if they're not on a public page
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !isPublicPage) {
+    if (!isLoading && !user && !isPublicPage) {
       console.log('User not authenticated, redirecting to login');
       navigate('/login');
     }
-  }, [isAuthenticated, isLoading, navigate, isPublicPage]);
+  }, [user, isLoading, navigate, isPublicPage]);
 
   // If loading, show minimal layout
   if (isLoading) {
@@ -77,7 +77,7 @@ export default function RootLayout() {
   return (
     <>
       <SessionRecovery />
-      {isAuthenticated && !isIndexPage && <Header />}
+      {!!user && !isIndexPage && <Header />}
       <main className="flex-1">
         <Outlet />
       </main>

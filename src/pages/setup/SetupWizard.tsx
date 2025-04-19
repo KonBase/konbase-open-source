@@ -1,145 +1,124 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/auth/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import AssociationForm from '@/components/setup/AssociationForm';
-import InvitationCodeForm from '@/components/setup/InvitationCodeForm';
-import SetupHeader from '@/components/setup/SetupHeader';
+import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { isConfigured, setConfig, getConfig } from '@/lib/config-store';
+import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
-type SetupStep = 'choose' | 'create' | 'join';
-
-const SetupWizard = () => {
-  const [currentStep, setCurrentStep] = useState<SetupStep>('choose');
-  const [loading, setLoading] = useState(false);
-  const { user, isLoading, userProfile } = useAuth();
+const SetupWizard: React.FC = () => {
   const navigate = useNavigate();
-  
-  // Redirect based on user role if they're already in an association
+  const { toast } = useToast();
+  const { reinitializeClient } = useAuth(); // Get reinitializeClient from context
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already configured
   useEffect(() => {
-    if (!isLoading && user) {
-      if (userProfile?.role === 'system_admin' || userProfile?.role === 'super_admin') {
-        // For admins, redirect to dashboard
-        navigate('/dashboard');
-      } else if (userProfile?.association_id) {
-        // If user is already in an association, redirect to dashboard
-        navigate('/dashboard');
-      }
+    if (isConfigured()) {
+      // Maybe redirect to dashboard or login if already set up?
+      // navigate('/dashboard'); 
+      // Or show a message indicating it's already configured.
+      toast({ title: "Setup Already Completed", description: "Redirecting to dashboard..." });
+      // Small delay to allow toast to show
+      setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
     }
-  }, [user, isLoading, userProfile, navigate]);
-  
-  const handleCreateSuccess = () => {
-    toast({
-      title: "Association created successfully",
-      description: "You're now the admin of this association",
-    });
-    navigate('/dashboard');
-  };
-  
-  const handleJoinSuccess = () => {
-    toast({
-      title: "Joined association",
-      description: "You've successfully joined the association",
-    });
-    navigate('/dashboard');
-  };
-  
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
-  
-  return (
-    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-5xl min-h-screen flex flex-col">
-      <SetupHeader />
+  }, [navigate, toast]);
+
+  const handleTestAndSave = async () => {
+    setIsLoading(true);
+    try {
+      // Basic validation
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase URL and Anon Key are required.');
+      }
+
+      // Attempt to create a temporary client to test the connection
+      const tempClient = createClient(supabaseUrl, supabaseAnonKey);
       
-      <div className="flex-1 flex items-center justify-center py-12">
-        {currentStep === 'choose' && (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Get Started</CardTitle>
-              <CardDescription>
-                Create a new association or join an existing one
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4">
-                <Button
-                  size="lg"
-                  className="w-full"
-                  onClick={() => setCurrentStep('create')}
-                >
-                  Create a New Association
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setCurrentStep('join')}
-                >
-                  Join an Existing Association
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {currentStep === 'create' && (
-          <Card className="w-full max-w-2xl">
-            <CardHeader>
-              <CardTitle>Create Association</CardTitle>
-              <CardDescription>
-                Set up your new association
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Pass the onSuccess prop correctly to AssociationForm */}
-              <AssociationForm onSuccess={handleCreateSuccess} />
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep('choose')}
-                >
-                  Back
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {currentStep === 'join' && (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Join Association</CardTitle>
-              <CardDescription>
-                Enter your invitation code to join an association
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InvitationCodeForm onSuccess={handleJoinSuccess} />
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep('choose')}
-                >
-                  Back
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      // Try a simple query, e.g., fetching user (even if null)
+      // This validates the URL and Key are likely correct and reachable
+      const { data, error } = await tempClient.auth.getUser();
+
+      // Check for specific auth errors indicating bad credentials/URL
+      if (error && error.message.includes('Invalid API key')) {
+          throw new Error('Invalid Supabase Anon Key.');
+      }
+      if (error && error.message.includes('failed to fetch')) {
+          throw new Error('Failed to connect to Supabase URL. Check network or URL.');
+      }
+      // Handle other potential errors during the test connection
+      if (error && error.status !== 401) { // Ignore 401 Unauthorized as it means connection worked but no user logged in
+          throw error;
+      }
+
+      // If the test passes (or results in expected non-critical errors like 401)
+      setConfig({ supabaseUrl, supabaseAnonKey });
+      toast({
+        title: 'Configuration Saved',
+        description: 'Supabase connection details saved successfully.',
+      });
+
+      // Reinitialize the main Supabase client in AuthContext
+      reinitializeClient();
+
+      // Redirect to login or dashboard after successful setup
+      // Use replace to prevent going back to the setup wizard
+      navigate('/login', { replace: true }); 
+
+    } catch (error: any) {
+      console.error("Setup error:", error);
+      toast({
+        title: 'Connection Test Failed',
+        description: error.message || 'Could not connect to Supabase. Please check details and network.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Card className="w-full max-w-md">
+        {/* ... CardHeader, CardContent with Inputs ... */}
+         <CardHeader>
+          <CardTitle>Konbase Setup</CardTitle>
+          <CardDescription>Enter your Supabase connection details.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="supabaseUrl">Supabase URL</Label>
+            <Input 
+              id="supabaseUrl" 
+              placeholder="https://your-project-ref.supabase.co" 
+              value={supabaseUrl}
+              onChange={(e) => setSupabaseUrl(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="supabaseAnonKey">Supabase Anon Key</Label>
+            <Input 
+              id="supabaseAnonKey" 
+              type="password" // Use password type for keys
+              placeholder="your-anon-key" 
+              value={supabaseAnonKey}
+              onChange={(e) => setSupabaseAnonKey(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button onClick={handleTestAndSave} disabled={isLoading} className="w-full">
+            {isLoading ? 'Testing & Saving...' : 'Test Connection & Save'}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

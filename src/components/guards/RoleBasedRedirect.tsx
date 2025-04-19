@@ -11,11 +11,11 @@ interface RoleBasedRedirectProps {
 }
 
 export const RoleBasedRedirect = ({ component, allowedRoles, redirectTo }: RoleBasedRedirectProps) => {
-  const { userProfile, isLoading } = useAuth();
+  const { userProfile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && userProfile) {
+    if (!loading && userProfile) {
       // Check if user has one of the allowed roles
       const hasAllowedRole = allowedRoles.includes(userProfile.role as UserRoleType);
       
@@ -23,7 +23,7 @@ export const RoleBasedRedirect = ({ component, allowedRoles, redirectTo }: RoleB
         navigate(redirectTo);
       }
     }
-  }, [userProfile, isLoading, allowedRoles, redirectTo, navigate]);
+  }, [userProfile, loading, allowedRoles, redirectTo, navigate]);
 
   return <>{component}</>;
 };

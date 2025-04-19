@@ -33,13 +33,14 @@ const AssociationMembers = () => {
   const { id } = useParams<{ id: string }>();
   const associationId = id || '';
   const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(associationId);
-  const { user, hasRole } = useAuth();
+  const { user } = useAuth(); // Removed hasRole
   const { toast } = useToast();
   const [selectedMember, setSelectedMember] = useState<AssociationMember | null>(null);
   const [newRole, setNewRole] = useState<UserRoleType | ''>('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
-  const isAdmin = hasRole('admin');
+  // Check user role directly (assuming user object has a 'role' property)
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     fetchMembers();

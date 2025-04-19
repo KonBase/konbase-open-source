@@ -5,7 +5,7 @@ import { Header } from './Header';
 import DashboardFooter from './DashboardFooter';
 
 const MainLayout: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, loading: isLoading } = useAuth(); // Use 'user' and rename 'loading' if needed
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,10 +18,10 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     // Check if user is authenticated and redirect if needed
-    if (!isLoading && !isAuthenticated && !isPublicPage) {
+    if (!isLoading && !user && !isPublicPage) { // Check for 'user' existence instead of 'isAuthenticated'
       navigate('/login');
     }
-  }, [isAuthenticated, isLoading, navigate, location.pathname, isPublicPage]);
+  }, [user, isLoading, navigate, location.pathname, isPublicPage]); // Update dependency array
 
   // Add meta viewport tag dynamically to ensure proper mobile display
   useEffect(() => {

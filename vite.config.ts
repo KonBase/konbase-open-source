@@ -1,13 +1,16 @@
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { componentTagger } from "lovable-tagger"
+import rawPlugin from 'vite-plugin-raw'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
+    rawPlugin({
+      match: /\.sql$/,
+    }),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),
   base: '/',

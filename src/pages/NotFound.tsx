@@ -8,7 +8,7 @@ import { getLastVisitedPath } from '@/utils/session-utils';
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth(); // Use 'user' instead of 'isAuthenticated'
 
   useEffect(() => {
     console.error(
@@ -16,8 +16,8 @@ const NotFound = () => {
       location.pathname
     );
     
-    // If authenticated, try to redirect to last visited path 
-    if (isAuthenticated) {
+    // If authenticated (user exists), try to redirect to last visited path 
+    if (!!user) {
       const lastPath = getLastVisitedPath();
       if (lastPath && lastPath !== location.pathname && lastPath !== '/404') {
         console.log("Redirecting to last visited path:", lastPath);
@@ -26,7 +26,7 @@ const NotFound = () => {
         }, 100);
       }
     }
-  }, [location.pathname, isAuthenticated, navigate]);
+  }, [location.pathname, user, navigate]); // Update dependency array
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/20 px-4">
@@ -41,7 +41,7 @@ const NotFound = () => {
           <Button asChild>
             <Link to="/">Return to Home</Link>
           </Button>
-          {isAuthenticated ? (
+          {!!user ? ( // Check if user exists
             <Button variant="outline" asChild>
               <Link to="/dashboard">Go to Dashboard</Link>
             </Button>

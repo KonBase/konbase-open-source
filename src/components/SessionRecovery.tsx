@@ -10,14 +10,14 @@ import { useAuth } from '@/contexts/AuthContext';
  * This helps prevent 404 errors by redirecting users to their last path
  */
 export const SessionRecovery = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { session, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const attemptSessionRecovery = async () => {
-      // Skip if already authenticated or still loading
-      if (isAuthenticated || isLoading) return;
+      // Skip if already authenticated (session exists) or still loading
+      if (session || loading) return;
       
       try {
         // Check if we have saved session data
@@ -48,7 +48,7 @@ export const SessionRecovery = () => {
     };
 
     attemptSessionRecovery();
-  }, [isAuthenticated, isLoading, location, navigate]);
+  }, [session, loading, location, navigate]);
 
   return null; // This component doesn't render anything
 };
