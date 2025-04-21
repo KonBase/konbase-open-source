@@ -1,46 +1,67 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Database } from './database.types';
-// Import the actual exported functions
-import { loadConfig, isConfigured } from './config-store';
+import { createClient } from '@supabase/supabase-js';
+import { loadConfig } from './config-store';
 
-let supabaseInstance: SupabaseClient<Database> | null = null;
+// Store a single instance of the Supabase client
+let supabaseClient = null;
 
-// Function to get the Supabase client instance, returns null if not configured or setup not complete
-export const getSupabaseClient = (): SupabaseClient<Database> | null => {
-  // Return existing client if already initialized
-  if (supabaseInstance) {
-    return supabaseInstance;
+// Function to create a client instance - used internally only
+const createSupabaseClient = (url, key) => {
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      storageKey: 'konbase-supabase-auth'
+    }
+  });
+};
+
+// Initialize the Supabase client (if not already initialized)
+const initClient = () => {
+  // If we already have a client, return it
+  if (supabaseClient) {
+    return supabaseClient;
   }
-
-  // Get config and setup status using the actual exported functions
+  
+  // First try to get from config store
   const config = loadConfig();
-  const setupCompleted = isConfigured(); // Or check config?.configured
-
-  // If configuration is missing, or keys/url are missing, or not marked configured, return null
-  if (!config || !config.url || !config.key || !setupCompleted) {
-    // console.warn('Supabase configuration is missing or setup not complete.');
-    return null;
+  if (config?.url && config?.key) {
+    console.log('Initializing Supabase client from stored config');
+    supabaseClient = createSupabaseClient(config.url, config.key);
+    return supabaseClient;
   }
+  
+  // If no stored config, try environment variables
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (supabaseUrl && supabaseAnonKey) {
+    console.log('Initializing Supabase client from environment variables');
+    supabaseClient = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+    return supabaseClient;
+  }
+  
+  console.error('No Supabase credentials found for client');
+  return null;
+};
 
-  // Initialize the client only if configuration is present and setup is complete
+// A single exported instance for direct import
+export const supabase = initClient();
+
+// This function is for when a new instance is needed (like after config changes)
+export const initializeSupabaseClient = () => {
   try {
-    // console.log('Initializing Supabase client with:', config.url);
-    // Use config.url and config.key from the loaded config
-    supabaseInstance = createClient<Database>(config.url, config.key);
-    return supabaseInstance;
+    // Force client re-initialization
+    supabaseClient = null;
+    return initClient();
   } catch (error) {
-    console.error("Error initializing Supabase client:", error);
-    supabaseInstance = null; // Ensure client is null on error
+    console.error('Error initializing Supabase client:', error);
     return null;
   }
 };
 
-// Function to explicitly initialize or re-initialize the client
-// This can be called after setup is complete
-export const initializeSupabaseClient = (): SupabaseClient<Database> | null => {
-  supabaseInstance = null; // Reset existing client if any
-  return getSupabaseClient(); // Attempt to get/create client with current config
+// Get the existing client or initialize if needed
+export const getSupabaseClient = () => {
+  if (!supabaseClient) {
+    return initClient();
+  }
+  return supabaseClient;
 };
-
-// Export the instance directly for easier import, initializing it on first access
-export const supabase = getSupabaseClient();

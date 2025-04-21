@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,87 +28,75 @@ export function RoleGuard({
   fallbackPath = '/unauthorized',
   enforceTwoFactor = false
 }: RoleGuardProps) {
-  const { userProfile, hasRole, loading, isAuthenticated } = useAuth();
-  const [checking, setChecking] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
+  // Destructure isAuthenticated and hasRole correctly now
+  const { userProfile, hasRole, loading, isAuthenticated, isReady } = useAuth(); 
+  const [checking, setChecking] = useState(true); // Keep checking state
+  const [accessGranted, setAccessGranted] = useState<boolean | null>(null); // Use null initial state
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
   useEffect(() => {
-    const checkAccess = async () => {
-      setChecking(true);
-      
-      if (loading) return;
-
-      // Debug output to verify role checking
-      console.log('Checking role access:', {
-        userProfile,
-        userRole: userProfile?.role,
-        allowedRoles,
-        isAuthenticated,
-        hasAllowedRole: userProfile ? allowedRoles.some(role => hasRole(role)) : false
-      });
-      
-      // Check if user is authenticated first
-      if (!isAuthenticated || !userProfile) {
-        console.error("Access denied: User is not authenticated or profile not loaded");
-        setHasAccess(false);
-        setChecking(false);
-        
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to access this area.",
-          variant: "destructive"
-        });
-        
-        return;
-      }
-      
-      // First check if user has any of the allowed roles
-      const hasAllowedRole = allowedRoles.some(role => hasRole(role));
-      
-      if (!hasAllowedRole) {
-        setHasAccess(false);
-        setChecking(false);
-        
-        // Display error message in console for debugging
-        console.error(`Access denied: User with role ${userProfile?.role} attempted to access a resource requiring one of these roles: ${allowedRoles.join(', ')}`);
-        
-        // Show toast here instead of in a separate useEffect
-        toast({
-          title: "Access Denied",
-          description: "You don't have sufficient permissions to access this area.",
-          variant: "destructive"
-        });
-        
-        return;
-      }
-      
-      // For high-privilege roles or when explicit 2FA enforcement is needed,
-      // check if the user has 2FA enabled
-      const needsTwoFactor = (
-        hasRole('super_admin') || 
-        hasRole('system_admin') || 
-        enforceTwoFactor
-      );
-      
-      if (needsTwoFactor && userProfile && !userProfile.two_factor_enabled) {
-        setShowTwoFactorDialog(true);
-        setHasAccess(false);
-        setChecking(false);
-        return;
-      }
-      
-      // All checks passed
-      setHasAccess(true);
-      setChecking(false);
-    };
+    // Only run checks if auth is ready and not loading
+    if (!isReady || loading) {
+      setChecking(true); // Indicate checking is in progress
+      return;
+    }
     
-    checkAccess();
-  }, [loading, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, isAuthenticated]);
+    setChecking(false); // Auth is ready, checking is complete or starting
+
+    // 1. Check Authentication
+    if (!isAuthenticated) {
+      console.log("RoleGuard: User not authenticated.");
+      setAccessGranted(false);
+      // Optional: Toast for immediate feedback if desired, but redirect handles it
+      // toast({ title: "Authentication Required", description: "Please log in.", variant: "destructive" });
+      return; // Stop checks if not authenticated
+    }
+
+    // User is authenticated, proceed with role check
+    if (!userProfile) {
+      console.warn("RoleGuard: User authenticated but profile not loaded yet.");
+      // Decide how to handle this - maybe wait longer or treat as no access?
+      // For now, treat as no access if profile is missing after loading is done.
+      setAccessGranted(false); 
+      return;
+    }
+
+    // 2. Check Role Access
+    const hasRequiredRole = allowedRoles.some(role => hasRole(role));
+    
+    if (!hasRequiredRole) {
+      console.log(`RoleGuard: Access denied. Role '${userProfile.role}' not in allowed roles [${allowedRoles.join(', ')}].`);
+      setAccessGranted(false);
+      toast({
+        title: "Access Denied",
+        description: "You don't have sufficient permissions.",
+        variant: "destructive"
+      });
+      return; // Stop checks if role is insufficient
+    }
+
+    // 3. Check Two-Factor Authentication (if required)
+    const needsTwoFactorCheck = enforceTwoFactor || hasRole('system_admin') || hasRole('super_admin');
+
+    if (needsTwoFactorCheck && !userProfile.two_factor_enabled) {
+      console.log("RoleGuard: 2FA required but not enabled.");
+      setShowTwoFactorDialog(true);
+      setAccessGranted(false); // Deny access until 2FA is set up or dialog is dismissed
+      return; // Stop checks, show dialog
+    }
+
+    // All checks passed
+    console.log("RoleGuard: Access granted.");
+    setAccessGranted(true);
+    setShowTwoFactorDialog(false); // Ensure dialog is hidden if previously shown
+
+  // Include all dependencies used in the effect
+  }, [isReady, loading, isAuthenticated, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, fallbackPath, navigate]); 
   
-  if (loading || checking) {
+  // Display loading spinner while auth context is initializing OR checks are running
+  if (loading || checking) { 
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner className="h-8 w-8" />
@@ -117,6 +104,7 @@ export function RoleGuard({
     );
   }
   
+  // Show 2FA dialog if needed
   if (showTwoFactorDialog) {
     return (
       <AlertDialog open={showTwoFactorDialog} onOpenChange={setShowTwoFactorDialog}>
@@ -124,16 +112,17 @@ export function RoleGuard({
           <AlertDialogHeader>
             <AlertDialogTitle>Two-Factor Authentication Required</AlertDialogTitle>
             <AlertDialogDescription>
-              For enhanced security, Two-Factor Authentication (2FA) is required to access
-              these privileged functions. Would you like to set up 2FA now?
+              For enhanced security, Two-Factor Authentication (2FA) is required. 
+              Please set up 2FA in your security settings to proceed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => navigate(fallbackPath)}>
-              Cancel Access
+            {/* Navigate back or to fallback on cancel */}
+            <AlertDialogCancel onClick={() => navigate(fallbackPath)}> 
+              Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={() => navigate('/settings?tab=security')}>
-              Set Up 2FA
+              Go to Settings
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -141,9 +130,16 @@ export function RoleGuard({
     );
   }
   
-  if (!hasAccess) {
+  // Redirect if access check is complete and access is denied
+  if (accessGranted === false) { 
     return <Navigate to={fallbackPath} replace />;
   }
   
-  return <>{children}</>;
+  // Render children only if access check is complete and access is granted
+  if (accessGranted === true) {
+    return <>{children}</>;
+  }
+
+  // Default case (should ideally not be reached if logic is sound)
+  return null; 
 }

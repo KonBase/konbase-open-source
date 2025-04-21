@@ -1,4 +1,3 @@
-
 # KonBase Supply Management System
 
 <div align="center">
@@ -143,6 +142,72 @@ To deploy to GitHub Pages:
    - SUPABASE_ANON_KEY: Your Supabase anonymous key
 
 3. Push changes to the main branch to trigger automatic deployment
+
+## Connecting to Supabase
+
+This project uses Supabase as its backend. To connect your local development environment to your remote Supabase project, follow these steps:
+
+1.  **Install Supabase CLI:**
+    If you haven't already, install the Supabase CLI. Follow the official instructions for your operating system: [Supabase CLI Installation](https://supabase.com/docs/guides/cli/getting-started#installation)
+
+2.  **Log in to Supabase:**
+    Open your terminal (Powershell in your case) and log in to your Supabase account:
+    ```powershell
+    supabase login
+    ```
+    This will open a browser window for authentication.
+
+3.  **Link your Project:**
+    Navigate to the root directory of this project (`konbase-open-source`) in your terminal and link it to your remote Supabase project:
+    ```powershell
+    supabase link --project-ref YOUR_PROJECT_REF
+    ```
+    Replace `YOUR_PROJECT_REF` with your actual Supabase project reference ID. You can find this in your Supabase project's dashboard URL (e.g., `https://app.supabase.com/project/YOUR_PROJECT_REF`) or in Project Settings -> General.
+
+4.  **Set up Environment Variables:**
+    The application needs your Supabase Project URL and Anon Key to communicate with the backend.
+    *   Create a `.env` file in the root of the project if it doesn't exist.
+    *   Add the following lines to the `.env` file:
+
+        ```dotenv
+        VITE_SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
+        VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+        ```
+    *   Replace `YOUR_SUPABASE_PROJECT_URL` and `YOUR_SUPABASE_ANON_KEY` with the actual values from your Supabase project dashboard (Project Settings -> API).
+
+5.  **(Optional) Pull Remote Database Changes:**
+    If you have made changes to your remote database schema *after* linking, you might want to pull those changes to keep your local `supabase/migrations` folder in sync (though this project currently uses `schema.sql` for initial setup):
+    ```powershell
+    supabase db pull
+    ```
+    *Note: Be cautious with this command if you have local migration files you haven't applied remotely.*
+
+6.  **Run the Application:**
+    You should now be able to run the application locally, and it will connect to your remote Supabase instance.
+    ```powershell
+    npm run dev
+    ```
+
+## Database Setup (Manual)
+
+Since the first-time setup wizard has been removed, follow these steps to set up your Supabase database manually:
+
+1.  Navigate to your Supabase project dashboard.
+2.  Go to the **SQL Editor**.
+3.  Click **"New query"**.
+4.  Copy the entire content of the `schema.sql` file from this project.
+5.  Paste the content into the SQL Editor.
+6.  Run the query. This will create all necessary tables, roles, functions, and RLS policies.
+7.  **Grant Super Admin:**
+    *   Sign up a user for your application (this will be your super admin).
+    *   Find the `user_id` (UUID) of this user in the Supabase Dashboard under Authentication -> Users.
+    *   Open the `super_admin.sql` file in this project.
+    *   Replace the placeholder `'YOUR_USER_ID_HERE'` with the actual `user_id`.
+    *   Go back to the Supabase **SQL Editor** and create another **"New query"**.
+    *   Copy the modified content of `super_admin.sql` and paste it into the editor.
+    *   Run the query.
+
+Your database is now set up and connected to the application.
 
 ## Contributing
 

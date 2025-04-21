@@ -1,5 +1,3 @@
-
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, Building2, Edit, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,8 +23,9 @@ const AssociationsList = () => {
     }
   };
   
-  const handleCreateNew = () => {
-    navigate('/setup');
+  const handleCreateAssociation = () => {
+    // Navigate to the correct setup page
+    navigate('/setup/association'); 
   };
   
   return (
@@ -38,7 +37,7 @@ const AssociationsList = () => {
             Select an association to manage or create a new one.
           </p>
         </div>
-        <Button onClick={handleCreateNew}>
+        <Button onClick={handleCreateAssociation}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Create New Association
         </Button>
@@ -57,6 +56,7 @@ const AssociationsList = () => {
               </CardContent>
             </Card>
           ))}
+
         </div>
       ) : (
         <>
@@ -69,7 +69,7 @@ const AssociationsList = () => {
                 </CardDescription>
               </CardHeader>
               <CardFooter className="flex justify-center">
-                <Button onClick={handleCreateNew}>
+                <Button onClick={handleCreateAssociation}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Create Association
                 </Button>
@@ -133,6 +133,7 @@ const AssociationsList = () => {
                   </CardFooter>
                 </Card>
               ))}
+
             </div>
           )}
         </>

@@ -1,7 +1,60 @@
-
 import { Association } from '@/types/association';
 import { supabase } from '@/lib/supabase';
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
+
+/**
+ * Escape special characters for CSV
+ */
+const escapeCSV = (text: string): string => {
+  if (!text) return '';
+  return text.replace(/"/g, '""');
+};
+
+/**
+ * Convert data array to CSV format and trigger download
+ * @param data Array of objects to convert to CSV
+ * @param filename Filename without extension
+ */
+export const exportToCSV = (data: Record<string, any>[], filename: string): void => {
+  if (!data || !data.length) {
+    console.warn('No data to export');
+    return;
+  }
+
+  // Get headers from the first object
+  const headers = Object.keys(data[0]);
+  
+  // Create CSV content
+  let csvContent = headers.join(',') + '\n';
+  
+  // Add rows
+  data.forEach(item => {
+    const row = headers.map(header => {
+      const value = item[header];
+      // Handle different data types
+      if (value === null || value === undefined) {
+        return '';
+      } else if (typeof value === 'string') {
+        return `"${escapeCSV(value)}"`;
+      } else if (typeof value === 'object') {
+        return `"${escapeCSV(JSON.stringify(value))}"`;
+      }
+      return value;
+    });
+    csvContent += row.join(',') + '\n';
+  });
+  
+  // Create download link
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 /**
  * Convert association data to CSV format
@@ -467,26 +520,4 @@ export const importCSVData = async (
     errors.push(`General import error: ${error.message}`);
     return { success: false, errors, stats };
   }
-};
-
-/**
- * Escape CSV values to handle quotes and special characters
- */
-const escapeCSV = (value: string): string => {
-  if (!value) return '';
-  return value.replace(/"/g, '""');
-};
-
-/**
- * Download data as CSV file
- */
-export const downloadCSV = (data: string, filename: string): void => {
-  const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 };

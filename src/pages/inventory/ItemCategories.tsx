@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +19,7 @@ const ItemCategories = () => {
           <CardContent>
             <p className="mb-4">To get started with EventNexus, you need to create or join an association.</p>
             <Button asChild>
-              <Link to="/setup">Set Up Association</Link>
+              <Link to="/setup/association">Set Up Association</Link>
             </Button>
           </CardContent>
         </Card>

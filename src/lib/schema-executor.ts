@@ -1,6 +1,76 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
+ * Checks if the execute_sql function exists in the database
+ * This function is needed for schema execution
+ */
+export async function checkExecuteSqlFunction(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  try {
+    // Try to execute a simple query using the function
+    await supabase.rpc('execute_sql', { sql_query: 'SELECT 1' });
+    return true;
+  } catch (error: any) {
+    // If the error mentions the function doesn't exist, return false
+    if (error.message && (
+      error.message.includes('function') && 
+      error.message.includes('does not exist') || 
+      error.message.includes('not found')
+    )) {
+      return false;
+    }
+    
+    // If it's another type of error (like permission denied), 
+    // we still consider the function might exist
+    return true;
+  }
+}
+
+/**
+ * Creates the execute_sql function in the database
+ * This function is necessary to run schema commands
+ */
+export async function createExecuteSqlFunction(
+  supabase: SupabaseClient
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // SQL to create the execute_sql function with SECURITY DEFINER
+    const createFunctionSQL = `
+      CREATE OR REPLACE FUNCTION execute_sql(sql_query text)
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $$
+      BEGIN
+        EXECUTE sql_query;
+      END;
+      $$;
+    `;
+    
+    // Try to execute directly (requires high privileges)
+    const { error } = await supabase.rpc('execute_sql', { 
+      sql_query: createFunctionSQL 
+    });
+    
+    if (error) {
+      // This likely means they need to manually create the function
+      return { 
+        success: false, 
+        error: `Could not create execute_sql function: ${error.message}` 
+      };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+}
+
+/**
  * Executes a SQL schema in Supabase by splitting it into manageable chunks
  * to avoid timeout issues with large SQL files
  */
@@ -8,8 +78,45 @@ export async function executeSchemaInChunks(
   supabase: SupabaseClient,
   schema: string,
   onProgress?: (progress: number, message: string) => void
-): Promise<{ success: boolean; error?: string }> {
-  try {
+): Promise<{ success: boolean; error?: string }> {  try {
+    // First check if the execute_sql function exists
+    const hasExecuteSqlFunction = await checkExecuteSqlFunction(supabase);
+    
+    if (!hasExecuteSqlFunction) {
+      if (onProgress) {
+        onProgress(0, '⚠️ The execute_sql function is missing from your Supabase database');
+        onProgress(0, 'Attempting to create the function automatically...');
+      }
+      
+      // Try to create the function
+      const createResult = await createExecuteSqlFunction(supabase);
+      
+      if (!createResult.success) {
+        if (onProgress) {
+          onProgress(0, '❌ Could not automatically create the execute_sql function');
+          onProgress(0, 'You will need to create this function manually in the Supabase SQL Editor:');
+          onProgress(0, `
+CREATE OR REPLACE FUNCTION execute_sql(sql_query text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+END;
+$$;`);
+        }
+        return { 
+          success: false, 
+          error: 'Missing execute_sql function. Manual creation required.' 
+        };
+      } else {
+        if (onProgress) {
+          onProgress(5, '✓ Successfully created the execute_sql function');
+        }
+      }
+    }
+    
     // Split the schema into manageable chunks that won't timeout
     const chunks = splitSchema(schema);
     const totalChunks = chunks.length;

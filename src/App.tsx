@@ -10,7 +10,7 @@ import { SessionRecovery } from '@/components/SessionRecovery';
 import AuthGuard from './components/guards/AuthGuard';
 import { UserRoleType } from '@/types/user';
 import { isConfigured } from '@/lib/config-store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Added useState
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -59,9 +59,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
-
-// Setup pages
-import FirstTimeSetup from './pages/setup/FirstTimeSetup';
+import AssociationSetup from './pages/setup/AssociationSetup'; 
 
 // Layouts
 import RootLayout from './layouts/RootLayout';
@@ -79,34 +77,37 @@ const queryClient = new QueryClient({
 
 function App() {
   // Define role permissions for different routes
-  const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin'];
+  const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
   const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];
   const systemAdminRoles: UserRoleType[] = ['system_admin', 'super_admin'];
   const superAdminRoles: UserRoleType[] = ['super_admin'];
+  // Define roles allowed to access association setup
+  const associationSetupRoles: UserRoleType[] = ['admin', 'guest']; 
 
   // Use hooks from react-router-dom
   const navigate = useNavigate();
   const location = useLocation();
-  const setupCompleted = isConfigured();
+  // Use state to track configuration status to avoid potential SSR issues if used
+  const [setupCompleted, setSetupCompleted] = useState(false);
 
   useEffect(() => {
-    const isAuthOrSetupPath = ['/setup', '/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path));
+    // Check configuration status on mount
+    const configured = isConfigured();
+    setSetupCompleted(configured);
 
-    // If setup is not completed and we are not on an allowed path, redirect using navigate
-    if (!setupCompleted && !isAuthOrSetupPath) {
-      navigate('/setup', { replace: true }); // Use navigate for client-side redirect
-    }
-    // Add location.pathname to dependency array to re-run check if path changes
-  }, [setupCompleted, navigate, location.pathname]);
+    // If not configured via .env, we might want to show an error or specific page.
+    // For now, we assume .env is the only method, and AuthContext/Supabase init will handle connection errors.
+    // Removed the redirect to /setup logic.
 
-  // Conditionally render based on setupCompleted ONLY for the root path initially
-  // The useEffect handles redirection for other paths if needed.
-  // This prevents rendering protected routes before the redirect effect runs.
-  if (!setupCompleted && location.pathname === '/') {
-     return <Navigate to="/setup" replace />;
-  }
+  }, []); // Run only once on mount
 
+  // Render nothing or a loading indicator until configuration status is checked
+  // This prevents rendering routes that might depend on a configured client prematurely
+  // if (!setupCompleted && !['/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path))) {
+  //   // Optionally, render a dedicated "Configuration Error" page or a simple message
+  //   return <div>Checking configuration...</div>; // Or a loading spinner
+  // }
 
   return (
     <ErrorBoundary>
@@ -114,31 +115,40 @@ function App() {
         <ThemeProvider defaultTheme="system" storageKey="konbase-theme">
           <AuthProvider>
             <AssociationProvider>
-              {/* SessionRecovery might need config, so ensure it runs after potential redirect */}
-              {setupCompleted && <SessionRecovery />}
+              {/* SessionRecovery should ideally check internally if client is valid */}
+              <SessionRecovery /> 
               <Routes>
-                {/* Update Setup route */}
-                <Route path="/setup" element={<FirstTimeSetup />} />
-
-                {/* Keep Auth routes accessible */}
+                {/* Auth routes remain accessible */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
 
-                {/* Conditionally render RootLayout only if setup is complete OR if on an auth/setup path initially handled by useEffect */}
-                {/* The main routing logic now assumes setup is potentially complete or handled */}
-                <Route path="/" element={setupCompleted ? <RootLayout /> : null}>
-                   {/* Redirect logic based on setup status for index */}
-                   {/* If setup is complete, navigate to dashboard, otherwise this route won't match if RootLayout is null */}
-                   <Route index element={setupCompleted ? <Navigate to="/dashboard" replace /> : null} />
+                {/* Remove the dedicated /setup route */}
+                {/* <Route path="/setup" element={<SetupWizard />} /> */}
 
-                   {/* Routes requiring member role or higher */}
+                {/* Main application routes under RootLayout */}
+                {/* Render RootLayout; AuthGuard inside will handle auth status */}
+                {/* If Supabase isn't configured via .env, components relying on it will likely fail, 
+                    which should be handled gracefully (e.g., in AuthContext or specific components) */}
+                <Route path="/" element={<RootLayout />}>
+                   <Route index element={<Navigate to="/dashboard" replace />} />
+
+                   {/* Dashboard */}
                    <Route path="dashboard" element={
                      <AuthGuard requiredRoles={memberRoles}>
                        <Dashboard />
                      </AuthGuard>
                    } />
+                   
+                   {/* Association Setup (Join/Create) - accessible via AuthGuard */}
+                   <Route path="setup/association" element={
+                     <AuthGuard requiredRoles={associationSetupRoles}> 
+                       <AssociationSetup />
+                     </AuthGuard>
+                   } />
+
+                   {/* Profile & Settings */}
                    <Route path="profile" element={
                      <AuthGuard>
                        <ProfilePage />
@@ -238,21 +248,21 @@ function App() {
                      </AuthGuard>
                    } />
                    <Route path="inventory/categories" element={
-                     <AuthGuard requiredRoles={memberRoles}>
+                     <AuthGuard requiredRoles={managerRoles}> {/* Example: Manager+ */}
                        <ItemCategories />
                      </AuthGuard>
                    } />
                    <Route path="inventory/locations" element={
-                     <AuthGuard requiredRoles={memberRoles}>
+                     <AuthGuard requiredRoles={managerRoles}> {/* Example: Manager+ */}
                        <ItemLocations />
                      </AuthGuard>
                    } />
                    <Route path="inventory/storage" element={
-                     <AuthGuard requiredRoles={memberRoles}>
+                     <AuthGuard requiredRoles={managerRoles}> {/* Example: Manager+ */}
                        <StorageLocations />
                      </AuthGuard>
                    } />
-                   <Route path="inventory/documents" element={
+                   <Route path="inventory/warranties" element={
                      <AuthGuard requiredRoles={memberRoles}>
                        <WarrantiesDocuments />
                      </AuthGuard>
@@ -263,29 +273,25 @@ function App() {
                      </AuthGuard>
                    } />
                    <Route path="inventory/import-export" element={
-                     <AuthGuard requiredRoles={memberRoles}>
+                     <AuthGuard requiredRoles={adminRoles}> {/* Example: Admin+ */}
                        <ImportExport />
                      </AuthGuard>
                    } />
 
                    {/* Reports routes requiring manager role or higher */}
                    <Route path="reports" element={
-                     <AuthGuard requiredRoles={managerRoles}>
+                     <AuthGuard requiredRoles={managerRoles}> {/* Example: Manager+ */}
                        <ReportsList />
                      </AuthGuard>
                    } />
 
-                   {/* Error routes */}
+                   {/* Error Handling Routes within Layout */}
                    <Route path="unauthorized" element={<Unauthorized />} />
+                   <Route path="*" element={<NotFound />} /> 
+                </Route>
 
-                   {/* Catch-all route for 404 */}
-                   <Route path="*" element={<NotFound />} />
-                 </Route>
-
-                 {/* Fallback for when setup is not complete and not on allowed paths (handled by useEffect redirect) */}
-                 {/* This might not be strictly necessary due to the useEffect redirect */}
-                 {!setupCompleted && <Route path="*" element={<Navigate to="/setup" replace />} />}
-
+                {/* Top-level Catch-all for 404 (if no other route matches) */}
+                 <Route path="*" element={<NotFound />} /> 
               </Routes>
               <Toaster />
             </AssociationProvider>

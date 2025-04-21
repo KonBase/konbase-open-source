@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -239,19 +238,11 @@ const ItemLocations = () => {
 
   if (!currentAssociation) {
     return (
-      <div className="space-y-4 p-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>No Association Found</CardTitle>
-            <CardDescription>You need to set up your association first</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">To get started with EventNexus, you need to create or join an association.</p>
-            <Button asChild>
-              <Link to="/setup">Set Up Association</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div>
+        <h2>Association Required</h2>
+        <p>You need to be part of an association to manage item locations.</p>
+        {/* Update link */}
+        <Link to="/setup/association">Set Up Association</Link> 
       </div>
     );
   }

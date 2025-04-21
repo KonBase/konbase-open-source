@@ -31,6 +31,7 @@ CREATE TABLE public.associations (
   contact_email TEXT NOT NULL,
   contact_phone TEXT,
   website TEXT,
+  slug TEXT UNIQUE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
@@ -39,12 +40,11 @@ CREATE TABLE public.associations (
 ALTER TABLE public.profiles ADD CONSTRAINT fk_profiles_association
   FOREIGN KEY (association_id) REFERENCES public.associations(id) ON DELETE SET NULL;
 
--- Association members linking users to associations with roles
+-- Association members linking users to associations
 CREATE TABLE public.association_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   association_id UUID NOT NULL REFERENCES public.associations(id) ON DELETE CASCADE,
-  role user_role_type NOT NULL DEFAULT 'member',
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   UNIQUE(user_id, association_id)
 );
@@ -120,13 +120,15 @@ CREATE TABLE public.conventions (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Chat messages for association members
-CREATE TABLE public.chat_messages (
+-- Notifications table
+CREATE TABLE public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  association_id UUID NOT NULL REFERENCES public.associations(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  sender_name TEXT NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  association_id UUID REFERENCES public.associations(id) ON DELETE CASCADE, -- Optional: Link notification to an association
   message TEXT NOT NULL,
+  type TEXT, -- Optional: e.g., 'invitation', 'item_update', 'system'
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  link TEXT, -- Optional: Link to relevant page/resource
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
@@ -140,29 +142,34 @@ CREATE TABLE public.audit_logs (
   changes JSONB,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
+  -- Two-factor auth data
+  CREATE TABLE public.user_2fa (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    totp_secret TEXT NOT NULL,
+    recovery_keys TEXT[] NOT NULL,
+    used_recovery_keys TEXT[] DEFAULT '{}'::text[] NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+  );
 
--- Two-factor auth data
-CREATE TABLE public.user_2fa (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  totp_secret TEXT NOT NULL,
-  recovery_keys TEXT[] NOT NULL,
-  used_recovery_keys TEXT[] DEFAULT '{}',
-  last_used_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  UNIQUE(user_id)
-);
+  -- Update RLS policies for user_2fa
+  DROP POLICY IF EXISTS "Users can view their own 2FA data" ON public.user_2fa;
+  DROP POLICY IF EXISTS "Users can update their own 2FA data" ON public.user_2fa;
 
--- Helper functions for RLS policies --
+  CREATE POLICY "Allow individual user access"
+  ON public.user_2fa
+  FOR ALL
+  USING (auth.uid() = user_id);
 
--- Create user profile when a new user signs up
-CREATE OR REPLACE FUNCTION public.create_profile_for_user()
-RETURNS TRIGGER
-LANGUAGE PLPGSQL
-SECURITY DEFINER
-AS $$
-BEGIN
+  -- Helper functions for RLS policies --
+
+  -- Create user profile when a new user signs up
+  CREATE OR REPLACE FUNCTION public.create_profile_for_user()
+  RETURNS TRIGGER
+  LANGUAGE PLPGSQL
+  SECURITY DEFINER
+  AS $
+  BEGIN
   INSERT INTO public.profiles (id, email, name, role)
   VALUES (
     new.id, 
@@ -174,10 +181,18 @@ BEGIN
 END;
 $$;
 
--- Trigger to create profile when user signs up
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.create_profile_for_user();
+-- Trigger to create profile when user signs up (checking if it exists first)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+      SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created'
+  ) THEN
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE PROCEDURE public.create_profile_for_user();
+  END IF;
+END
+$$;
 
 -- Update profile when user info changes
 CREATE OR REPLACE FUNCTION public.handle_user_update()
@@ -194,10 +209,18 @@ BEGIN
 END;
 $$;
 
--- Trigger to update profile when user changes
-CREATE TRIGGER on_auth_user_updated
-  AFTER UPDATE ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_user_update();
+-- Trigger to update profile when user changes (checking if it exists first)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+      SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_updated'
+  ) THEN
+    CREATE TRIGGER on_auth_user_updated
+      AFTER UPDATE ON auth.users
+      FOR EACH ROW EXECUTE PROCEDURE public.handle_user_update();
+  END IF;
+END
+$$;
 
 -- Check if user has elevated admin role
 CREATE OR REPLACE FUNCTION public.has_elevated_admin_role(user_id uuid)
@@ -276,6 +299,25 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+-- Get user association memberships
+CREATE OR REPLACE FUNCTION public.get_user_association_memberships(user_id_param uuid)
+RETURNS TABLE(association_id uuid, association_name text, association_slug text)
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT 
+    am.association_id, 
+    a.name as association_name, 
+    a.slug as association_slug
+  FROM 
+    public.association_members am
+  JOIN 
+    public.associations a ON am.association_id = a.id
+  WHERE 
+    am.user_id = user_id_param;
+$$;
+
+
 -- Enable Row Level Security on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.associations ENABLE ROW LEVEL SECURITY;
@@ -285,9 +327,9 @@ ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conventions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_2fa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY; -- Enable RLS for notifications
 
 -- RLS Policies --
 
@@ -335,6 +377,28 @@ CREATE POLICY "Super admins can view all associations"
   FOR SELECT
   USING (is_system_or_super_admin());
 
+-- Add a policy specifically for super_admins to manage ALL associations
+CREATE POLICY "Super admins can manage all associations"
+  ON public.associations
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'super_admin'
+    )
+  );
+
+-- Add a policy specifically for system_admins to manage ALL associations
+CREATE POLICY "System admins can manage all associations"
+  ON public.associations
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'system_admin'
+    )
+  );
+
 CREATE POLICY "Admins can update their associations"
   ON public.associations
   FOR UPDATE
@@ -347,10 +411,11 @@ CREATE POLICY "Admins can update their associations"
     )
   );
 
+-- Fix the policy for creating associations to explicitly check for authenticated users
 CREATE POLICY "Users can create associations"
   ON public.associations
   FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Association members policies
 CREATE POLICY "Members can view their association members"
@@ -370,9 +435,10 @@ CREATE POLICY "Admins can manage association members"
   USING (
     EXISTS (
       SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
       WHERE am.user_id = auth.uid() 
       AND am.association_id = association_members.association_id
-      AND am.role IN ('admin', 'system_admin', 'super_admin')
+      AND p.role IN ('admin', 'system_admin', 'super_admin')
     )
   );
 
@@ -388,9 +454,10 @@ CREATE POLICY "Admins can manage invitations"
   USING (
     EXISTS (
       SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
       WHERE am.user_id = auth.uid() 
       AND am.association_id = association_invitations.association_id
-      AND am.role IN ('admin', 'system_admin', 'super_admin')
+      AND p.role IN ('admin', 'system_admin', 'super_admin')
     )
   );
 
@@ -417,9 +484,10 @@ CREATE POLICY "Managers and admins can manage categories"
   USING (
     EXISTS (
       SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
       WHERE am.user_id = auth.uid() 
       AND am.association_id = categories.association_id
-      AND am.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
     )
   );
 
@@ -441,9 +509,10 @@ CREATE POLICY "Managers and admins can manage locations"
   USING (
     EXISTS (
       SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
       WHERE am.user_id = auth.uid() 
       AND am.association_id = locations.association_id
-      AND am.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
     )
   );
 
@@ -465,9 +534,10 @@ CREATE POLICY "Managers and admins can manage items"
   USING (
     EXISTS (
       SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
       WHERE am.user_id = auth.uid() 
       AND am.association_id = items.association_id
-      AND am.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
     )
   );
 
@@ -489,33 +559,11 @@ CREATE POLICY "Managers and admins can manage conventions"
   USING (
     EXISTS (
       SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
       WHERE am.user_id = auth.uid() 
       AND am.association_id = conventions.association_id
-      AND am.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
     )
-  );
-
--- Chat messages policies
-CREATE POLICY "Members can view messages in their association"
-  ON public.chat_messages
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM association_members am
-      WHERE am.user_id = auth.uid() 
-      AND am.association_id = chat_messages.association_id
-    )
-  );
-
-CREATE POLICY "Authenticated users can send messages to their association"
-  ON public.chat_messages
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM association_members am
-      WHERE am.user_id = auth.uid() 
-      AND am.association_id = chat_messages.association_id
-    ) AND auth.uid() = sender_id
   );
 
 -- User 2FA policies
@@ -527,6 +575,17 @@ CREATE POLICY "Users can view their own 2FA data"
 CREATE POLICY "Users can update their own 2FA data"
   ON public.user_2fa
   FOR ALL
+  USING (auth.uid() = user_id);
+
+-- Notifications policies
+CREATE POLICY "Users can view their own notifications"
+  ON public.notifications
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own notifications (e.g., mark as read)"
+  ON public.notifications
+  FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Audit logs policies
@@ -546,13 +605,12 @@ CREATE POLICY "Admins can view audit logs for their association"
       WHERE am.user_id = auth.uid() 
       AND (
         entity = 'associations' AND entity_id = a.id
-        OR 
-        entity = 'profiles' AND EXISTS (
+        OR        entity = 'profiles' AND EXISTS (
           SELECT 1 FROM profiles p 
           WHERE p.id = entity_id AND p.association_id = a.id
         )
         OR
-        entity IN ('items', 'categories', 'locations', 'conventions', 'chat_messages') 
+        entity IN ('items', 'categories', 'locations', 'conventions') 
         AND EXISTS (
           SELECT 1 FROM items i 
           WHERE i.id = entity_id AND i.association_id = a.id
@@ -575,7 +633,7 @@ ALTER TABLE public.categories REPLICA IDENTITY FULL;
 ALTER TABLE public.locations REPLICA IDENTITY FULL;
 ALTER TABLE public.items REPLICA IDENTITY FULL;
 ALTER TABLE public.conventions REPLICA IDENTITY FULL;
-ALTER TABLE public.chat_messages REPLICA IDENTITY FULL;
+ALTER TABLE public.notifications REPLICA IDENTITY FULL; -- Add notifications to replica identity
 
 -- Add tables to Realtime publication
 BEGIN;
@@ -592,149 +650,512 @@ BEGIN;
   ALTER publication supabase_realtime ADD TABLE public.locations;
   ALTER publication supabase_realtime ADD TABLE public.items;
   ALTER publication supabase_realtime ADD TABLE public.conventions;
-  ALTER publication supabase_realtime ADD TABLE public.chat_messages;
+  ALTER publication supabase_realtime ADD TABLE public.notifications; -- Add notifications to publication
 COMMIT;
 
--- Insert some default data for testing
-INSERT INTO public.associations (id, name, contact_email)
-VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'Demo Association', 'demo@example.com');
-
-INSERT INTO public.categories (id, name, association_id)
-VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'Electronics', '00000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000002', 'Furniture', '00000000-0000-0000-0000-000000000001');
-
-INSERT INTO public.locations (id, name, association_id)
-VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'Main Storage', '00000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000002', 'Office', '00000000-0000-0000-0000-000000000001');
--- This migration adds the missing tables that are defined in database.types.ts but don't exist in the database
-
--- Create convention_invitations table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.convention_invitations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code TEXT NOT NULL,
-  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL, 
-  created_by UUID REFERENCES auth.users(id) NOT NULL,
-  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  uses_remaining INTEGER NOT NULL DEFAULT 1,
-  UNIQUE(code)
-);
-
--- Enable RLS on convention_invitations
-ALTER TABLE public.convention_invitations ENABLE ROW LEVEL SECURITY;
-
--- Create convention_access table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.convention_access (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  invitation_code TEXT REFERENCES public.convention_invitations(code) ON DELETE SET NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  UNIQUE(convention_id, user_id)
-);
-
--- Enable RLS on convention_access
-ALTER TABLE public.convention_access ENABLE ROW LEVEL SECURITY;
-
--- Create equipment_sets table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.equipment_sets (
+-- Appending migration: 20250421_equipment_sets_schema.sql
+-- Add equipment_sets table for grouping inventory items
+CREATE TABLE public.equipment_sets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
-  association_id UUID REFERENCES public.associations(id) ON DELETE CASCADE NOT NULL,
+  association_id UUID NOT NULL REFERENCES public.associations(id) ON DELETE CASCADE,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  is_template BOOLEAN NOT NULL DEFAULT false,
+  tags TEXT[],
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Enable RLS on equipment_sets
-ALTER TABLE public.equipment_sets ENABLE ROW LEVEL SECURITY;
-
--- Create equipment_set_items table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.equipment_set_items (
+-- Table to store items in equipment sets
+CREATE TABLE public.equipment_set_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  set_id UUID REFERENCES public.equipment_sets(id) ON DELETE CASCADE NOT NULL,
-  item_id UUID REFERENCES public.items(id) ON DELETE CASCADE NOT NULL,
+  equipment_set_id UUID NOT NULL REFERENCES public.equipment_sets(id) ON DELETE CASCADE,
+  inventory_item_id UUID NOT NULL REFERENCES public.items(id) ON DELETE CASCADE, -- Corrected reference to items table
   quantity INTEGER NOT NULL DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  UNIQUE(set_id, item_id)
-);
-
--- Enable RLS on equipment_set_items
-ALTER TABLE public.equipment_set_items ENABLE ROW LEVEL SECURITY;
-
--- Create documents table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.documents (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  file_url TEXT NOT NULL,
-  file_type TEXT NOT NULL,
-  item_id UUID REFERENCES public.items(id) ON DELETE CASCADE NOT NULL,
-  uploaded_by UUID REFERENCES auth.users(id) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-
--- Enable RLS on documents
-ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
-
--- Create notifications table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  title TEXT NOT NULL,
-  message TEXT NOT NULL,
-  read BOOLEAN NOT NULL DEFAULT false,
+  notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Enable RLS on notifications
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+-- Add index for improved query performance
+CREATE INDEX idx_equipment_set_items_set_id ON public.equipment_set_items(equipment_set_id);
+CREATE INDEX idx_equipment_sets_association_id ON public.equipment_sets(association_id);
 
--- Add RLS policies for each table
--- Convention Invitations
-CREATE POLICY "Users can view convention invitations" ON public.convention_invitations
+-- Row level security policies for equipment_sets
+ALTER TABLE public.equipment_sets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their association's equipment sets"
+  ON public.equipment_sets
+  FOR SELECT
+  USING (
+    association_id IN (
+      SELECT association_id FROM public.association_members WHERE user_id = auth.uid()
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+CREATE POLICY "Association admins and managers can create equipment sets"
+  ON public.equipment_sets
+  FOR INSERT
+  WITH CHECK (
+    association_id IN (
+      SELECT am.association_id
+      FROM public.association_members am
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND p.role IN ('admin', 'manager', 'system_admin', 'super_admin') -- Updated roles based on profiles table
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+CREATE POLICY "Association admins and managers can update equipment sets"
+  ON public.equipment_sets
+  FOR UPDATE
+  USING (
+    association_id IN (
+      SELECT am.association_id
+      FROM public.association_members am
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND p.role IN ('admin', 'manager', 'system_admin', 'super_admin') -- Updated roles based on profiles table
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+CREATE POLICY "Association admins and managers can delete equipment sets"
+  ON public.equipment_sets
+  FOR DELETE
+  USING (
+    association_id IN (
+      SELECT am.association_id
+      FROM public.association_members am
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND p.role IN ('admin', 'manager', 'system_admin', 'super_admin') -- Updated roles based on profiles table
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+-- Row level security policies for equipment_set_items
+ALTER TABLE public.equipment_set_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their association's equipment set items"
+  ON public.equipment_set_items
+  FOR SELECT
+  USING (
+    equipment_set_id IN (
+      SELECT id FROM public.equipment_sets
+      WHERE association_id IN (
+        SELECT association_id FROM public.association_members WHERE user_id = auth.uid()
+      )
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+CREATE POLICY "Association admins and managers can manage equipment set items"
+  ON public.equipment_set_items
+  FOR ALL
+  USING (
+    equipment_set_id IN (
+      SELECT es.id
+      FROM public.equipment_sets es
+      JOIN public.association_members am ON es.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND p.role IN ('admin', 'manager', 'system_admin', 'super_admin') -- Updated roles based on profiles table
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+-- Table for convention equipment set assignments (optional for future use)
+-- Note: This references public.locations, ensure it exists or adjust as needed.
+CREATE TABLE public.convention_equipment_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  convention_id UUID NOT NULL REFERENCES public.conventions(id) ON DELETE CASCADE,
+  equipment_set_id UUID NOT NULL REFERENCES public.equipment_sets(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES public.locations(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'assigned',
+  notes TEXT,
+  assigned_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  assigned_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(convention_id, equipment_set_id)
+);
+
+-- Add index for improved query performance
+CREATE INDEX idx_convention_equipment_convention_id ON public.convention_equipment_assignments(convention_id);
+
+-- Row level security for convention equipment assignments
+ALTER TABLE public.convention_equipment_assignments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their association's convention equipment assignments"
+  ON public.convention_equipment_assignments
+  FOR SELECT
+  USING (
+    convention_id IN (
+      SELECT id FROM public.conventions
+      WHERE association_id IN (
+        SELECT association_id FROM public.association_members WHERE user_id = auth.uid()
+      )
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+CREATE POLICY "Association admins and managers can manage convention equipment assignments"
+  ON public.convention_equipment_assignments
+  FOR ALL
+  USING (
+    convention_id IN (
+      SELECT c.id
+      FROM public.conventions c
+      JOIN public.association_members am ON c.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND p.role IN ('admin', 'manager', 'system_admin', 'super_admin') -- Updated roles based on profiles table
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND (role = 'super_admin' OR role = 'system_admin')
+    )
+  );
+
+-- Appending migration: 20250421_convention_features.sql
+-- Convention Features Migration
+-- This migration adds the necessary tables for full convention management functionality
+
+-- Convention Locations table: Maps rooms and areas at conventions
+CREATE TABLE IF NOT EXISTS public.convention_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  type TEXT DEFAULT 'room', -- room, area, storage, etc.
+  capacity INTEGER,
+  floor TEXT,
+  building TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(convention_id, name)
+);
+
+-- Enable RLS on convention locations
+ALTER TABLE public.convention_locations ENABLE ROW LEVEL SECURITY;
+
+-- Convention Equipment table: Tracks equipment issued to conventions
+CREATE TABLE IF NOT EXISTS public.convention_equipment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL,
+  item_id UUID REFERENCES public.items(id) ON DELETE CASCADE NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  location_id UUID REFERENCES public.convention_locations(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'allocated', -- allocated, issued, returned, damaged
+  issued_by UUID REFERENCES auth.users(id),
+  issued_at TIMESTAMP WITH TIME ZONE,
+  returned_by UUID REFERENCES auth.users(id),
+  returned_at TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(convention_id, item_id)
+);
+
+-- Enable RLS on convention equipment
+ALTER TABLE public.convention_equipment ENABLE ROW LEVEL SECURITY;
+
+-- Convention Consumables table: Tracks consumables used in conventions
+CREATE TABLE IF NOT EXISTS public.convention_consumables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL,
+  item_id UUID REFERENCES public.items(id) ON DELETE CASCADE NOT NULL,
+  allocated_quantity INTEGER NOT NULL DEFAULT 0,
+  used_quantity INTEGER NOT NULL DEFAULT 0,
+  location_id UUID REFERENCES public.convention_locations(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(convention_id, item_id)
+);
+
+-- Enable RLS on convention consumables
+ALTER TABLE public.convention_consumables ENABLE ROW LEVEL SECURITY;
+
+-- Convention Requirements table: Tracks requirements for conventions
+CREATE TABLE IF NOT EXISTS public.convention_requirements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  requested_by UUID REFERENCES auth.users(id) NOT NULL,
+  requested_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  status TEXT NOT NULL DEFAULT 'requested', -- requested, approved, denied, fulfilled
+  priority TEXT DEFAULT 'medium', -- high, medium, low
+  approved_by UUID REFERENCES auth.users(id),
+  approved_at TIMESTAMP WITH TIME ZONE,
+  fulfilled_at TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable RLS on convention requirements
+ALTER TABLE public.convention_requirements ENABLE ROW LEVEL SECURITY;
+
+-- Convention Requirement Items: Links requirements to specific items
+CREATE TABLE IF NOT EXISTS public.convention_requirement_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requirement_id UUID REFERENCES public.convention_requirements(id) ON DELETE CASCADE NOT NULL,
+  item_id UUID REFERENCES public.items(id) ON DELETE CASCADE,
+  equipment_set_id UUID REFERENCES public.equipment_sets(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  -- Either item_id or equipment_set_id must be set, but not both
+  CONSTRAINT item_or_set_check CHECK (
+    (item_id IS NOT NULL AND equipment_set_id IS NULL) OR
+    (item_id IS NULL AND equipment_set_id IS NOT NULL)
+  )
+);
+
+-- Enable RLS on convention requirement items
+ALTER TABLE public.convention_requirement_items ENABLE ROW LEVEL SECURITY;
+
+-- Convention Logs table: Tracks all actions during conventions
+CREATE TABLE IF NOT EXISTS public.convention_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  convention_id UUID REFERENCES public.conventions(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL, -- equipment, consumable, requirement, etc.
+  entity_id UUID,
+  details JSONB,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable RLS on convention logs
+ALTER TABLE public.convention_logs ENABLE ROW LEVEL SECURITY;
+
+-- Convention Templates table: Stores reusable convention templates
+CREATE TABLE IF NOT EXISTS public.convention_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  association_id UUID REFERENCES public.associations(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  configuration JSONB NOT NULL DEFAULT '{}',
+  created_by UUID REFERENCES auth.users(id) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable RLS on convention templates
+ALTER TABLE public.convention_templates ENABLE ROW LEVEL SECURITY;
+
+-- Function to archive conventions
+CREATE OR REPLACE FUNCTION public.archive_convention(convention_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  -- Update convention status to archived
+  UPDATE public.conventions
+  SET status = 'archived'
+  WHERE id = convention_id;
+
+  -- Log the archiving action
+  INSERT INTO public.convention_logs(
+    convention_id,
+    user_id,
+    action,
+    entity_type,
+    entity_id,
+    details
+  )
+  VALUES(
+    convention_id,
+    auth.uid(),
+    'archive',
+    'convention',
+    convention_id,
+    jsonb_build_object('timestamp', now())
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Row Level Security Policies
+
+-- Convention Equipment
+CREATE POLICY "Users can view convention equipment in their associations" ON public.convention_equipment
   FOR SELECT USING (
-    created_by = auth.uid() OR EXISTS (
+    EXISTS (
       SELECT 1 FROM public.conventions c
       WHERE c.id = convention_id AND c.association_id IN (
         SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin')
+        WHERE user_id = auth.uid()
       )
     )
   );
 
-CREATE POLICY "Admins can create convention invitations" ON public.convention_invitations
+CREATE POLICY "Admins can manage convention equipment" ON public.convention_equipment
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      JOIN public.association_members am ON c.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE c.id = convention_id AND am.user_id = auth.uid() AND p.role IN ('admin', 'system_admin', 'super_admin', 'manager')
+    )
+  );
+
+-- Convention Consumables
+CREATE POLICY "Users can view convention consumables in their associations" ON public.convention_consumables
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      WHERE c.id = convention_id AND c.association_id IN (
+        SELECT association_id FROM public.association_members
+        WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Admins can manage convention consumables" ON public.convention_consumables
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      JOIN public.association_members am ON c.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE c.id = convention_id AND am.user_id = auth.uid() AND p.role IN ('admin', 'system_admin', 'super_admin', 'manager')
+    )
+  );
+
+-- Convention Locations
+CREATE POLICY "Users can view convention locations in their associations" ON public.convention_locations
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      WHERE c.id = convention_id AND c.association_id IN (
+        SELECT association_id FROM public.association_members
+        WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Admins can manage convention locations" ON public.convention_locations
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      JOIN public.association_members am ON c.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE c.id = convention_id AND am.user_id = auth.uid() AND p.role IN ('admin', 'system_admin', 'super_admin', 'manager')
+    )
+  );
+
+-- Convention Requirements
+CREATE POLICY "Users can view convention requirements in their associations" ON public.convention_requirements
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      WHERE c.id = convention_id AND c.association_id IN (
+        SELECT association_id FROM public.association_members
+        WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Users can create convention requirements" ON public.convention_requirements
+  FOR INSERT WITH CHECK (
+    requested_by = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      WHERE c.id = convention_id AND c.association_id IN (
+        SELECT association_id FROM public.association_members
+        WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Admins can manage convention requirements" ON public.convention_requirements
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      JOIN public.association_members am ON c.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE c.id = convention_id AND am.user_id = auth.uid() AND p.role IN ('admin', 'system_admin', 'super_admin', 'manager')
+    )
+  );
+
+-- Convention Requirement Items
+CREATE POLICY "Users can view convention requirement items" ON public.convention_requirement_items
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.convention_requirements cr
+      JOIN public.conventions c ON cr.convention_id = c.id
+      WHERE cr.id = requirement_id AND c.association_id IN (
+        SELECT association_id FROM public.association_members
+        WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Admins can manage convention requirement items" ON public.convention_requirement_items
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.convention_requirements cr
+      JOIN public.conventions c ON cr.convention_id = c.id
+      JOIN public.association_members am ON c.association_id = am.association_id
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE cr.id = requirement_id AND am.user_id = auth.uid() AND p.role IN ('admin', 'system_admin', 'super_admin', 'manager')
+    )
+  );
+
+-- Convention Logs
+CREATE POLICY "Users can view convention logs in their associations" ON public.convention_logs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conventions c
+      WHERE c.id = convention_id AND c.association_id IN (
+        SELECT association_id FROM public.association_members
+        WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "System can create convention logs" ON public.convention_logs
   FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.conventions c
       WHERE c.id = convention_id AND c.association_id IN (
         SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin')
+        WHERE user_id = auth.uid()
       )
     )
   );
 
--- Convention Access
-CREATE POLICY "Users can view their convention access" ON public.convention_access
-  FOR SELECT USING (
-    user_id = auth.uid() OR EXISTS (
-      SELECT 1 FROM public.conventions c
-      WHERE c.id = convention_id AND c.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin')
-      )
-    )
-  );
-
-CREATE POLICY "Users can create their convention access" ON public.convention_access
-  FOR INSERT WITH CHECK (
-    user_id = auth.uid()
-  );
-
--- Equipment Sets
-CREATE POLICY "Users can view equipment sets in their associations" ON public.equipment_sets
+-- Convention Templates
+CREATE POLICY "Users can view convention templates in their associations" ON public.convention_templates
   FOR SELECT USING (
     association_id IN (
       SELECT association_id FROM public.association_members
@@ -742,166 +1163,248 @@ CREATE POLICY "Users can view equipment sets in their associations" ON public.eq
     )
   );
 
-CREATE POLICY "Admins can create equipment sets" ON public.equipment_sets
-  FOR INSERT WITH CHECK (
+CREATE POLICY "Admins can manage convention templates" ON public.convention_templates
+  FOR ALL USING (
     association_id IN (
-      SELECT association_id FROM public.association_members
-      WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin', 'manager')
+      SELECT am.association_id FROM public.association_members am
+      JOIN public.profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid() AND p.role IN ('admin', 'system_admin', 'super_admin', 'manager')
     )
   );
 
-CREATE POLICY "Admins can update equipment sets" ON public.equipment_sets
-  FOR UPDATE USING (
-    association_id IN (
-      SELECT association_id FROM public.association_members
-      WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin', 'manager')
+-- Create database trigger to automatically log convention equipment changes
+CREATE OR REPLACE FUNCTION log_convention_equipment_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.convention_logs(
+      convention_id,
+      user_id,
+      action,
+      entity_type,
+      entity_id,
+      details
     )
-  );
-
-CREATE POLICY "Admins can delete equipment sets" ON public.equipment_sets
-  FOR DELETE USING (
-    association_id IN (
-      SELECT association_id FROM public.association_members
-      WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin')
+    VALUES(
+      NEW.convention_id,
+      auth.uid(),
+      'create',
+      'equipment',
+      NEW.id,
+      jsonb_build_object('item_id', NEW.item_id, 'quantity', NEW.quantity, 'status', NEW.status)
+    );
+  ELSIF TG_OP = 'UPDATE' THEN
+    INSERT INTO public.convention_logs(
+      convention_id,
+      user_id,
+      action,
+      entity_type,
+      entity_id,
+      details
     )
-  );
-
--- Equipment Set Items
-CREATE POLICY "Users can view equipment set items" ON public.equipment_set_items
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.equipment_sets es
-      WHERE es.id = set_id AND es.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid()
+    VALUES(
+      NEW.convention_id,
+      auth.uid(),
+      'update',
+      'equipment',
+      NEW.id,
+      jsonb_build_object(
+        'changes', jsonb_build_object(
+          'status', jsonb_build_object('old', OLD.status, 'new', NEW.status),
+          'quantity', jsonb_build_object('old', OLD.quantity, 'new', NEW.quantity)
+        )
       )
+    );
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO public.convention_logs(
+      convention_id,
+      user_id,
+      action,
+      entity_type,
+      entity_id,
+      details
     )
-  );
+    VALUES(
+      OLD.convention_id,
+      auth.uid(),
+      'delete',
+      'equipment',
+      OLD.id,
+      jsonb_build_object('item_id', OLD.item_id)
+    );
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE POLICY "Admins can create equipment set items" ON public.equipment_set_items
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.equipment_sets es
-      WHERE es.id = set_id AND es.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin', 'manager')
-      )
-    )
-  );
+-- Create triggers for convention equipment logging
+DROP TRIGGER IF EXISTS log_convention_equipment_insert ON public.convention_equipment;
+CREATE TRIGGER log_convention_equipment_insert
+AFTER INSERT ON public.convention_equipment
+FOR EACH ROW EXECUTE FUNCTION log_convention_equipment_changes();
 
-CREATE POLICY "Admins can update equipment set items" ON public.equipment_set_items
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM public.equipment_sets es
-      WHERE es.id = set_id AND es.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin', 'manager')
-      )
-    )
-  );
+DROP TRIGGER IF EXISTS log_convention_equipment_update ON public.convention_equipment;
+CREATE TRIGGER log_convention_equipment_update
+AFTER UPDATE ON public.convention_equipment
+FOR EACH ROW EXECUTE FUNCTION log_convention_equipment_changes();
 
-CREATE POLICY "Admins can delete equipment set items" ON public.equipment_set_items
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM public.equipment_sets es
-      WHERE es.id = set_id AND es.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin', 'manager')
-      )
-    )
-  );
+DROP TRIGGER IF EXISTS log_convention_equipment_delete ON public.convention_equipment;
+CREATE TRIGGER log_convention_equipment_delete
+AFTER DELETE ON public.convention_equipment
+FOR EACH ROW EXECUTE FUNCTION log_convention_equipment_changes();
 
--- Documents
-CREATE POLICY "Users can view documents in their associations" ON public.documents
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.items i
-      WHERE i.id = item_id AND i.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid()
-      )
-    )
-  );
 
-CREATE POLICY "Users can upload documents" ON public.documents
-  FOR INSERT WITH CHECK (
-    uploaded_by = auth.uid() AND
-    EXISTS (
-      SELECT 1 FROM public.items i
-      WHERE i.id = item_id AND i.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid()
-      )
-    )
-  );
+-- Appending migration: 20250421_unify_roles_migration.sql
+-- MIGRATION: Unify role column to profiles table
+-- This script removes the role column from association_members table
+-- and updates all relevant functions and policies
 
-CREATE POLICY "Users can delete their own documents" ON public.documents
-  FOR DELETE USING (
-    uploaded_by = auth.uid() OR
-    EXISTS (
-      SELECT 1 FROM public.items i
-      WHERE i.id = item_id AND i.association_id IN (
-        SELECT association_id FROM public.association_members
-        WHERE user_id = auth.uid() AND role IN ('admin', 'system_admin', 'super_admin', 'manager')
-      )
-    )
-  );
+-- 1. First, ensure all users have appropriate roles in their profile
+-- Copy roles from association_members to profiles where the profile role is 'guest'
+-- and association_members role is higher (prioritizing higher roles)
+-- Note: We're not actually running this update since we need to decide the migration logic
+-- based on business rules - this is just an example approach
+/*
+UPDATE public.profiles p
+SET role = am.role
+FROM public.association_members am
+WHERE p.id = am.user_id AND p.role = 'guest' AND
+      am.role::text IN ('member', 'manager', 'admin', 'system_admin', 'super_admin');
+*/
 
--- Notifications
-CREATE POLICY "Users can view their own notifications" ON public.notifications
-  FOR SELECT USING (
-    user_id = auth.uid()
-  );
-
-CREATE POLICY "Users can mark their notifications as read" ON public.notifications
-  FOR UPDATE USING (
-    user_id = auth.uid()
-  ) WITH CHECK (
-    user_id = auth.uid() AND
-    (read IS NOT NULL)
-  );
-
-CREATE POLICY "Administrators can create notifications" ON public.notifications
-  FOR INSERT WITH CHECK (
-    TRUE
-  );
-
--- Add ip_address column to audit_logs table if it doesn't exist
+-- 2. Modify the association_members table to remove the role column
+-- Check if the column exists before dropping it
 DO $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND table_name = 'audit_logs' 
-        AND column_name = 'ip_address'
-    ) THEN
-        ALTER TABLE public.audit_logs 
-        ADD COLUMN ip_address TEXT;
-    END IF;
-END
-$$;
--- Add missing columns to audit_logs table if ip_address doesn't exist
-ALTER TABLE IF EXISTS public.audit_logs
-ADD COLUMN IF NOT EXISTS ip_address TEXT;
+  IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'association_members' AND column_name = 'role') THEN
+    ALTER TABLE public.association_members DROP COLUMN role;
+  END IF;
+END $$;
 
--- Update association_members table to make sure profile info is properly joined
--- First make sure we have proper foreign key relationship between user_id and profiles
-ALTER TABLE IF EXISTS public.association_members
-DROP CONSTRAINT IF EXISTS association_members_user_id_fkey,
-ADD CONSTRAINT association_members_user_id_fkey
-FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
--- Make sure the profiles table has proper index for faster joins
-CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles(id);
+-- 3. Update the get_user_association_memberships function to not return role
+-- Already updated in the base schema.sql, no change needed here.
 
--- Function to execute SQL (for admin use only during setup)
--- This function allows the setup wizard to execute the schema SQL
-CREATE OR REPLACE FUNCTION public.execute_sql(sql_query TEXT)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  EXECUTE sql_query;
-END;
-$$;
+-- 4. Update RLS policies that were referencing roles in association_members
+-- These policies are already updated in the base schema.sql to use the profiles table.
+-- The DROP/CREATE statements below are redundant if the base schema.sql is up-to-date.
+-- However, running them again ensures the correct state.
+
+-- For categories
+DROP POLICY IF EXISTS "Managers and admins can manage categories" ON public.categories;
+CREATE POLICY "Managers and admins can manage categories"
+  ON public.categories
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND am.association_id = categories.association_id
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+    )
+  );
+
+-- For locations
+DROP POLICY IF EXISTS "Managers and admins can manage locations" ON public.locations;
+CREATE POLICY "Managers and admins can manage locations"
+  ON public.locations
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND am.association_id = locations.association_id
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+    )
+  );
+
+-- For items
+DROP POLICY IF EXISTS "Managers and admins can manage items" ON public.items;
+CREATE POLICY "Managers and admins can manage items"
+  ON public.items
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND am.association_id = items.association_id
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+    )
+  );
+
+-- For conventions
+DROP POLICY IF EXISTS "Managers and admins can manage conventions" ON public.conventions;
+CREATE POLICY "Managers and admins can manage conventions"
+  ON public.conventions
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND am.association_id = conventions.association_id
+      AND p.role IN ('manager', 'admin', 'system_admin', 'super_admin')
+    )
+  );
+
+-- For association members
+DROP POLICY IF EXISTS "Admins can manage association members" ON public.association_members;
+CREATE POLICY "Admins can manage association members"
+  ON public.association_members
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND am.association_id = association_members.association_id
+      AND p.role IN ('admin', 'system_admin', 'super_admin')
+    )
+  );
+
+-- Update the association members invitation policy
+DROP POLICY IF EXISTS "Admins can manage invitations" ON public.association_invitations;
+CREATE POLICY "Admins can manage invitations"
+  ON public.association_invitations
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM association_members am
+      JOIN profiles p ON am.user_id = p.id
+      WHERE am.user_id = auth.uid()
+      AND am.association_id = association_invitations.association_id
+      AND p.role IN ('admin', 'system_admin', 'super_admin')
+    )
+  );
+
+-- Note: The association_invitations table still has a role column which
+-- should probably be kept to assign a default role to new members
+
+-- Add new tables to Realtime publication
+BEGIN;
+  ALTER publication supabase_realtime ADD TABLE public.equipment_sets;
+  ALTER publication supabase_realtime ADD TABLE public.equipment_set_items;
+  ALTER publication supabase_realtime ADD TABLE public.convention_equipment;
+  ALTER publication supabase_realtime ADD TABLE public.convention_consumables;
+  ALTER publication supabase_realtime ADD TABLE public.convention_locations;
+  ALTER publication supabase_realtime ADD TABLE public.convention_requirements;
+  ALTER publication supabase_realtime ADD TABLE public.convention_requirement_items;
+  ALTER publication supabase_realtime ADD TABLE public.convention_logs;
+  ALTER publication supabase_realtime ADD TABLE public.convention_templates;
+  ALTER publication supabase_realtime ADD TABLE public.convention_equipment_assignments;
+COMMIT;
+
+-- Add REPLICA IDENTITY FULL to new tables
+ALTER TABLE public.equipment_sets REPLICA IDENTITY FULL;
+ALTER TABLE public.equipment_set_items REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_equipment REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_consumables REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_locations REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_requirements REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_requirement_items REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_logs REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_templates REPLICA IDENTITY FULL;
+ALTER TABLE public.convention_equipment_assignments REPLICA IDENTITY FULL;

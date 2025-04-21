@@ -33,10 +33,23 @@ export function saveConfig(config: SupabaseConfig): boolean {
   }
 }
 
-// Check if application is configured
+// Check if application is configured via localStorage OR environment variables
 export function isConfigured(): boolean {
+  // First, check localStorage
   const config = loadConfig();
-  return !!config?.configured;
+  if (config?.configured) {
+    // Explicitly check if url and key are present in stored config
+    if (config.url && config.key) {
+      return true;
+    }
+  }
+
+  // If not configured via localStorage, check environment variables
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  // Return true if both environment variables are present and non-empty
+  return !!(supabaseUrl && supabaseAnonKey);
 }
 
 // Clear configuration
