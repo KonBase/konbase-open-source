@@ -6,16 +6,16 @@
 
 <p align="center">
   <a href="https://github.com/KonBase/KonBase/stargazers">
-    <img src="https://img.shields.io/github/stars/KonBase/KonBase" alt="Stars" />
+    <img src="https://img.shields.io/github/stars/KonBase/konbase-open-source" alt="Stars" />
   </a>
   <a href="https://github.com/KonBase/KonBase/network/members">
-    <img src="https://img.shields.io/github/forks/KonBase/KonBase" alt="Forks" />
+    <img src="https://img.shields.io/github/forks/KonBase/konbase-open-source" alt="Forks" />
   </a>
   <a href="https://github.com/KonBase/KonBase/issues">
-    <img src="https://img.shields.io/github/issues/KonBase/KonBase" alt="Issues" />
+    <img src="https://img.shields.io/github/issues/KonBase/konbase-open-source" alt="Issues" />
   </a>
   <a href="./LICENSE.md">
-    <img src="https://img.shields.io/github/license/KonBase/KonBase" alt="License" />
+    <img src="https://img.shields.io/github/license/KonBase/konbase-open-source" alt="License" />
   </a>
 </p>
 
