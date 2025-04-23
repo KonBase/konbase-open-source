@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth'; // Corrected import path
 import { logDebug } from '@/utils/debug';
 import { useDashboardActivity } from '@/hooks/useDashboardActivity';
 import useNetworkStatus from '@/hooks/useNetworkStatus';
@@ -18,17 +17,17 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [isDebugMode, setIsDebugMode] = useState(false);
   const [showLocationManager, setShowLocationManager] = useState(false);
-  const [loadingStartTime, setLoadingStartTime] = useState(Date.now());
+  const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null); // Initialize as null
   const [loadingDuration, setLoadingDuration] = useState(0);
   const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-  
+
   const networkStatus = useNetworkStatus({
     showToasts: true,
     testInterval: 30000,
     testEndpoint: 'https://www.google.com'
   });
-  
+
   const {
     activityData,
     activityError,
@@ -40,56 +39,66 @@ const Dashboard = () => {
     isLoadingActivity,
     requestInfo
   } = useDashboardActivity(currentAssociation);
-  
+
   // Track loading duration
   useEffect(() => {
-    if (associationLoading || activityLoading) {
-      if (!loadingTimerRef.current) {
-        setLoadingStartTime(Date.now());
+    const isLoading = associationLoading || activityLoading;
+
+    if (isLoading) {
+      if (loadingTimerRef.current === null) {
+        const startTime = Date.now();
+        setLoadingStartTime(startTime); // Set start time only once when loading begins
         loadingTimerRef.current = setInterval(() => {
-          setLoadingDuration(Date.now() - loadingStartTime);
+          setLoadingDuration(Date.now() - startTime);
         }, 100);
       }
     } else {
-      if (loadingTimerRef.current) {
+      if (loadingTimerRef.current !== null) {
         clearInterval(loadingTimerRef.current);
         loadingTimerRef.current = null;
-      }
-      // Final loading duration
-      setLoadingDuration(Date.now() - loadingStartTime);
-      
-      // Show toast with loading stats if debug mode is on
-      if (isDebugMode && loadingDuration > 0) {
-        toast({
-          title: "Dashboard loading completed",
-          description: `Loaded in ${loadingDuration}ms. Network: ${networkStatus.status}`,
-          variant: "default",
-        });
+        // Calculate final duration when loading stops
+        const finalDuration = loadingStartTime ? Date.now() - loadingStartTime : 0;
+        setLoadingDuration(finalDuration);
+
+        // Show toast with loading stats if debug mode is on
+        if (isDebugMode && finalDuration > 0) {
+          toast({
+            title: "Dashboard loading completed",
+            description: `Loaded in ${finalDuration}ms. Network: ${networkStatus.status}`,
+            variant: "default",
+          });
+        }
+        // Reset start time for the next loading cycle
+        setLoadingStartTime(null);
       }
     }
-    
+
     return () => {
       if (loadingTimerRef.current) {
         clearInterval(loadingTimerRef.current);
+        loadingTimerRef.current = null; // Ensure cleanup on unmount
       }
     };
-  }, [associationLoading, activityLoading, loadingStartTime, isDebugMode, loadingDuration, networkStatus.status, toast]);
-  
+    // Dependencies: loading state flags, debug mode flag, network status, toast function, and loadingStartTime
+  }, [associationLoading, activityLoading, isDebugMode, networkStatus.status, toast, loadingStartTime]);
+
+  // Log state changes, avoiding excessive logging due to object references or rapid duration changes
   useEffect(() => {
-    logDebug('Dashboard component state', {
+    logDebug('Dashboard component state changed', {
       associationLoading,
-      user: user?.id,
-      associationId: currentAssociation?.id,
+      user: user?.id, // Use stable ID
+      associationId: currentAssociation?.id, // Use stable ID
       networkStatus: networkStatus.status,
       retryCount,
-      loadingDuration
+      // loadingDuration is removed to prevent logging on every interval tick
     }, 'info');
-  }, [associationLoading, user, currentAssociation, networkStatus.status, retryCount, loadingDuration]);
+    // Dependencies: Use stable IDs and values that indicate significant state changes
+  }, [associationLoading, user?.id, currentAssociation?.id, networkStatus.status, retryCount]);
 
   const toggleDebugMode = useCallback(() => {
     setIsDebugMode(prev => !prev);
     logDebug(`Debug mode ${!isDebugMode ? 'enabled' : 'disabled'} by user`, null, 'info');
-  }, [isDebugMode]);
+  }, [isDebugMode]); // isDebugMode is the correct dependency here
 
   const handleShowLocationManager = useCallback(() => {
     setShowLocationManager(true);
@@ -101,32 +110,35 @@ const Dashboard = () => {
 
   // If loading takes too long, show warning in debug mode
   useEffect(() => {
-    if (loadingDuration > 5000 && isDebugMode && (associationLoading || activityLoading)) {
+    // Only show the toast if loading is actively ongoing
+    const isLoading = associationLoading || activityLoading;
+    if (isLoading && loadingDuration > 5000 && isDebugMode) {
       toast({
         title: "Loading is taking longer than usual",
         description: `Current duration: ${Math.round(loadingDuration / 1000)}s. Network: ${networkStatus.status}`,
         variant: "warning",
       });
     }
+    // Dependencies: loadingDuration, debug mode, loading state flags, network status, toast
   }, [loadingDuration, isDebugMode, associationLoading, activityLoading, networkStatus.status, toast]);
 
   // Loading state
   if (associationLoading) {
     return (
       <div className="container mx-auto py-6">
-        <DashboardLoading 
-          networkStatus={networkStatus.status} 
+        <DashboardLoading
+          networkStatus={networkStatus.status}
           loadingDuration={loadingDuration}
-          isDebugMode={isDebugMode} 
+          isDebugMode={isDebugMode}
         />
         {isDebugMode && (
-          <DebugPanel 
+          <DebugPanel
             networkStatus={networkStatus.status}
             testConnection={networkStatus.testConnection}
             isTestingConnection={networkStatus.isTestingConnection}
             lastTestedAt={networkStatus.lastTestedAt}
             testResults={networkStatus.testResults}
-            userData={{ 
+            userData={{
               userId: user?.id,
               associationId: currentAssociation?.id
             }}
@@ -199,7 +211,7 @@ const Dashboard = () => {
       networkStatus={networkStatus}
       lastError={lastError}
       retryCount={retryCount}
-      loadTime={loadingDuration}
+      loadTime={loadingDuration} // Pass the final calculated duration
       requestInfo={requestInfo}
     />
   );

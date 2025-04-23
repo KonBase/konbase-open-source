@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth'; // Corrected import path
 import { UserRoleType } from '@/types/user'; // Assuming UserRoleType is defined here
 import { checkUserHasRole } from '@/contexts/auth/AuthUtils'; // Import the utility function
 import { logDebug } from '@/utils/debug'; // Assuming logDebug is here

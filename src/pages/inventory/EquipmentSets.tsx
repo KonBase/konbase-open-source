@@ -7,43 +7,45 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { BoxIcon, ArrowLeft } from 'lucide-react';
+import { BoxIcon, ArrowLeft, PackagePlus } from 'lucide-react'; // Added icons
 import { useAssociation } from '@/contexts/AssociationContext';
 import EquipmentSetManager from '@/components/inventory/EquipmentSetManager';
 import { Link } from 'react-router-dom';
 
 const EquipmentSetsPage = () => {
   const { currentAssociation, isLoading } = useAssociation();
-  
+
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
-        <div className="h-4 w-96 bg-muted rounded animate-pulse"></div>
-        
-        <div className="grid grid-cols-1 gap-4 mt-6">
-          <Card className="animate-pulse">
-            <CardHeader>
-              <div className="h-5 bg-muted rounded w-3/4"></div>
-              <div className="h-3 bg-muted rounded w-1/2"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-40 bg-muted rounded"></div>
-            </CardContent>
-          </Card>
+      <div className="container mx-auto p-4 md:p-6 space-y-6">
+        {/* Consistent Loading Skeleton */}
+        <div className="flex items-center gap-2 mb-4">
+           <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
+           <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+        </div>
+        <div className="h-4 w-96 bg-muted rounded animate-pulse mb-6"></div>
+        <div className="border rounded-lg p-4 animate-pulse mb-6">
+          <div className="h-10 bg-muted rounded w-full mb-4"></div>
+          <div className="h-40 bg-muted rounded w-full"></div>
+        </div>
+         <div className="border rounded-lg p-4 animate-pulse">
+          <div className="h-6 bg-muted rounded w-1/3 mb-4"></div>
+          <div className="h-4 bg-muted rounded w-full mb-2"></div>
+          <div className="h-4 bg-muted rounded w-5/6"></div>
         </div>
       </div>
     );
   }
-  
+
   if (!currentAssociation) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="container mx-auto p-4 md:p-6">
+        {/* Consistent No Association State */}
         <Card>
           <CardHeader>
             <CardTitle>No Association Selected</CardTitle>
             <CardDescription>
-              Please select or create an association to manage equipment sets
+              Please select or create an association to manage equipment sets.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -55,27 +57,35 @@ const EquipmentSetsPage = () => {
       </div>
     );
   }
-  
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    // Use container for consistent padding
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild className="h-8 w-8 p-0">
-              <Link to="/dashboard">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight">Equipment Sets</h1>
+        <div className="flex items-center gap-2">
+           {/* Back Button */}
+           <Button variant="ghost" size="icon" asChild className="h-8 w-8">
+             {/* Link back to main inventory or dashboard */}
+             <Link to="/inventory">
+               <ArrowLeft className="h-4 w-4" />
+             </Link>
+           </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+              <PackagePlus className="h-6 w-6" /> Equipment Sets
+            </h1>
+            <p className="text-muted-foreground">
+              Create and manage reusable bundles of equipment for conventions and events.
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            Create and manage reusable sets of equipment for your conventions
-          </p>
         </div>
+         {/* Add Set button might be inside EquipmentSetManager, if not, add here */}
       </div>
-      
+
+      {/* Render the manager component */}
       <EquipmentSetManager />
-      
+
+      {/* Keep the informational card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -83,26 +93,24 @@ const EquipmentSetsPage = () => {
             About Equipment Sets
           </CardTitle>
           <CardDescription>
-            Understanding how equipment sets can help your association
+            Streamline your event setup by grouping commonly used items.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <p>
-              Equipment sets help you group items that are commonly used together for conventions and events.
-              By creating equipment sets, you can:
+              Equipment sets allow you to pre-define collections of inventory items (like a "Standard Projector Kit" or "Registration Desk Setup") that are frequently used together.
             </p>
-            
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Quickly assign groups of equipment to convention rooms</li>
-              <li>Create templates for recurring convention setups</li>
-              <li>Track related equipment items as a single unit</li>
-              <li>Simplify the planning process for new conventions</li>
+
+            <ul className="list-disc pl-6 space-y-1.5 text-sm text-muted-foreground">
+              <li>Assign sets to convention rooms or event areas quickly.</li>
+              <li>Ensure consistency across similar setups.</li>
+              <li>Simplify packing lists and resource allocation.</li>
+              <li>Track related equipment as a logical unit.</li>
             </ul>
-            
-            <p className="text-sm text-muted-foreground">
-              To get started, create a new equipment set and add inventory items to it.
-              You can then use these sets when setting up conventions.
+
+            <p className="text-sm">
+              Create a set, add items from your inventory, and then easily apply these sets during convention planning.
             </p>
           </div>
         </CardContent>

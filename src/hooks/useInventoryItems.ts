@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { useAssociation } from '@/contexts/AssociationContext';
@@ -16,10 +15,11 @@ export interface InventoryItem {
   isConsumable: boolean;
   quantity: number;
   minimumQuantity: number | null;
-  unitPrice: number | null;
+  purchasePrice: number | null; // Renamed from unitPrice
   purchaseDate: string | null;
   warrantyExpiration: string | null;
   image: string | null;
+  notes: string | null; // Added notes field
   associationId: string;
   createdAt: string;
   updatedAt: string;
@@ -29,60 +29,110 @@ export interface InventoryItem {
 
 export type NewInventoryItem = Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt' | 'categoryName' | 'locationName'>;
 
+// Add filter and sort types
+export interface InventoryFilters {
+  categoryId?: string | 'all';
+  locationId?: string | 'all';
+  condition?: string | 'all';
+}
+
+export interface InventorySort {
+  field: keyof InventoryItem | 'categoryName' | 'locationName';
+  direction: 'asc' | 'desc';
+}
+
 export function useInventoryItems() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { currentAssociation } = useAssociation();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<InventoryFilters>({});
+  const [sort, setSort] = useState<InventorySort>({ field: 'name', direction: 'asc' });
 
-  useEffect(() => {
-    if (currentAssociation) {
-      fetchItems();
-    } else {
-      setItems([]);
-      setLoading(false);
-    }
-  }, [currentAssociation]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     if (!currentAssociation) return;
-    
+
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('items')
         .select(`
           *,
           categories(name),
           locations(name)
         `)
-        .eq('association_id', currentAssociation.id)
-        .order('name');
+        .eq('association_id', currentAssociation.id);
+
+      // Apply filters
+      if (filters.categoryId && filters.categoryId !== 'all') {
+        query = query.eq('category_id', filters.categoryId);
+      }
+      if (filters.locationId && filters.locationId !== 'all') {
+        query = query.eq('location_id', filters.locationId);
+      }
+      if (filters.condition && filters.condition !== 'all') {
+        query = query.eq('condition', filters.condition);
+      }
+
+      // Apply sorting - Handle joined fields sorting client-side for simplicity
+      const sortField = sort.field;
+      if (sortField !== 'categoryName' && sortField !== 'locationName') {
+        query = query.order(sortField as string, { ascending: sort.direction === 'asc' });
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const formattedItems = data.map(item => ({
+      let formattedItems = data.map(item => ({
         id: item.id,
         name: item.name,
         description: item.description,
         serialNumber: item.serial_number,
         barcode: item.barcode,
-        condition: item.condition || 'unknown', // Ensure condition is never null or empty
+        condition: item.condition || 'unknown',
         categoryId: item.category_id,
         locationId: item.location_id,
         isConsumable: item.is_consumable,
         quantity: item.quantity,
         minimumQuantity: item.minimum_quantity,
-        unitPrice: item.purchase_price, // Changed from unit_price to purchase_price to match DB schema
+        purchasePrice: item.purchase_price, // Use purchase_price
         purchaseDate: item.purchase_date,
         warrantyExpiration: item.warranty_expiration,
         image: item.image,
+        notes: item.notes, // Added notes to the formatted item
         associationId: item.association_id,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
-        categoryName: item.categories?.name,
-        locationName: item.locations?.name
+        categoryName: item.categories?.name || 'N/A',
+        locationName: item.locations?.name || 'N/A'
       }));
+
+      // Apply search filter client-side
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        formattedItems = formattedItems.filter(item =>
+          item.name.toLowerCase().includes(lowerSearchTerm) ||
+          item.description?.toLowerCase().includes(lowerSearchTerm) ||
+          item.serialNumber?.toLowerCase().includes(lowerSearchTerm) ||
+          item.barcode?.toLowerCase().includes(lowerSearchTerm) ||
+          item.categoryName?.toLowerCase().includes(lowerSearchTerm) ||
+          item.locationName?.toLowerCase().includes(lowerSearchTerm)
+        );
+      }
+
+      // Apply client-side sorting for joined fields if necessary
+      if (sortField === 'categoryName' || sortField === 'locationName') {
+        formattedItems.sort((a, b) => {
+          const valA = a[sortField]?.toLowerCase() || '';
+          const valB = b[sortField]?.toLowerCase() || '';
+          if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
+          if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
 
       setItems(formattedItems);
     } catch (error: any) {
@@ -95,7 +145,16 @@ export function useInventoryItems() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentAssociation, filters, sort, searchTerm, toast]); // Add dependencies
+
+  useEffect(() => {
+    if (currentAssociation) {
+      fetchItems();
+    } else {
+      setItems([]);
+      setLoading(false);
+    }
+  }, [currentAssociation, fetchItems]); // Use fetchItems callback
 
   const createItem = async (newItem: NewInventoryItem) => {
     if (!currentAssociation) {
@@ -125,10 +184,11 @@ export function useInventoryItems() {
           is_consumable: newItem.isConsumable,
           quantity: newItem.quantity,
           minimum_quantity: newItem.minimumQuantity,
-          purchase_price: newItem.unitPrice, // Changed to purchase_price to match DB schema
+          purchase_price: newItem.purchasePrice,
           purchase_date: newItem.purchaseDate,
           warranty_expiration: newItem.warrantyExpiration,
           image: newItem.image,
+          notes: newItem.notes, // Added notes to insert
           association_id: currentAssociation.id,
           created_at: now,
           updated_at: now
@@ -156,7 +216,7 @@ export function useInventoryItems() {
       const dbUpdates: Record<string, any> = {
         updated_at: new Date().toISOString()
       };
-      
+
       // Map the camelCase properties to snake_case for the database
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -168,11 +228,12 @@ export function useInventoryItems() {
       if (updates.isConsumable !== undefined) dbUpdates.is_consumable = updates.isConsumable;
       if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
       if (updates.minimumQuantity !== undefined) dbUpdates.minimum_quantity = updates.minimumQuantity;
-      if (updates.unitPrice !== undefined) dbUpdates.unit_price = updates.unitPrice;
+      if (updates.purchasePrice !== undefined) dbUpdates.purchase_price = updates.purchasePrice;
       if (updates.purchaseDate !== undefined) dbUpdates.purchase_date = updates.purchaseDate;
       if (updates.warrantyExpiration !== undefined) dbUpdates.warranty_expiration = updates.warrantyExpiration;
       if (updates.image !== undefined) dbUpdates.image = updates.image;
-      
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes; // Added notes to update
+
       const { error } = await supabase
         .from('items')
         .update(dbUpdates)
@@ -223,6 +284,12 @@ export function useInventoryItems() {
     refreshItems: fetchItems,
     createItem,
     updateItem,
-    deleteItem
+    deleteItem,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
+    sort,
+    setSort
   };
 }

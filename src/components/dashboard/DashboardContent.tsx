@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
-import CommunicationSection from '@/components/dashboard/CommunicationSection';
 import MemberManager from '@/components/association/MemberManager';
 import DashboardDebugPanel from '@/components/dashboard/DashboardDebugPanel';
 import { Association } from '@/types/association';
@@ -106,10 +104,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         
         <ErrorBoundary>
           <ConventionManagementSection />
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <CommunicationSection unreadNotifications={0} />
         </ErrorBoundary>
         
         <ErrorBoundary>

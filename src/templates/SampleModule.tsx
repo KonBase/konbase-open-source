@@ -1,9 +1,15 @@
+import React from 'react';
 import { KonbaseModule, ModuleDashboardComponent, ModuleNavigationItem } from '../types/modules';
+
+// Extend the Window interface to include supabaseClient
+declare global {
+  interface Window {
+    supabaseClient?: any;
+  }
+}
 import { Activity } from 'lucide-react';
 
 // Sample Dashboard Component
-import React from 'react';
-
 const SampleDashboardComponent: React.FC = () => {
   return (
     <div className="p-4 border rounded-md">
@@ -17,6 +23,7 @@ const SampleDashboardComponent: React.FC = () => {
     </div>
   );
 };
+
 // Sample Module Definition
 const SampleModule: KonbaseModule = {
   id: 'sample-module',
@@ -25,52 +32,68 @@ const SampleModule: KonbaseModule = {
   description: 'A sample module to demonstrate the module system',
   author: 'Konbase Team',
   requires: [],
-  permissions: ['read:inventory'], // Updated to match ModulePermission type
-
+  permissions: ['read:inventory'],
+  
   // Lifecycle methods
   onRegister: async () => {
     console.log('Sample module registered');
   },
-
+  
   onEnable: async () => {
     console.log('Sample module enabled');
+    
+    // Add debugging for authentication methods
+    try {
+      const supabase = window.supabaseClient || globalThis.supabaseClient;
+      if (supabase?.auth) {
+        console.log('Available auth methods:', Object.keys(supabase.auth));
+        console.log('Sign in method:', typeof supabase.auth.signIn === 'function' ? 'signIn' : 
+                                     typeof supabase.auth.signInWithPassword === 'function' ? 'signInWithPassword' : 'not found');
+      } else {
+        console.warn('Supabase auth not available');
+      }
+    } catch (error) {
+      console.error('Error checking auth methods:', error);
+    }
   },
-
+  
   onDisable: async () => {
     console.log('Sample module disabled');
   },
-
+  
   // UI components
   getDashboardComponents: () => {
     const components: ModuleDashboardComponent[] = [
       {
+        title: 'Sample Module',
         moduleId: 'sample-module',
-        title: 'Sample Dashboard',
-        component: SampleDashboardComponent,
+        component: () => <SampleDashboardComponent />,
         priority: 10
       }
     ];
     return components;
   },
+  
   getNavigationItems: () => {
     const items: ModuleNavigationItem[] = [
       {
         moduleId: 'sample-module',
         title: 'Sample Module',
+        label: 'Sample Module',
         path: '/sample-module',
-        icon: Activity,
+        icon: <Activity />,
         order: 100
       }
     ];
     return items;
   },
-
+  
   // Database migrations
   getDatabaseMigrations: () => {
     return [
       {
         version: '1.0.0',
-        description: 'Initial migration for sample module',
+        description: 'Initial schema for sample module',
         sql: `
           CREATE TABLE IF NOT EXISTS sample_module_data (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -79,20 +102,22 @@ const SampleModule: KonbaseModule = {
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
           );
-
+          
+          -- Add RLS policies
           ALTER TABLE sample_module_data ENABLE ROW LEVEL SECURITY;
-
+          
           CREATE POLICY "Users can view their own data" ON sample_module_data
             FOR SELECT USING (auth.uid() IN (
               SELECT id FROM profiles WHERE association_id = (
                 SELECT association_id FROM profiles WHERE id = auth.uid()
               )
             ));
-        `
+        `,
+        runOnEnable: true
       }
     ];
   },
-
+  
   // Configuration schema
   getConfigurationSchema: () => {
     return {

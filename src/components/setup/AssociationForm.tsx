@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Association name must be at least 2 characters.' }),
@@ -81,7 +81,6 @@ const AssociationForm = ({ onSuccess }: AssociationFormProps) => {
         .insert({
           association_id: associationData.id,
           user_id: user.id,
-          role: 'admin',
         });
 
       if (memberError) {

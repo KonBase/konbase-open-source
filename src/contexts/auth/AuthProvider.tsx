@@ -145,15 +145,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
+      // Check email verification
+      if (!data.user?.email_confirmed_at) {
+        // Handle unverified email
+        const verificationError = new Error("Please verify your email before logging in.");
+        verificationError.name = "EmailVerificationError";
+        
+        // Sign the user out
+        await supabase.auth.signOut();
+        
+        throw verificationError;
+      }
+      
       // Session updates will be handled by the auth state change listener
     } catch (error: any) {
       console.error("Error signing in:", error);
       setState(prev => ({ ...prev, loading: false, error: error.message }));
-      toast({
-        title: "Sign in failed",
-        description: error.message,
-        variant: "destructive",
-      });
       throw error;
     }
   };

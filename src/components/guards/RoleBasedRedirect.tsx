@@ -1,7 +1,6 @@
-
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { UserRoleType } from '@/types/user';
 
 interface RoleBasedRedirectProps {

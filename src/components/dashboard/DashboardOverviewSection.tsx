@@ -1,4 +1,3 @@
-
 import React from 'react';
 import AssociationOverviewCard from './AssociationOverviewCard';
 import RecentActivityCard from './RecentActivityCard';
@@ -30,7 +29,7 @@ const DashboardOverviewSection: React.FC<DashboardOverviewSectionProps> = ({
   handleRetry
 }) => {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
+    <div className="grid gap-4 md:gap-6 lg:gap-8 md:grid-cols-2 lg:grid-cols-3 mb-6 md:mb-8">
       <ErrorBoundary>
         <AssociationOverviewCard association={currentAssociation} />
       </ErrorBoundary>

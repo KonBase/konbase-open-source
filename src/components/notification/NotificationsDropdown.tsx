@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Bell, Check } from 'lucide-react';
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { Notification } from '@/types/notification';
 import { Button } from '@/components/ui/button';
 import {

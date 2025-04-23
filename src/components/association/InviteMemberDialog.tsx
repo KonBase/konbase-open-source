@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -98,10 +97,11 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
         const { error } = await supabase.from('association_members').insert({
           user_id: existingUser.id,
           association_id: currentAssociation.id,
-          role: values.role,
-        });
-        
-        if (error) throw error;
+        }); // Removed the role field as it no longer exists in association_members
+
+        if (error) {
+          throw error;
+        }
         
         toast({
           title: 'Member Added',

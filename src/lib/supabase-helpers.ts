@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -45,18 +44,17 @@ export const createAssociation = async (associationData: any) => {
       .insert({
         user_id: userId,
         association_id: data.id,
-        role: 'admin',
-      });
-      
+      }); // Removed the role field as it no longer exists in association_members
+
     if (memberError) throw memberError;
-    
+
     // Update the user's role in the profiles table to 'admin'
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ role: 'admin', association_id: data.id })
+      .update({ role: 'admin', association_id: data.id }) // This update triggers RLS
       .eq('id', userId);
-      
-    if (profileError) throw profileError;
+
+    if (profileError) throw profileError; // Error occurs here
     
     // Log this action in audit_logs
     await supabase

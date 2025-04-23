@@ -113,7 +113,7 @@ KonBase is built using modern web technologies:
    npm install
    ```
 
-3. Create an `.env.local` file with your Supabase credentials
+3. Create an `.env` file with your Supabase credentials
    ```
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key

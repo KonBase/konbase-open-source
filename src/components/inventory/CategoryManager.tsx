@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useCategories, Category } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,9 @@ import {
 import { PlusCircle, Pencil, Trash, FolderTree, FileBox } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
+// Define a constant for the special 'no parent' value
+const NO_PARENT_VALUE = "__NONE__";
+
 // Helper function to build a tree structure from flat categories
 const buildCategoryTree = (categories: Category[]): (Category & { children: Category[] })[] => {
   const categoriesMap: Record<string, Category & { children: Category[] }> = {};
@@ -67,7 +69,7 @@ const buildCategoryTree = (categories: Category[]): (Category & { children: Cate
   return rootCategories;
 };
 
-const CategoryManager = () => {
+export function CategoryManager() {
   const { categories, loading, createCategory, updateCategory, deleteCategory } = useCategories();
   const { toast } = useToast();
   
@@ -80,31 +82,27 @@ const CategoryManager = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: '',
+    parentId: null as string | null, // Initialize parentId as null
   });
   
   // Prepare the tree view data when in tree mode
   const categoryTree = buildCategoryTree(categories);
   
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      parentId: '',
-    });
+  const resetFormData = () => {
+    setFormData({ name: '', description: '', parentId: null }); // Reset parentId to null
   };
   
   const openAddDialog = () => {
-    resetForm();
+    resetFormData(); // Ensure parentId is null when opening add dialog
     setIsAddDialogOpen(true);
   };
   
   const openEditDialog = (category: Category) => {
     setCurrentCategory(category);
-    setFormData({
-      name: category.name,
-      description: category.description || '',
-      parentId: category.parentId || '',
+    setFormData({ 
+      name: category.name, 
+      description: category.description || '', 
+      parentId: category.parentId // parentId from category is already string | null
     });
     setIsEditDialogOpen(true);
   };
@@ -114,7 +112,7 @@ const CategoryManager = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleCreateCategory = async () => {
+  const handleAddCategory = async () => {
     if (!formData.name) {
       toast({
         title: "Error",
@@ -125,26 +123,21 @@ const CategoryManager = () => {
     }
     
     try {
-      await createCategory(
+      const newCategory = await createCategory(
         formData.name,
         formData.description,
-        formData.parentId || undefined
+        formData.parentId // Pass parentId directly (it's null or a string ID)
       );
       
       setIsAddDialogOpen(false);
-      resetForm();
+      resetFormData();
       
       toast({
         title: "Success",
         description: "Category created successfully",
       });
     } catch (error) {
-      console.error('Error creating category:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create category",
-        variant: "destructive",
-      });
+      // Error handling is inside createCategory hook
     }
   };
   
@@ -162,7 +155,7 @@ const CategoryManager = () => {
       await updateCategory(currentCategory.id, {
         name: formData.name,
         description: formData.description,
-        parentId: formData.parentId || null,
+        parentId: formData.parentId, // Pass parentId directly (it's null or a string ID)
       });
       
       setIsEditDialogOpen(false);
@@ -374,19 +367,21 @@ const CategoryManager = () => {
             <div className="grid gap-2">
               <Label htmlFor="parent">Parent Category (Optional)</Label>
               <Select
-                value={formData.parentId}
-                onValueChange={(value) => setFormData({...formData, parentId: value})}
+                value={formData.parentId ?? NO_PARENT_VALUE} // Map null/undefined to NO_PARENT_VALUE
+                onValueChange={(value) => setFormData({...formData, parentId: value === NO_PARENT_VALUE ? null : value})} // Map NO_PARENT_VALUE back to null
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a parent category" />
+                  <SelectValue placeholder="Select parent category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None (Top Level)</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value={NO_PARENT_VALUE}>No Parent</SelectItem> {/* Use special value */}
+                  {categories
+                    .filter(cat => !currentCategory || cat.id !== currentCategory.id) // Prevent self-parenting during edit
+                    .map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -396,7 +391,7 @@ const CategoryManager = () => {
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateCategory}>
+            <Button onClick={handleAddCategory}>
               Create
             </Button>
           </DialogFooter>
@@ -433,24 +428,23 @@ const CategoryManager = () => {
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="edit-parent">Parent Category</Label>
+              <Label htmlFor="edit-parent">Parent Category (Optional)</Label>
               <Select
-                value={formData.parentId}
-                onValueChange={(value) => setFormData({...formData, parentId: value})}
+                value={formData.parentId ?? NO_PARENT_VALUE} // Map null/undefined to NO_PARENT_VALUE
+                onValueChange={(value) => setFormData({...formData, parentId: value === NO_PARENT_VALUE ? null : value})} // Map NO_PARENT_VALUE back to null
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a parent category" />
+                  <SelectValue placeholder="Select parent category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None (Top Level)</SelectItem>
+                  <SelectItem value={NO_PARENT_VALUE}>No Parent</SelectItem> {/* Use special value */}
                   {categories
-                    .filter(category => category.id !== currentCategory?.id)
+                    .filter(cat => !currentCategory || cat.id !== currentCategory.id) // Prevent self-parenting
                     .map(category => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
-                    ))
-                  }
+                    ))}
                 </SelectContent>
               </Select>
             </div>

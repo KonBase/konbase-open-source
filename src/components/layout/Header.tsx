@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Building2, ArrowLeft } from "lucide-react";
 import { NotificationsDropdown } from '@/components/notification/NotificationsDropdown';
 import { AssociationSelector } from '@/components/admin/AssociationSelector';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Sheet, SheetContent } from '@/components/ui/sheet';

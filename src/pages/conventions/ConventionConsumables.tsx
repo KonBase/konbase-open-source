@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, PlusIcon, Pencil, ShoppingCart, BarChart } from 'lucide-react';
+import { Package, PlusIcon, Pencil, ShoppingCart, BarChart, Loader2, Info, MapPin, PackagePlus, PackageMinus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Progress } from '@/components/ui/progress';
 import { AddConsumableDialog } from '@/components/conventions/AddConsumableDialog';
 import { UpdateConsumableUsageDialog } from '@/components/conventions/UpdateConsumableUsageDialog';
+import { Separator } from '@/components/ui/separator';
 
 const ConventionConsumables = () => {
   const { id: conventionId } = useParams<{ id: string }>();
@@ -69,146 +70,155 @@ const ConventionConsumables = () => {
   };
 
   const getUsagePercentage = (used: number, allocated: number) => {
-    if (allocated === 0) return 0;
-    return Math.min(Math.round((used / allocated) * 100), 100);
+    if (allocated <= 0) return 0;
+    return Math.min(Math.max(0, Math.round((used / allocated) * 100)), 100);
   };
 
+  // Calculate totals
+  const totalTypes = consumables.length;
+  const totalAllocated = consumables.reduce((sum, item) => sum + item.allocated_quantity, 0);
+  const totalUsed = consumables.reduce((sum, item) => sum + item.used_quantity, 0);
+  const overallUsagePercentage = getUsagePercentage(totalUsed, totalAllocated);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Consumables Tracking</h1>
-          <p className="text-muted-foreground">Track usage of consumable items during conventions.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Consumables Tracking</h1>
+          <p className="text-muted-foreground">Monitor and manage usage of consumable items for this convention.</p>
+          {/* Link back to convention details */}
+          <Button variant="link" asChild className="p-0 h-auto text-sm">
+            <RouterLink to={`/conventions/${conventionId}`}>Back to Convention Details</RouterLink>
+          </Button>
         </div>
         <Button onClick={() => setIsAddConsumableOpen(true)}>
           <PlusIcon className="mr-2 h-4 w-4" />
-          Add Consumable
+          Add/Allocate Consumable
         </Button>
       </div>
-      
-      <div className="grid gap-4 md:grid-cols-2">
+
+      {/* Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader>
-            <CardTitle>Inventory Status</CardTitle>
-            <CardDescription>Overview of consumable inventory</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Consumable Types</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Total Consumable Types</span>
-                <span className="font-medium">{consumables.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Total Items Allocated</span>
-                <span className="font-medium">
-                  {consumables.reduce((sum, item) => sum + item.allocated_quantity, 0)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Total Items Used</span>
-                <span className="font-medium">
-                  {consumables.reduce((sum, item) => sum + item.used_quantity, 0)}
-                </span>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{totalTypes}</div>
+            <p className="text-xs text-muted-foreground">Different types allocated</p>
           </CardContent>
         </Card>
-        
         <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Manage consumable inventory</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Allocated</CardTitle>
+            <PackagePlus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col space-y-2">
-              <Button variant="outline" className="justify-start" onClick={() => setIsAddConsumableOpen(true)}>
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Allocate More Consumables
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <BarChart className="mr-2 h-4 w-4" />
-                View Usage Report
-              </Button>
-            </div>
+            <div className="text-2xl font-bold">{totalAllocated}</div>
+            <p className="text-xs text-muted-foreground">Total units allocated</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Used</CardTitle>
+            <PackageMinus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalUsed}</div>
+            <p className="text-xs text-muted-foreground">({overallUsagePercentage}% overall usage)</p>
           </CardContent>
         </Card>
       </div>
-      
+
+      {/* Consumables List Table */}
       <Card>
         <CardHeader>
           <CardTitle>Consumables List</CardTitle>
-          <CardDescription>All consumable items for this convention</CardDescription>
+          <CardDescription>Detailed list of consumable items and their usage.</CardDescription>
+          {/* TODO: Add filtering/sorting options here */}
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="py-10 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading consumables...</p>
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Loading consumables...</span>
             </div>
           ) : consumables.length === 0 ? (
             <div className="text-center py-10">
               <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Consumables Assigned</h3>
-              <p className="mt-1 text-muted-foreground">
-                No consumable items have been assigned to this convention yet.
+              <h3 className="mt-4 text-lg font-semibold">No Consumables Allocated</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Allocate consumable items to track their usage during the convention.
               </p>
-              <Button variant="outline" className="mt-4" onClick={() => setIsAddConsumableOpen(true)}>
+              <Button variant="default" className="mt-4" onClick={() => setIsAddConsumableOpen(true)}>
                 <PlusIcon className="mr-2 h-4 w-4" />
                 Add First Consumable
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Allocated</TableHead>
-                  <TableHead>Used</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {consumables.map((consumable) => (
-                  <TableRow key={consumable.id}>
-                    <TableCell className="font-medium">{consumable.items?.name || 'Unknown Item'}</TableCell>
-                    <TableCell>{consumable.locations?.name || 'Not assigned'}</TableCell>
-                    <TableCell>{consumable.allocated_quantity}</TableCell>
-                    <TableCell>{consumable.used_quantity}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Progress 
-                          value={getUsagePercentage(consumable.used_quantity, consumable.allocated_quantity)} 
-                          className="h-2 w-24" 
-                        />
-                        <span className="text-xs">
-                          {getUsagePercentage(consumable.used_quantity, consumable.allocated_quantity)}%
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => openUpdateUsageDialog(consumable)}
-                      >
-                        <Pencil className="h-4 w-4 mr-1" />
-                        Update
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead className="text-right">Allocated</TableHead>
+                    <TableHead className="text-right">Used</TableHead>
+                    <TableHead className="w-[200px]">Usage</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {consumables.map((consumable) => {
+                    const usagePercent = getUsagePercentage(consumable.used_quantity, consumable.allocated_quantity);
+                    return (
+                      <TableRow key={consumable.id}>
+                        <TableCell className="font-medium">{consumable.items?.name || 'N/A'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {consumable.locations?.name || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{consumable.allocated_quantity}</TableCell>
+                        <TableCell className="text-right font-medium">{consumable.used_quantity}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={usagePercent}
+                              className="h-2 flex-1"
+                              aria-label={`${usagePercent}% used`}
+                            />
+                            <span className="text-xs font-medium w-10 text-right">{usagePercent}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline" // Changed variant
+                            size="sm"
+                            onClick={() => openUpdateUsageDialog(consumable)}
+                            aria-label={`Update usage for ${consumable.items?.name || 'item'}`}
+                          >
+                            <Pencil className="h-4 w-4" /> {/* Icon only for smaller button */}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
-      
-      <AddConsumableDialog 
-        isOpen={isAddConsumableOpen} 
-        onClose={() => setIsAddConsumableOpen(false)} 
-        conventionId={conventionId || ''} 
+
+      {/* Dialogs */}
+      <AddConsumableDialog
+        isOpen={isAddConsumableOpen}
+        onClose={() => setIsAddConsumableOpen(false)}
+        conventionId={conventionId || ''}
         onConsumableAdded={handleConsumableAdded}
       />
 

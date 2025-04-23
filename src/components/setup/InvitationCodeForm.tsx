@@ -17,7 +17,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { logDebug, handleError } from '@/utils/debug';
 import { UserRoleType } from '@/types/user';
 
@@ -90,9 +90,8 @@ const InvitationCodeForm = ({ onSuccess }: InvitationCodeFormProps) => {
         .insert({
           association_id: invitationData.association_id,
           user_id: user.id,
-          role: invitationData.role as UserRoleType,
         });
-      
+
       if (memberError) {
         // Check if it's a duplicate key error
         if (memberError.code === '23505') {

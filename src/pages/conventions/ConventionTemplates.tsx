@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, ClipboardIcon, Copy, CalendarIcon } from 'lucide-react';
+import { PlusIcon, ClipboardIcon, Copy, CalendarIcon, Loader2, Info, FileText, Settings, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
 import { ConventionTemplate } from '@/types/convention';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { AddTemplateDialog } from '@/components/conventions/AddTemplateDialog';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ConventionTemplates = () => {
   const { currentAssociation } = useAssociation();
@@ -56,120 +63,154 @@ const ConventionTemplates = () => {
   };
 
   const useTemplate = (templateId: string) => {
-    // Navigate to the create convention page with template ID
-    navigate(`/conventions/create?template=${templateId}`);
+    // TODO: Navigate to the create convention page with template ID
+    // This might need adjustment based on the actual creation route
+    // navigate(`/conventions/create?template=${templateId}`);
+    toast({ title: "Navigate to Create", description: `Would navigate to create page using template ID: ${templateId}` });
   };
 
-  const formatConfigurationSummary = (config: Record<string, any>) => {
+  const formatConfigurationSummary = (config: Record<string, any> | null): string => {
+    if (!config) return 'No configuration details';
     const items = [];
-    if (config.locations) items.push(`${config.locations.length} locations`);
-    if (config.equipment) items.push(`${config.equipment.length} equipment items`);
-    if (config.consumables) items.push(`${config.consumables.length} consumables`);
-    if (config.requirements) items.push(`${config.requirements.length} requirements`);
-    
-    return items.join(', ');
+    if (config.locations?.length) items.push(`${config.locations.length} locations`);
+    if (config.equipment?.length) items.push(`${config.equipment.length} equipment`);
+    if (config.consumables?.length) items.push(`${config.consumables.length} consumables`);
+    if (config.requirements?.length) items.push(`${config.requirements.length} requirements`);
+
+    if (items.length === 0) return 'Basic configuration';
+    return `Includes: ${items.join(', ')}`;
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Convention Templates</h1>
-          <p className="text-muted-foreground">Create and manage templates for quick convention setup.</p>
+    <TooltipProvider>
+      <div className="space-y-6 p-4 md:p-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Convention Templates</h1>
+            <p className="text-muted-foreground">Create reusable configurations for quick convention setup.</p>
+            {/* Optional: Link back to conventions list or dashboard */}
+            {/* <Button variant="link" asChild className="p-0 h-auto text-sm">
+              <RouterLink to={`/conventions`}>Back to Conventions</RouterLink>
+            </Button> */}
+          </div>
+          <Button onClick={() => setIsAddTemplateOpen(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Create New Template
+          </Button>
         </div>
-        <Button onClick={() => setIsAddTemplateOpen(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Create Template
-        </Button>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Templates</CardTitle>
-          <CardDescription>Reusable configurations for quick convention setup</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-10 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading templates...</p>
-            </div>
-          ) : templates.length === 0 ? (
-            <div className="text-center py-10">
-              <ClipboardIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Templates</h3>
-              <p className="mt-1 text-muted-foreground">
-                You haven't created any convention templates yet.
-              </p>
-              <Button variant="outline" className="mt-4" onClick={() => setIsAddTemplateOpen(true)}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Create First Template
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {templates.map((template) => (
-                <Card key={template.id} className="overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{template.name}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {template.description || 'No description provided'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    <div className="text-sm text-muted-foreground">
-                      <p><strong>Created:</strong> {format(new Date(template.created_at), 'MMM d, yyyy')}</p>
-                      <p><strong>By:</strong> {template.creator?.display_name || template.creator?.email || 'Unknown'}</p>
-                      <p className="mt-1 font-medium">Includes:</p>
-                      <p>{formatConfigurationSummary(template.configuration)}</p>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-2">                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => useTemplate(template.id)}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Use Template
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>About Templates</CardTitle>
-          <CardDescription>How to use convention templates effectively</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+
+        {/* Templates Grid */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Templates</CardTitle>
+            <CardDescription>Select a template to start a new convention or manage existing templates.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading templates...</span>
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-10">
+                <ClipboardIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">No Templates Created Yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create your first template to streamline convention setup.
+                </p>
+                <Button variant="default" className="mt-4" onClick={() => setIsAddTemplateOpen(true)}>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Create First Template
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {templates.map((template) => (
+                  <Card key={template.id} className="flex flex-col hover:shadow-md transition-shadow duration-200">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-lg font-semibold flex-1 mr-2">{template.name}</CardTitle>
+                        {/* TODO: Add Edit/Delete actions for template */}
+                        {/* <Button variant="ghost" size="icon" className="h-7 w-7"><Settings className="h-4 w-4" /></Button> */}
+                      </div>
+                      <CardDescription className="text-sm line-clamp-2 h-10 pt-1">
+                        {template.description || 'No description provided'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow pb-3 space-y-2">
+                      <Separator />
+                      <div className="text-xs text-muted-foreground space-y-1 pt-2">
+                        <div className="flex items-center gap-1.5">
+                          <User className="h-3 w-3" />
+                          <span>Created by {template.creator?.display_name || template.creator?.email || 'Unknown'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <CalendarIcon className="h-3 w-3" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>{formatDistanceToNow(new Date(template.created_at), { addSuffix: true })}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {format(new Date(template.created_at), 'PPP p')}
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="flex items-start gap-1.5 pt-1">
+                          <Settings className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span className="line-clamp-2">{formatConfigurationSummary(template.configuration)}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t pt-3">
+                      <Button
+                        variant="default" // Changed variant
+                        size="sm" // Changed size
+                        className="w-full"
+                        onClick={() => useTemplate(template.id)}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        Use This Template
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* About Templates Card */}
+        <Card className="bg-muted/30 border-dashed">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Info className="h-5 w-5"/> About Templates</CardTitle>
+            <CardDescription>How to leverage convention templates effectively.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              Convention templates help you quickly set up new conventions by reusing your most common configurations. 
-              Templates can include:
+              Templates save time by pre-filling common convention details. Create templates for recurring event types.
             </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Pre-defined locations (rooms, halls, etc.)</li>
-              <li>Equipment lists with pre-allocated quantities</li>
-              <li>Consumable requirements</li>
-              <li>Standard requirements</li>
+            <p>A template can include pre-defined:</p>
+            <ul className="list-disc list-inside space-y-1 text-xs pl-2">
+              <li>Locations (e.g., Main Hall, Panel Room A)</li>
+              <li>Equipment lists (e.g., 10 Projectors, 20 Microphones)</li>
+              <li>Consumable needs (e.g., 500 Badges, 10 Water Coolers)</li>
+              <li>Standard requirements/tasks (e.g., Setup AV, Check Registration)</li>
             </ul>
             <p>
-              To use a template, simply click "Use Template" and it will pre-populate the convention creation form.
+              Click "Use This Template" on a card to start creating a new convention based on that template's configuration.
             </p>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <AddTemplateDialog 
-        isOpen={isAddTemplateOpen} 
-        onClose={() => setIsAddTemplateOpen(false)} 
-        onTemplateAdded={handleTemplateAdded}
-      />
-    </div>
+          </CardContent>
+        </Card>
+
+        {/* Add Template Dialog */}
+        <AddTemplateDialog
+          isOpen={isAddTemplateOpen}
+          onClose={() => setIsAddTemplateOpen(false)}
+          onTemplateAdded={handleTemplateAdded}
+        />
+      </div>
+    </TooltipProvider>
   );
 };
 

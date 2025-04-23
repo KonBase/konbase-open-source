@@ -3,7 +3,6 @@ import { Database } from '@/lib/database.types'; // Ensure Database type is impo
 import { supabase } from '@/lib/supabase';
 import { Association } from '@/types/association';
 import { toast } from '@/components/ui/use-toast';
-import { createAssociation as createAssociationHelper } from '@/lib/supabase-helpers';
 
 /**
  * Format an association from database response
@@ -129,42 +128,95 @@ export const fetchUserAssociations = async (profileId: string): Promise<Associat
 };
 
 /**
- * Create a new association
+ * Create a new association by calling the database function
  */
 export const createAssociation = async (
   data: Partial<Association>,
   profileId: string,
-  profileEmail: string
+  // profileEmail is no longer needed here as the function uses SECURITY DEFINER
 ): Promise<Association | null> => {
+  console.log("Entering createAssociation (AssociationUtils.ts) with data:", data, "profileId:", profileId);
   try {
-    const id = crypto.randomUUID();
-    
-    const now = new Date().toISOString();
-    const dbData = {
-      id,
+    // Prepare the data for the database function
+    const associationData = {
       name: data.name || 'New Association',
       description: data.description,
       logo: data.logo,
       address: data.address,
-      contact_email: data.contactEmail || profileEmail,
+      contact_email: data.contactEmail,
       contact_phone: data.contactPhone,
       website: data.website,
-      created_at: now,
-      updated_at: now
     };
-    
-    const { data: association, error } = await createAssociationHelper(dbData);
-      
-    if (error) throw error;
-    
-    if (association) {
-      return formatAssociation(association);
+
+    // Call the PostgreSQL function
+    const { data: result, error: rpcError } = await supabase.rpc('create_association_and_set_admin', {
+      association_data: associationData,
+      creator_id: profileId
+    });
+
+    // 1. Handle RPC errors first
+    if (rpcError) {
+      console.error("Supabase RPC error in createAssociation:", rpcError);
+      // Ensure rpcError is thrown as an Error instance
+      if (rpcError instanceof Error) {
+        throw rpcError;
+      } else {
+        // Attempt to create a meaningful error message
+        const message = typeof rpcError === 'object' && rpcError !== null && 'message' in rpcError
+          ? String(rpcError.message)
+          : `Supabase RPC failed: ${JSON.stringify(rpcError)}`;
+        throw new Error(message);
+      }
     }
-    
-    return null;
-  } catch (error) {
-    console.error("Error creating association:", error);
-    throw error;
+
+    // 2. Check if the function returned an application-level error within the data payload
+    //    (Assuming the function might return { error: string, sqlstate: string } on failure)
+    if (result && typeof result === 'object' && 'error' in result && result.error) {
+        const dbErrorMessage = result.error;
+        const sqlstate = 'sqlstate' in result ? result.sqlstate : 'N/A';
+        console.error("Database function returned error:", dbErrorMessage, "SQLSTATE:", sqlstate);
+        // Create a new Error object with the message from the function
+        throw new Error(`Database Error: ${dbErrorMessage} (SQLSTATE: ${sqlstate})`);
+    }
+
+    // 3. Check for successful result
+    //    Assuming 'result' contains the association data on success
+    if (result) {
+        // The function returns the created association object on success
+        // Ensure formatAssociation handles the raw result correctly
+        return formatAssociation(result);
+    }
+
+    // 4. Handle unexpected null/undefined result without an RPC error
+    console.error("Unexpected null or undefined result from create_association_and_set_admin RPC without an error:", result);
+    throw new Error("Unexpected result from database function: Received null or undefined data without an error.");
+
+  } catch (error: unknown) { // Catch as unknown type
+    // Log the raw error object first for debugging
+    console.error("Raw error caught in createAssociation (AssociationUtils.ts):", error);
+
+    let errorToThrow: Error;
+
+    if (error instanceof Error) {
+        // If it's already an Error instance, use it directly
+        errorToThrow = error;
+    } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        // Handle objects with a message property (like potential Supabase errors not instanceof Error)
+        errorToThrow = new Error(String(error.message));
+        // Attempt to preserve stack if available
+        if ('stack' in error && typeof error.stack === 'string') {
+             errorToThrow.stack = error.stack;
+        }
+    } else {
+        // Handle primitive values or other unexpected throws
+        errorToThrow = new Error(`An non-error value was thrown: ${String(error)}`);
+    }
+
+    // Log the final error message being thrown
+    console.error("Error being thrown from createAssociation catch block:", errorToThrow.message);
+
+    // Re-throw the processed Error object
+    throw errorToThrow;
   }
 };
 

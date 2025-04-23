@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { Spinner } from '@/components/ui/spinner';
 import { UserRoleType } from '@/types/user';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,7 @@ export function RoleGuard({
   enforceTwoFactor = false
 }: RoleGuardProps) {
   // Destructure isAuthenticated and hasRole correctly now
-  const { userProfile, hasRole, loading, isAuthenticated, isReady } = useAuth(); 
+  const { userProfile, hasRole, loading, isAuthenticated, isLoading } = useAuth(); 
   const [checking, setChecking] = useState(true); // Keep checking state
   const [accessGranted, setAccessGranted] = useState<boolean | null>(null); // Use null initial state
   const [showTwoFactorDialog, setShowTwoFactorDialog] = useState(false);
@@ -38,7 +38,7 @@ export function RoleGuard({
   
   useEffect(() => {
     // Only run checks if auth is ready and not loading
-    if (!isReady || loading) {
+    if (isLoading || loading) { // Use isLoading instead of isReady
       setChecking(true); // Indicate checking is in progress
       return;
     }
@@ -93,7 +93,7 @@ export function RoleGuard({
     setShowTwoFactorDialog(false); // Ensure dialog is hidden if previously shown
 
   // Include all dependencies used in the effect
-  }, [isReady, loading, isAuthenticated, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, fallbackPath, navigate]); 
+  }, [isLoading, loading, isAuthenticated, userProfile, allowedRoles, hasRole, enforceTwoFactor, toast, fallbackPath, navigate]); // Use isLoading instead of isReady
   
   // Display loading spinner while auth context is initializing OR checks are running
   if (loading || checking) { 

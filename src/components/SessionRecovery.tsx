@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
 import { getLastVisitedPath, getSavedSessionData } from '@/utils/session-utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 /**
  * Component that handles session recovery when a user returns to the app
@@ -24,8 +24,8 @@ export const SessionRecovery = () => {
         const sessionData = getSavedSessionData();
         if (!sessionData) return;
         
-        // Check if the session is fresh enough (within the last 24 hours)
-        const isSessionRecent = Date.now() - sessionData.timestamp < 24 * 60 * 60 * 1000;
+        // Check if the session is fresh enough (within the last hour rather than 24 hours)
+        const isSessionRecent = Date.now() - sessionData.timestamp < 1 * 60 * 60 * 1000;
         if (!isSessionRecent) return;
         
         // Check if we're on a 404 or public page
@@ -33,12 +33,12 @@ export const SessionRecovery = () => {
         const is404 = location.pathname === '/404' || location.key === 'default';
         
         if (is404 || isPublicRoute) {
-          // Get current session, if user is already logged in we can redirect
+          // Try to restore the session if possible
           const { data } = await supabase.auth.getSession();
           
           if (data.session) {
+            logDebug('Valid session found during recovery', null, 'info');
             const lastPath = getLastVisitedPath();
-            logDebug('Restoring session navigation', { from: location.pathname, to: lastPath }, 'info');
             navigate(lastPath, { replace: true });
           }
         }
@@ -47,7 +47,12 @@ export const SessionRecovery = () => {
       }
     };
 
-    attemptSessionRecovery();
+    // Add a slight delay to ensure other auth processes complete first
+    const timer = setTimeout(() => {
+      attemptSessionRecovery();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, [session, loading, location, navigate]);
 
   return null; // This component doesn't render anything

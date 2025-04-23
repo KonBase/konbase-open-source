@@ -1,16 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, ClipboardIcon, CheckCircleIcon, XCircleIcon, Clock } from 'lucide-react';
+import { PlusIcon, ClipboardIcon, CheckCircleIcon, XCircleIcon, Clock, Loader2, Info, User, Calendar, AlertTriangle, Check, X, Hourglass } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
 import { ConventionRequirement } from '@/types/convention';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { AddRequirementDialog } from '@/components/conventions/AddRequirementDialog';
+import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ConventionRequirements = () => {
   const { id: conventionId } = useParams<{ id: string }>();
@@ -65,26 +72,26 @@ const ConventionRequirements = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'requested':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Requested</Badge>;
+        return <Badge variant="outline" className="border-blue-500 text-blue-700 dark:border-blue-400 dark:text-blue-300"><Hourglass className="mr-1 h-3 w-3" /> Requested</Badge>;
       case 'approved':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Approved</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"><Check className="mr-1 h-3 w-3" /> Approved</Badge>;
       case 'denied':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Denied</Badge>;
+        return <Badge variant="destructive"><X className="mr-1 h-3 w-3" /> Denied</Badge>;
       case 'fulfilled':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Fulfilled</Badge>;
+        return <Badge variant="default" className="bg-green-600 hover:bg-green-700"><CheckCircleIcon className="mr-1 h-3 w-3" /> Fulfilled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   const getPriorityBadge = (priority: string) => {
-    switch (priority) {
+    switch (priority.toLowerCase()) {
       case 'high':
-        return <Badge variant="destructive">High</Badge>;
+        return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3" /> High</Badge>;
       case 'medium':
-        return <Badge variant="default">Medium</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Medium</Badge>;
       case 'low':
         return <Badge variant="outline">Low</Badge>;
       default:
@@ -101,118 +108,156 @@ const ConventionRequirements = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Requirements Management</h1>
-          <p className="text-muted-foreground">Track and manage equipment and resource requirements for your convention.</p>
+    <TooltipProvider>
+      <div className="space-y-6 p-4 md:p-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Requirements Management</h1>
+            <p className="text-muted-foreground">Track tasks, equipment, and resource needs for this convention.</p>
+            {/* Link back to convention details */}
+            <Button variant="link" asChild className="p-0 h-auto text-sm">
+              <RouterLink to={`/conventions/${conventionId}`}>Back to Convention Details</RouterLink>
+            </Button>
+          </div>
+          <Button onClick={() => setIsAddRequirementOpen(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Requirement
+          </Button>
         </div>
-        <Button onClick={() => setIsAddRequirementOpen(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Add Requirement
-        </Button>
+
+        {/* Status Overview Cards */}
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Requested</CardTitle>
+              <Hourglass className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts.requested}</div>
+              <p className="text-xs text-muted-foreground">Pending approval</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Approved</CardTitle>
+              <Check className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts.approved}</div>
+              <p className="text-xs text-muted-foreground">Ready to fulfill</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Fulfilled</CardTitle>
+              <CheckCircleIcon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts.fulfilled}</div>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Denied</CardTitle>
+              <X className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts.denied}</div>
+              <p className="text-xs text-muted-foreground">Rejected requests</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Requirements List Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Requirements</CardTitle>
+            <CardDescription>List of all requirements for this convention.</CardDescription>
+            {/* TODO: Add filtering/sorting options here */}
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading requirements...</span>
+              </div>
+            ) : requirements.length === 0 ? (
+              <div className="text-center py-10">
+                <ClipboardIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">No Requirements Added Yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add requirements needed for this convention.
+                </p>
+                <Button variant="default" className="mt-4" onClick={() => setIsAddRequirementOpen(true)}>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add First Requirement
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name / Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Requested Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requirements.map((requirement) => (
+                      <TableRow key={requirement.id}>
+                        <TableCell className="font-medium max-w-xs">
+                          <p className="truncate font-semibold">{requirement.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{requirement.description || 'No description'}</p>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(requirement.status)}</TableCell>
+                        <TableCell>{getPriorityBadge(requirement.priority)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {requirement.requestor?.display_name || requirement.requestor?.email || 'Unknown'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDistanceToNow(new Date(requirement.requested_at), { addSuffix: true })}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {format(new Date(requirement.requested_at), 'PPP p')}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {/* TODO: Implement View/Edit/Approve/Deny actions */}
+                          <Button variant="ghost" size="sm" disabled>View</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Add Requirement Dialog */}
+        <AddRequirementDialog
+          isOpen={isAddRequirementOpen}
+          onClose={() => setIsAddRequirementOpen(false)}
+          conventionId={conventionId || ''}
+          onRequirementAdded={handleRequirementAdded}
+        />
       </div>
-      
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Requested</CardTitle>
-            <ClipboardIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statusCounts.requested}</div>
-            <p className="text-xs text-muted-foreground">Pending approval</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statusCounts.approved}</div>
-            <p className="text-xs text-muted-foreground">Ready to fulfill</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fulfilled</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statusCounts.fulfilled}</div>
-            <p className="text-xs text-muted-foreground">Completed requirements</p>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>All Requirements</CardTitle>
-          <CardDescription>Equipment and resource requirements for this convention</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-10 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading requirements...</p>
-            </div>
-          ) : requirements.length === 0 ? (
-            <div className="text-center py-10">
-              <ClipboardIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Requirements</h3>
-              <p className="mt-1 text-muted-foreground">
-                No requirements have been added to this convention yet.
-              </p>
-              <Button variant="outline" className="mt-4" onClick={() => setIsAddRequirementOpen(true)}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add First Requirement
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Requested By</TableHead>
-                  <TableHead>Requested Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requirements.map((requirement) => (
-                  <TableRow key={requirement.id}>
-                    <TableCell className="font-medium">{requirement.name}</TableCell>
-                    <TableCell>{getStatusBadge(requirement.status)}</TableCell>
-                    <TableCell>{getPriorityBadge(requirement.priority)}</TableCell>
-                    <TableCell>
-                      {requirement.requestor?.display_name || requirement.requestor?.email || 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(requirement.requested_at), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">View</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-      
-      <AddRequirementDialog 
-        isOpen={isAddRequirementOpen} 
-        onClose={() => setIsAddRequirementOpen(false)} 
-        conventionId={conventionId || ''} 
-        onRequirementAdded={handleRequirementAdded}
-      />
-    </div>
+    </TooltipProvider>
   );
 };
 

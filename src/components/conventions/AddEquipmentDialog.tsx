@@ -131,12 +131,19 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
       if (userError) throw userError;
       if (!user) throw new Error("Not authenticated");
 
+      // Prepare data, converting "__NONE__" back to null for location_id
+      const dataToSend = {
+        ...values,
+        location_id: values.location_id === '__NONE__' ? null : values.location_id,
+      };
+
+
       // Check if this item is already allocated to the convention
       const { data: existingData, error: checkError } = await supabase
         .from('convention_equipment')
         .select('id')
         .eq('convention_id', conventionId)
-        .eq('item_id', values.item_id)
+        .eq('item_id', dataToSend.item_id) // Use dataToSend
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -146,9 +153,9 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
         const { error } = await supabase
           .from('convention_equipment')
           .update({
-            quantity: values.quantity,
-            location_id: values.location_id,
-            notes: values.notes,
+            quantity: dataToSend.quantity,
+            location_id: dataToSend.location_id, // Use dataToSend
+            notes: dataToSend.notes,             // Use dataToSend
           })
           .eq('id', existingData.id);
 
@@ -164,11 +171,11 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
           .from('convention_equipment')
           .insert({
             convention_id: conventionId,
-            item_id: values.item_id,
-            quantity: values.quantity,
-            location_id: values.location_id,
+            item_id: dataToSend.item_id,       // Use dataToSend
+            quantity: dataToSend.quantity,     // Use dataToSend
+            location_id: dataToSend.location_id, // Use dataToSend
             status: 'allocated',
-            notes: values.notes,
+            notes: dataToSend.notes,           // Use dataToSend
           });
 
         if (error) throw error;
@@ -259,7 +266,8 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
                   <FormLabel>Location</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    value={field.value || undefined}
+                    // Use ?? to handle null/undefined correctly for the Select value
+                    value={field.value ?? undefined} 
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -267,7 +275,8 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No location</SelectItem>
+                      {/* Use a non-empty value for the "No location" option */}
+                      <SelectItem value="__NONE__">No location</SelectItem> 
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}

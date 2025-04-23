@@ -1,17 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FilterIcon, DownloadIcon, SearchIcon, CalendarIcon } from 'lucide-react';
+import { FilterIcon, DownloadIcon, SearchIcon, CalendarIcon, History, Loader2, Info, User, Edit, Trash, Plus, Minus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
 import { ConventionLog } from '@/types/convention';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { exportToCSV } from '@/utils/csvExport';
+import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ConventionLogs = () => {
   const { id: conventionId } = useParams<{ id: string }>();
@@ -23,7 +30,7 @@ const ConventionLogs = () => {
 
   const fetchLogs = async () => {
     if (!conventionId || !currentAssociation) return;
-    
+
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -34,9 +41,9 @@ const ConventionLogs = () => {
         `)
         .eq('convention_id', conventionId)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       setLogs(data || []);
     } catch (error: any) {
       console.error('Error loading logs:', error);
@@ -49,36 +56,42 @@ const ConventionLogs = () => {
       setIsLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchLogs();
   }, [conventionId, currentAssociation]);
 
   const getActionBadge = (action: string) => {
-    switch (action) {
+    switch (action.toLowerCase()) {
       case 'create':
-        return <Badge variant="default">Create</Badge>;
+        return <Badge variant="default" className="bg-green-600 hover:bg-green-700"><Plus className="mr-1 h-3 w-3" /> Create</Badge>;
       case 'update':
-        return <Badge variant="outline">Update</Badge>;
+        return <Badge variant="outline" className="border-blue-500 text-blue-700 dark:border-blue-400 dark:text-blue-300"><Edit className="mr-1 h-3 w-3" /> Update</Badge>;
       case 'delete':
-        return <Badge variant="destructive">Delete</Badge>;
+        return <Badge variant="destructive"><Trash className="mr-1 h-3 w-3" /> Delete</Badge>;
+      case 'issue':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"><Edit className="mr-1 h-3 w-3" /> Issue</Badge>;
+      case 'return':
+        return <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"><Edit className="mr-1 h-3 w-3" /> Return</Badge>;
       default:
         return <Badge variant="secondary">{action}</Badge>;
     }
   };
 
   const getEntityBadge = (entityType: string) => {
-    switch (entityType) {
+    switch (entityType.toLowerCase()) {
       case 'equipment':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Equipment</Badge>;
+        return <Badge variant="outline">Equipment</Badge>;
       case 'consumable':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Consumable</Badge>;
+        return <Badge variant="outline">Consumable</Badge>;
       case 'requirement':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Requirement</Badge>;
+        return <Badge variant="outline">Requirement</Badge>;
       case 'location':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Location</Badge>;
+        return <Badge variant="outline">Location</Badge>;
       case 'convention':
-        return <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">Convention</Badge>;
+        return <Badge variant="outline">Convention</Badge>;
+      case 'attendee':
+        return <Badge variant="outline">Attendee</Badge>;
       default:
         return <Badge variant="outline">{entityType}</Badge>;
     }
@@ -86,7 +99,7 @@ const ConventionLogs = () => {
 
   const filteredLogs = logs.filter(log => {
     if (!searchTerm) return true;
-    
+
     const searchLower = searchTerm.toLowerCase();
     return (
       log.action.toLowerCase().includes(searchLower) ||
@@ -106,9 +119,9 @@ const ConventionLogs = () => {
         EntityType: log.entity_type,
         Details: JSON.stringify(log.details || {})
       }));
-      
+
       exportToCSV(data, `convention-logs-${conventionId}-${format(new Date(), 'yyyy-MM-dd')}`);
-      
+
       toast({
         title: 'Logs exported',
         description: 'Convention logs have been exported to CSV successfully',
@@ -124,92 +137,111 @@ const ConventionLogs = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Activity Logs</h1>
-          <p className="text-muted-foreground">Track all actions and changes during conventions.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <FilterIcon className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
-          <Button variant="outline" onClick={exportLogs}>
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-        </div>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Convention Activity Logs</CardTitle>
-          <CardDescription>History of all actions taken during this convention</CardDescription>
-          <div className="relative mt-2">
-            <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search logs..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+    <TooltipProvider> {/* Ensure TooltipProvider wraps everything */}
+      <div className="space-y-6 p-4 md:p-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Activity Logs</h1>
+            <p className="text-muted-foreground">Track actions and changes made within this convention.</p>
+            <Button variant="link" asChild className="p-0 h-auto text-sm">
+              <RouterLink to={`/conventions/${conventionId}`}>Back to Convention Details</RouterLink>
+            </Button>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-10 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading logs...</p>
+          <div className="flex gap-2">
+            <Button variant="outline" disabled>
+              <FilterIcon className="mr-2 h-4 w-4" />
+              Filter
+            </Button>
+            <Button variant="outline" onClick={exportLogs} disabled={filteredLogs.length === 0}>
+              <DownloadIcon className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+        </div>
+
+        {/* Logs Table Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Convention Activity Log</CardTitle>
+            <CardDescription>History of all recorded actions for this convention.</CardDescription>
+            <div className="relative mt-4">
+              <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search logs (by user, action, type, details)..."
+                className="pl-8 w-full" // Corrected: Ensure this is inside Input props
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search activity logs"
+              />
             </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-10">
-              <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Logs Found</h3>
-              <p className="mt-1 text-muted-foreground">
-                {searchTerm ? 'No logs match your search criteria.' : 'No activity logs have been recorded yet.'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Entity Type</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
-                    </TableCell>
-                    <TableCell>
-                      {log.users?.display_name || log.users?.email || log.user_id}
-                    </TableCell>
-                    <TableCell>{getActionBadge(log.action)}</TableCell>
-                    <TableCell>{getEntityBadge(log.entity_type)}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {log.details ? (
-                        <span title={JSON.stringify(log.details, null, 2)}>
-                          {JSON.stringify(log.details).substring(0, 50)}
-                          {JSON.stringify(log.details).length > 50 ? '...' : ''}
-                        </span>
-                      ) : (
-                        'No details'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </CardHeader> {/* Correctly closed CardHeader */}
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading logs...</span>
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="text-center py-10">
+                <History className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">No Logs Found</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {searchTerm ? 'No logs match your search criteria.' : 'No activity has been recorded for this convention yet.'}
+                </p>
+                {searchTerm && (
+                  <Button variant="outline" className="mt-4" onClick={() => setSearchTerm('')}>Clear Search</Button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[180px]">Timestamp</TableHead>
+                      <TableHead className="w-[150px]">User</TableHead>
+                      <TableHead className="w-[100px]">Action</TableHead>
+                      <TableHead className="w-[120px]">Entity Type</TableHead>
+                      <TableHead>Details / Changes</TableHead>
+                    </TableRow>
+                  </TableHeader> {/* Correctly closed TableHeader */}
+                  <TableBody>
+                    {filteredLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>{formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {format(new Date(log.created_at), 'PPP p')} {/* Full date on hover */}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell className="font-medium flex items-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {log.users?.display_name || log.users?.email || <span className="italic text-muted-foreground">System</span>}
+                        </TableCell>
+                        <TableCell>{getActionBadge(log.action)}</TableCell>
+                        <TableCell>{getEntityBadge(log.entity_type)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {log.details ? (
+                            <pre className="whitespace-pre-wrap break-all font-mono text-xs bg-muted/50 p-1 rounded max-w-md">{JSON.stringify(log.details, null, 2)}</pre>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div> {/* Correctly closed main div */}
+    </TooltipProvider> // Correctly closed TooltipProvider
   );
 };
 

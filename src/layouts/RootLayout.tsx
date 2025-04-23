@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth'; // Corrected import path
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';

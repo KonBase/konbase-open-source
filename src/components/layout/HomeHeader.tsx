@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { LayoutDashboard, Github, MessageCircle } from 'lucide-react';
 import UserMenu from './shared/UserMenu';
@@ -22,7 +22,7 @@ import {
 import { useMobileDetect } from '@/hooks/useMobileDetect';
 import MobileMenuButton from './shared/MobileMenuButton';
 import { checkUserHasRole } from '@/contexts/auth/AuthUtils'; // Import the utility function
-import { UserProfile } from '@/types/user'; // Import UserProfile type if needed for checkUserHasRole
+import { AuthUserProfile } from '@/contexts/auth/AuthTypes'; // Import AuthUserProfile type
 
 const HomeHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

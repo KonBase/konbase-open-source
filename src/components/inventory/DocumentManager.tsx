@@ -162,55 +162,69 @@ const DocumentManager = () => {
       });
       return;
     }
-    
+
     setUploading(true);
-    
+    let filePath: string | null = null; // Define filePath here to be accessible in catch block
+
     try {
       const fileExt = formData.file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `documents/${fileName}`;
-      
+      const uniqueFileName = `${crypto.randomUUID()}.${fileExt}`;
+      // Construct the path according to RLS policy: association_id/item_id/fileName
+      filePath = `${currentAssociation.id}/${formData.itemId}/${uniqueFileName}`;
+
       const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, formData.file);
-      
+        .from('documents') // Bucket name remains 'documents'
+        .upload(filePath, formData.file); // Use the new structured path
+
       if (uploadError) throw uploadError;
-      
-      const { data: urlData } = await supabase.storage
+
+      // Fetch the public URL using the *correct* filePath
+      const { data: urlData } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
-      
+
+      // Handle potential errors if getPublicUrl doesn't return data as expected
+      if (!urlData || !urlData.publicUrl) {
+        throw new Error('Could not retrieve public URL for the uploaded file.');
+      }
       const fileUrl = urlData.publicUrl;
-      
+
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) throw new Error('Not authenticated');
-      
+
+      // Insert metadata into the documents table
       const { error: docError } = await supabase
         .from('documents')
         .insert({
-          name: formData.name,
-          file_url: fileUrl,
+          name: formData.name, // The user-provided document name
+          file_url: fileUrl,   // The actual storage URL
           file_type: formData.file.type,
           item_id: formData.itemId,
           uploaded_by: user.id
+          // association_id is implicitly linked via item_id, no need to store here usually
         });
-      
+
       if (docError) throw docError;
-      
+
       toast({
         title: 'Success',
         description: 'Document uploaded successfully.',
       });
-      
+
       setIsAddDialogOpen(false);
       resetForm();
       fetchDocuments();
     } catch (error: any) {
       console.error('Error adding document:', error);
+      // Attempt to clean up storage if database insert failed and filePath was set
+      if (error.message.includes('insert') && filePath) {
+          console.warn('Database insert failed after storage upload. Attempting to remove orphaned file:', filePath);
+          await supabase.storage.from('documents').remove([filePath]);
+      }
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to upload document.',
         variant: 'destructive'
       });
     } finally {
@@ -220,41 +234,68 @@ const DocumentManager = () => {
   
   const handleDeleteDocument = async () => {
     if (!currentDocument) return;
-    
+
     try {
-      const fileUrl = currentDocument.file_url;
-      const filePathMatch = fileUrl.match(/\/([^/]+)$/);
-      const filePath = filePathMatch ? `documents/${filePathMatch[1]}` : null;
-      
+      // Extract the storage path from the file_url
+      // Assuming file_url is like: https://<project_ref>.supabase.co/storage/v1/object/public/documents/<association_id>/<item_id>/<filename.ext>
+      const urlString = currentDocument.file_url;
+      let filePath: string | null = null;
+      try {
+        const url = new URL(urlString);
+        // Find the part after /documents/
+        const pathSegments = url.pathname.split('/documents/');
+        if (pathSegments.length > 1) {
+          filePath = pathSegments[1]; // Should be <association_id>/<item_id>/<filename.ext>
+        }
+      } catch (e) {
+        console.error("Could not parse file URL:", urlString, e);
+        // Fallback attempt if URL parsing fails (e.g., if it's not a standard URL)
+        const fallbackParts = urlString.split('/documents/');
+        if (fallbackParts.length > 1) {
+          filePath = fallbackParts[1];
+        }
+      }
+
+      if (!filePath) {
+        throw new Error('Could not determine file path from URL for deletion.');
+      }
+
+      // 1. Delete the database record first
       const { error: dbError } = await supabase
         .from('documents')
         .delete()
         .eq('id', currentDocument.id);
-      
+
       if (dbError) throw dbError;
-      
-      if (filePath) {
-        const { error: storageError } = await supabase.storage
-          .from('documents')
-          .remove([filePath]);
-        
-        if (storageError) {
-          console.error('Warning: File could not be deleted from storage:', storageError);
-        }
+
+      // 2. Delete the file from storage if database deletion was successful
+      const { error: storageError } = await supabase.storage
+        .from('documents')
+        .remove([filePath]); // Use the extracted path
+
+      if (storageError) {
+        // Log a warning but don't necessarily fail the whole operation,
+        // as the primary record is gone. Might need manual cleanup later.
+        console.error('Warning: File could not be deleted from storage:', storageError);
+        toast({
+          title: 'Warning',
+          description: 'Document record deleted, but failed to remove file from storage.',
+          variant: 'default' // Use default or warning variant
+        });
+      } else {
+          toast({
+          title: 'Success',
+          description: 'Document deleted successfully.',
+        });
       }
-      
-      toast({
-        title: 'Success',
-        description: 'Document deleted successfully.',
-      });
-      
+
       setIsDeleteDialogOpen(false);
-      fetchDocuments();
+      fetchDocuments(); // Refresh the list
     } catch (error: any) {
       console.error('Error deleting document:', error);
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to delete document.',
         variant: 'destructive'
       });
     }

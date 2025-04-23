@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ArrowDownIcon, ArrowUpIcon, FileIcon, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { associationToCSV, downloadCSV, generateCSVTemplate, parseCSVForImport, importCSVData } from '@/utils/csvExport';
+import { associationToCSV, exportToCSV, generateCSVTemplate, parseCSVForImport, importCSVData } from '@/utils/csvExport';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -36,9 +35,9 @@ interface ExportOperation {
   status: 'completed' | 'failed' | 'in_progress';
 }
 
-const ImportExport = () => {
+const ImportExport: React.FC = () => {
+  const { association, categories, locations, items } = useAssociation();
   const { toast } = useToast();
-  const { currentAssociation } = useAssociation();
   const [isExporting, setIsExporting] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -52,13 +51,13 @@ const ImportExport = () => {
   const [parsedData, setParsedData] = useState<any>(null);
 
   useEffect(() => {
-    if (currentAssociation) {
+    if (association) {
       fetchImportExportHistory();
     }
-  }, [currentAssociation]);
+  }, [association]);
 
   const fetchImportExportHistory = async () => {
-    if (!currentAssociation) return;
+    if (!association) return;
     
     try {
       // For a real implementation, you would store these operations in Supabase
@@ -70,63 +69,37 @@ const ImportExport = () => {
     }
   };
 
-  const handleExportCSV = async () => {
-    if (!currentAssociation) {
+  const handleExport = async () => {
+    if (!association || !categories || !locations || !items) {
       toast({
-        title: "Error",
-        description: "No association selected",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Association data not fully loaded.',
+        variant: 'destructive',
       });
       return;
     }
-    
-    setIsExporting(true);
-    
+
     try {
-      const csv = await associationToCSV(currentAssociation.id);
-      const filename = `${currentAssociation.name.replace(/\s+/g, '_')}_export_${new Date().toISOString().slice(0, 10)}.csv`;
-      downloadCSV(csv, filename);
-      
-      // Record the export operation
-      const newExport: ExportOperation = {
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        filename,
-        status: 'completed'
-      };
-      
-      setExportHistory(prev => [newExport, ...prev]);
-      
+      const csvData = associationToCSV(association, categories, locations, items);
+      exportToCSV(csvData, `${association.name}_inventory_export`);
       toast({
-        title: "Export Successful",
-        description: "Association data exported to CSV"
+        title: 'Export Successful',
+        description: 'Your inventory data has been exported to CSV.',
       });
-    } catch (error: any) {
-      console.error('Export error:', error);
+    } catch (error) {
+      console.error('Error exporting data:', error);
       toast({
-        title: "Export Failed",
-        description: error.message || "An error occurred during export",
-        variant: "destructive"
+        title: 'Export Failed',
+        description: 'An error occurred while exporting data.',
+        variant: 'destructive',
       });
-      
-      // Record the failed export
-      const newExport: ExportOperation = {
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        filename: `${currentAssociation.name.replace(/\s+/g, '_')}_export_failed.csv`,
-        status: 'failed'
-      };
-      
-      setExportHistory(prev => [newExport, ...prev]);
-    } finally {
-      setIsExporting(false);
     }
   };
   
   const handleExportTemplate = () => {
     try {
       const template = generateCSVTemplate();
-      downloadCSV(template, 'association_import_template.csv');
+      exportToCSV(template, 'association_import_template.csv');
       
       toast({
         title: "Template Downloaded",
@@ -151,7 +124,7 @@ const ImportExport = () => {
   };
   
   const validateImportFile = async () => {
-    if (!importFile || !currentAssociation) return;
+    if (!importFile || !association) return;
     
     setIsImporting(true);
     setImportProgress(10);
@@ -162,7 +135,7 @@ const ImportExport = () => {
       setImportProgress(30);
       
       // Parse and validate the CSV
-      const { categories, locations, items, errors } = await parseCSVForImport(fileContent, currentAssociation.id);
+      const { categories, locations, items, errors } = await parseCSVForImport(fileContent, association.id);
       setImportProgress(70);
       
       if (errors.length > 0) {
@@ -191,7 +164,7 @@ const ImportExport = () => {
   };
   
   const handleImport = async () => {
-    if (!importFile || !currentAssociation) {
+    if (!importFile || !association) {
       toast({
         title: "No File Selected",
         description: "Please select a file to import",
@@ -208,7 +181,7 @@ const ImportExport = () => {
       setImportProgress(70);
       
       // Import the data
-      const { success, errors, stats } = await importCSVData(parsedData, currentAssociation.id);
+      const { success, errors, stats } = await importCSVData(parsedData, association.id);
       
       const importStats: ImportStats = {
         categoriesAdded: stats.categoriesAdded || 0,

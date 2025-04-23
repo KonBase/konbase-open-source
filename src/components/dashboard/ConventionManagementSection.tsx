@@ -12,9 +12,9 @@ import {
 
 const ConventionManagementSection: React.FC = () => {
   return (
-    <div>
+    <div className="mb-6 md:mb-8">
       <h2 className="text-2xl font-bold tracking-tight mb-4">Convention Management</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-6 lg:gap-8 md:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
           <Link to="/conventions" className="block p-6">
             <div className="flex items-center space-x-4">
@@ -76,7 +76,7 @@ const ConventionManagementSection: React.FC = () => {
         </Card>
         
         <Card className="hover:bg-accent/50 cursor-pointer transition-colors">
-          <Link to="/templates" className="block p-6">
+          <Link to="/conventions/templates" className="block p-6">
             <div className="flex items-center space-x-4">
               <FileUp className="h-10 w-10 text-primary" />
               <div>

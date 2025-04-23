@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { ArrowLeft, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import AssociationMembersPage from '@/components/association/AssociationMembersPage';
 
 const AssociationDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -266,17 +267,18 @@ const AssociationDetails = () => {
         </TabsContent>
         
         <TabsContent value="members">
-          <Card>
-            <CardHeader>
-              <CardTitle>Association Members</CardTitle>
-              <CardDescription>
-                Manage the members of your association and their roles
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p>Member management will be implemented in a future update.</p>
-            </CardContent>
-          </Card>
+          {id ? (
+            <AssociationMembersPage associationId={id} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Association Members</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Loading member information...</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         
         <TabsContent value="categories">

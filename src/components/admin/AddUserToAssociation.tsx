@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,8 +48,7 @@ export function AddUserToAssociation({ associationId, onUserAdded }: AddUserToAs
         .insert({
           association_id: associationId,
           user_id: profilesData.id,
-          role: role,
-        } as any);
+        } as any); // Removed the role field as it no longer exists in association_members
 
       if (addError) throw addError;
 

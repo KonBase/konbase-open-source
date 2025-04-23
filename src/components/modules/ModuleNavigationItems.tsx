@@ -21,16 +21,25 @@ export const ModuleNavigationItems: React.FC = () => {
         <li key={`${item.path}-${index}`}>
           <Link 
             to={item.path}
-            className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
+            // Use inline style instead of className to avoid type errors
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0.5rem',
+              borderRadius: '0.5rem',
+              color: 'var(--text-primary)',
+              transition: 'background-color 0.2s'
+            }}
           >
             {item.icon && typeof item.icon !== 'string' && React.isValidElement(item.icon) && (
-              React.cloneElement(item.icon as React.ReactElement<any>, {
-                className: "w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
-              })
+              <span className="h-5 w-5 mr-2">
+                {React.cloneElement(item.icon)}
+              </span>
             )}
-            <span className="ml-3">{item.label || item.title}</span>
+            <span>{item.label || item.title}</span>
           </Link>
         </li>
-      ))}        </>
+      ))}
+    </>
   );
 };

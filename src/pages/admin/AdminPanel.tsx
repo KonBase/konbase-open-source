@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +6,7 @@ import { AssociationManagement } from '@/components/admin/AssociationManagement'
 import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
 import { SystemSettings } from '@/components/admin/SystemSettings';
 import { RoleGuard } from '@/components/auth/RoleGuard';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { SuperAdminElevationButton } from '@/components/admin/SuperAdminElevationButton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';

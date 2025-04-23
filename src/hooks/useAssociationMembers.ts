@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +41,7 @@ export const useAssociationMembers = (associationId: string) => {
       // First get the association members
       const { data: membersData, error: membersError } = await supabase
         .from('association_members')
-        .select('*')
+        .select('id, user_id, association_id, created_at') // Explicitly select existing columns
         .eq('association_id', associationId);
         
       if (membersError) throw membersError;
@@ -109,12 +108,12 @@ export const useAssociationMembers = (associationId: string) => {
       logDebug('Updating member role', { memberId, role });
       
       const { error } = await supabase
-        .from('association_members')
+        .from('profiles')
         .update({ role })
-        .eq('id', memberId);
-        
+        .eq('id', memberId); // Update the role in the profiles table instead of association_members
+
       if (error) throw error;
-      
+
       // Update local state
       setMembers(prev => 
         prev.map(member => 

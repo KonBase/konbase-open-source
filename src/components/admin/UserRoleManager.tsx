@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Select,
@@ -10,7 +9,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { UserRoleType } from '@/types/user';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth'; // Corrected import path
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
 import { handleError } from '@/utils/debug';
 
@@ -30,7 +29,8 @@ export function UserRoleManager({
   const [role, setRole] = useState<UserRoleType>(currentRole);
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
-  const { user, hasPermission } = useAuth();
+  // Destructure necessary properties from useAuth
+  const { user, hasPermission, isLoading, isAuthenticated } = useAuth();
   const { safeUpdate } = useTypeSafeSupabase();
 
   const updateUserRole = async (newRole: UserRoleType) => {
@@ -64,7 +64,7 @@ export function UserRoleManager({
         action: 'update_role',
         entity: associationContext ? 'association_members' : 'profiles',
         entity_id: userId,
-        user_id: user?.id,
+        user_id: user?.id, // Use optional chaining
         changes: `Changed role from ${currentRole} to ${newRole}`
       } as any);
       
@@ -101,6 +101,13 @@ export function UserRoleManager({
 
   // Define which roles the current user can assign
   const getAssignableRoles = (): UserRoleType[] => {
+    // Wait until auth is loaded and user is authenticated before checking permissions
+    if (isLoading || !isAuthenticated || !user) {
+      // Return only the current role if auth isn't ready or user isn't logged in
+      return [currentRole]; 
+    }
+
+    // Now safely call hasPermission as it should be available and correctly typed
     if (hasPermission('admin:all')) {
       return ['guest', 'member', 'manager', 'admin', 'system_admin', 'super_admin'];
     } else if (hasPermission('manage:users')) {
@@ -108,26 +115,34 @@ export function UserRoleManager({
     } else if (hasPermission('manage:association')) {
       return ['guest', 'member', 'manager', 'admin'];
     } else {
-      return ['guest', 'member', 'manager'];
+      // Default permissions if none of the above match (e.g., manager role)
+      // Consider if managers should be able to assign any roles or just view
+      return ['guest', 'member', 'manager']; // Example: Managers can assign up to manager
     }
   };
 
   const assignableRoles = getAssignableRoles();
+
+  // Display a loading skeleton or disabled state while auth is initializing
+  if (isLoading) {
+     return <div className="w-[120px] sm:w-[140px] h-10 bg-muted rounded animate-pulse"></div>;
+  }
 
   return (
     <div className="flex items-center">
       <Select
         value={role}
         onValueChange={(value) => updateUserRole(value as UserRoleType)}
-        disabled={isUpdating || userId === user?.id}
+        // Disable if updating, if the user is editing themselves, or if not authenticated
+        disabled={isUpdating || userId === user?.id || !isAuthenticated} 
       >
         <SelectTrigger className="w-[120px] sm:w-[140px]">
           <SelectValue placeholder="Select role" />
         </SelectTrigger>
         <SelectContent>
-          {assignableRoles.map((role) => (
-            <SelectItem key={role} value={role} className="capitalize">
-              {role.replace('_', ' ')}
+          {assignableRoles.map((assignableRole) => (
+            <SelectItem key={assignableRole} value={assignableRole} className="capitalize">
+              {assignableRole.replace('_', ' ')}
             </SelectItem>
           ))}
         </SelectContent>

@@ -1,23 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from '@/components/ui/Link';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArchiveIcon, SearchIcon, CalendarIcon, ClockIcon, Filter } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
 import { Convention } from '@/types/convention';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { format, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Link } from '@/components/ui/Link'; // Ensure accessible link rendering
+import { Loader2, Search, Calendar, Archive, ArrowRightIcon, Info } from 'lucide-react'; // Added icons
+import { Badge } from '@/components/ui/badge'; // Import Badge
 
 const ConventionArchive = () => {
   const { currentAssociation } = useAssociation();
@@ -29,23 +21,23 @@ const ConventionArchive = () => {
 
   const fetchConventions = async () => {
     if (!currentAssociation) return;
-    
+
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('conventions')
         .select('*')
         .eq('association_id', currentAssociation.id)
-        .in('status', ['completed', 'archived'])
-        .order('end_date', { ascending: false });
-      
+        .eq('status', 'archived') // Fetch only archived conventions
+        .order('start_date', { ascending: false });
+
       if (error) throw error;
-      
+
       setConventions(data as Convention[]);
     } catch (error: any) {
       console.error('Error loading archived conventions:', error);
       toast({
-        title: 'Error loading conventions',
+        title: 'Error loading archive',
         description: error.message || 'An unknown error occurred',
         variant: 'destructive',
       });
@@ -53,161 +45,149 @@ const ConventionArchive = () => {
       setIsLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchConventions();
-  }, [currentAssociation]);
+  }, [currentAssociation]); // Removed fetchConventions from dependency array
 
-  // Generate a list of years from conventions
+  // Generate a list of unique years from conventions
   const getYears = (): string[] => {
-    const years = new Set<string>();
-    conventions.forEach(convention => {
-      const year = format(parseISO(convention.end_date), 'yyyy');
-      years.add(year);
-    });
-    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
+    const years = new Set(
+      conventions.map(c => new Date(c.start_date).getFullYear().toString())
+    );
+    return ['all', ...Array.from(years).sort((a, b) => parseInt(b) - parseInt(a))];
   };
 
   // Filter conventions by search term and year
   const filteredConventions = conventions.filter(convention => {
-    const matchesSearch = searchTerm === '' || 
-      convention.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (convention.location && convention.location.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesYear = yearFilter === 'all' || 
-      format(parseISO(convention.end_date), 'yyyy') === yearFilter;
-    
+    const matchesSearch = convention.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (convention.description && convention.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesYear = yearFilter === 'all' || new Date(convention.start_date).getFullYear().toString() === yearFilter;
     return matchesSearch && matchesYear;
   });
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Convention Archive</h1>
-          <p className="text-muted-foreground">Access and manage past conventions.</p>
+  const years = getYears(); // Get years after fetching conventions
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 space-y-6 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
+          <div className="flex gap-2">
+            <div className="h-10 w-64 bg-muted rounded animate-pulse"></div>
+            <div className="h-10 w-32 bg-muted rounded animate-pulse"></div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((item) => (
+            <Card key={item} className="animate-pulse">
+              <CardHeader>
+                <div className="h-5 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-16 bg-muted rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Archived Conventions</CardTitle>
-          <CardDescription>Browse all completed conventions</CardDescription>
-          <div className="flex flex-col md:flex-row gap-4 mt-4">
-            <div className="relative flex-1">
-              <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search conventions..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="w-full md:w-48">
-              <Select
-                value={yearFilter}
-                onValueChange={setYearFilter}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by year" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {getYears().map(year => (
-                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4 md:p-6"> {/* Added padding */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Convention Archive</h1>
+          <p className="text-muted-foreground">
+            Browse past events that have been archived.
+          </p>
+        </div>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <div className="relative flex-grow">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search archived conventions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 w-full" // Added padding for icon
+              aria-label="Search archived conventions"
+            />
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-10 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading archives...</p>
-            </div>
-          ) : filteredConventions.length === 0 ? (
-            <div className="text-center py-10">
-              <ArchiveIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Archived Conventions</h3>
-              <p className="mt-1 text-muted-foreground">
-                {searchTerm || yearFilter !== 'all' 
-                  ? 'No conventions match your search criteria.'
-                  : 'No completed or archived conventions found.'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredConventions.map((convention) => (
-                  <TableRow key={convention.id}>
-                    <TableCell className="font-medium">{convention.name}</TableCell>
-                    <TableCell>
-                      {format(parseISO(convention.start_date), 'MMM d')} - {format(parseISO(convention.end_date), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>{convention.location || 'No location'}</TableCell>
-                    <TableCell>
-                      <Badge variant={convention.status === 'archived' ? 'outline' : 'secondary'}>
-                        {convention.status.charAt(0).toUpperCase() + convention.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/conventions/${convention.id}`}>View</Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Archive Management</CardTitle>
-          <CardDescription>About archiving conventions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p>
-              Archived conventions are read-only and can be used for reference purposes.
-              Convention archives include all equipment records, consumable usage,
-              and activity logs from completed events.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border rounded-md p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ClockIcon className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-medium">Completed Conventions</h3>
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by year">
+              <SelectValue placeholder="Filter by Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map(year => (
+                <SelectItem key={year} value={year}>
+                  {year === 'all' ? 'All Years' : year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {filteredConventions.length === 0 ? (
+        <Card className="mt-6 text-center">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Info className="h-5 w-5" /> No Archived Conventions Found
+            </CardTitle>
+            <CardDescription>
+              {searchTerm || yearFilter !== 'all'
+                ? 'No archived conventions match your current filters.'
+                : 'There are no archived conventions yet.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Optional: Add a button to go back or clear filters */}
+            {(searchTerm || yearFilter !== 'all') && (
+              <Button variant="outline" onClick={() => { setSearchTerm(''); setYearFilter('all'); }}>
+                Clear Filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredConventions.map((convention) => (
+            <Card key={convention.id} className="flex flex-col">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start gap-2">
+                  <CardTitle className="text-lg font-semibold leading-tight flex-1 mr-2">{convention.name}</CardTitle>
+                  <Badge variant="outline" className="bg-muted text-muted-foreground whitespace-nowrap">
+                    <Archive className="mr-1 h-3 w-3" /> Archived
+                  </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Conventions marked as "completed" are finished but still editable.
+                <CardDescription className="flex items-center text-sm pt-1">
+                  <Calendar className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                  {new Date(convention.start_date).toLocaleDateString()} - {new Date(convention.end_date).toLocaleDateString()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow pb-4">
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                  {convention.description || 'No description provided.'}
                 </p>
+              </CardContent>
+              <div className="flex justify-end items-center p-4 border-t">
+                <Button variant="outline" asChild size="sm">
+                  <Link to={`/conventions/${convention.id}`}>
+                    View Details
+                    <ArrowRightIcon className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                {/* Add Unarchive functionality if needed */}
+                {/* <Button variant="ghost" size="sm">Unarchive</Button> */}
               </div>
-              <div className="border rounded-md p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArchiveIcon className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-medium">Archived Conventions</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Archived conventions are locked and read-only to preserve records.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

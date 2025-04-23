@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, Package, AlertCircle, PlusIcon } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, Package, AlertCircle, PlusIcon, CheckCircle, XCircle, Truck, Warehouse, Loader2, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +10,7 @@ import { ConventionEquipment } from '@/types/convention';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AddEquipmentDialog } from '@/components/conventions/AddEquipmentDialog';
+import { Separator } from '@/components/ui/separator';
 
 const ConventionEquipmentPage = () => {
   const { id: conventionId } = useParams<{ id: string }>();
@@ -59,13 +60,13 @@ const ConventionEquipmentPage = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'allocated':
-        return <Badge variant="outline">Allocated</Badge>;
+        return <Badge variant="outline" className="border-blue-500 text-blue-700 dark:border-blue-400 dark:text-blue-300"><Warehouse className="mr-1 h-3 w-3" /> Allocated</Badge>;
       case 'issued':
-        return <Badge variant="default">Issued</Badge>;
+        return <Badge variant="default"><Truck className="mr-1 h-3 w-3" /> Issued</Badge>;
       case 'returned':
-        return <Badge variant="secondary">Returned</Badge>;
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"><CheckCircle className="mr-1 h-3 w-3" /> Returned</Badge>;
       case 'damaged':
-        return <Badge variant="destructive">Damaged</Badge>;
+        return <Badge variant="destructive"><AlertCircle className="mr-1 h-3 w-3" /> Damaged</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -185,108 +186,126 @@ const ConventionEquipmentPage = () => {
   };
   
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Convention Equipment</h1>
-          <p className="text-muted-foreground">Manage equipment for conventions.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Convention Equipment</h1>
+          <p className="text-muted-foreground">
+            Manage equipment allocation, issuance, and returns for this convention.
+          </p>
+          {/* Link back to convention details */}
+          <Button variant="link" asChild className="p-0 h-auto text-sm">
+            <RouterLink to={`/conventions/${conventionId}`}>Back to Convention Details</RouterLink>
+          </Button>
         </div>
         <Button onClick={() => setIsAddEquipmentOpen(true)}>
           <PlusIcon className="mr-2 h-4 w-4" />
           Add Equipment
         </Button>
       </div>
-      
+
+      {/* Action Cards */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Issue Equipment</CardTitle>
-            <CardDescription>Assign equipment to a convention</CardDescription>
+            <CardTitle className="flex items-center gap-2"><ArrowUpIcon className="h-5 w-5" /> Issue Equipment</CardTitle>
+            <CardDescription>Move allocated equipment to 'Issued' status.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-muted-foreground">
-              Move equipment from storage to convention locations.
+            <p className="mb-4 text-sm text-muted-foreground">
+              Marks equipment as actively in use at the convention.
+              Requires {statusCounts.allocated} item(s) in 'Allocated' status.
             </p>
-            <Button onClick={issueEquipment} disabled={statusCounts.allocated === 0}>
-              <ArrowUpIcon className="mr-2 h-4 w-4" />
-              Issue Equipment ({statusCounts.allocated} items)
+            <Button onClick={issueEquipment} disabled={statusCounts.allocated === 0} className="w-full sm:w-auto">
+              <Truck className="mr-2 h-4 w-4" />
+              Issue All Allocated ({statusCounts.allocated})
             </Button>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
-            <CardTitle>Return Equipment</CardTitle>
-            <CardDescription>Return equipment from a convention</CardDescription>
+            <CardTitle className="flex items-center gap-2"><ArrowDownIcon className="h-5 w-5" /> Return Equipment</CardTitle>
+            <CardDescription>Move issued equipment back to 'Returned' status.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-muted-foreground">
-              Move equipment from convention locations back to storage.
+            <p className="mb-4 text-sm text-muted-foreground">
+              Marks equipment as returned from the convention.
+              Requires {statusCounts.issued} item(s) in 'Issued' status.
             </p>
-            <Button variant="outline" onClick={returnEquipment} disabled={statusCounts.issued === 0}>
-              <ArrowDownIcon className="mr-2 h-4 w-4" />
-              Return Equipment ({statusCounts.issued} items)
+            <Button variant="outline" onClick={returnEquipment} disabled={statusCounts.issued === 0} className="w-full sm:w-auto">
+              <Warehouse className="mr-2 h-4 w-4" />
+              Return All Issued ({statusCounts.issued})
             </Button>
           </CardContent>
         </Card>
       </div>
-      
+
+      {/* Equipment List Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Equipment Status</CardTitle>
-          <CardDescription>Current status of all equipment for this convention</CardDescription>
+          <CardTitle>Equipment Status List</CardTitle>
+          <CardDescription>Current status of all equipment assigned to this convention.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="py-10 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading equipment...</p>
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Loading equipment...</span>
             </div>
           ) : equipmentList.length === 0 ? (
             <div className="text-center py-10">
               <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-lg font-semibold">No Equipment Assigned</h3>
-              <p className="mt-1 text-muted-foreground">
-                No equipment has been assigned to this convention yet.
+              <h3 className="mt-4 text-lg font-semibold">No Equipment Assigned</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Assign equipment to this convention to track its status.
               </p>
-              <Button variant="outline" className="mt-4" onClick={() => setIsAddEquipmentOpen(true)}>
+              <Button variant="default" className="mt-4" onClick={() => setIsAddEquipmentOpen(true)}>
                 <PlusIcon className="mr-2 h-4 w-4" />
-                Add First Equipment
+                Add First Equipment Item
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {equipmentList.map((equipment) => (
-                  <TableRow key={equipment.id}>
-                    <TableCell>{equipment.items?.name || 'Unknown Item'}</TableCell>
-                    <TableCell>{equipment.quantity}</TableCell>
-                    <TableCell>{equipment.locations?.name || 'Not assigned'}</TableCell>
-                    <TableCell>{getStatusBadge(equipment.status)}</TableCell>
-                    <TableCell className="truncate max-w-xs">
-                      {equipment.notes || '-'}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Barcode</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead>Assigned Location</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Notes</TableHead>
+                    {/* <TableHead>Actions</TableHead> */} {/* Add actions later if needed */}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {equipmentList.map((equipment) => (
+                    <TableRow key={equipment.id}>
+                      <TableCell className="font-medium">{equipment.items?.name || 'N/A'}</TableCell>
+                      <TableCell className="text-muted-foreground">{equipment.items?.barcode || '-'}</TableCell>
+                      <TableCell className="text-right">{equipment.quantity}</TableCell>
+                      <TableCell>{equipment.locations?.name || '-'}</TableCell>
+                      <TableCell>{getStatusBadge(equipment.status)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground truncate max-w-[200px]" title={equipment.notes || ''}>
+                        {equipment.notes || '-'}
+                      </TableCell>
+                      {/* <TableCell><Button variant="ghost" size="sm">Edit</Button></TableCell> */}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
-      
-      <AddEquipmentDialog 
-        isOpen={isAddEquipmentOpen} 
-        onClose={() => setIsAddEquipmentOpen(false)} 
-        conventionId={conventionId || ''} 
+
+      {/* Add Equipment Dialog */}
+      <AddEquipmentDialog
+        isOpen={isAddEquipmentOpen}
+        onClose={() => setIsAddEquipmentOpen(false)}
+        conventionId={conventionId || ''}
         onEquipmentAdded={handleEquipmentAdded}
       />
     </div>
