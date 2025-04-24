@@ -250,3 +250,122 @@ export const updateAssociation = async (
     throw error;
   }
 };
+
+/**
+ * Join an association with an invitation code
+ */
+export const joinAssociationWithCode = async (
+  code: string,
+  userId: string
+): Promise<{ success: boolean; error?: string; association?: Association }> => {
+  try {
+    console.log("Attempting to join association with code:", code, "for user:", userId);
+    
+    // 1. Validate the invitation code
+    const { data: invitation, error: inviteError } = await supabase
+      .from('association_invitations')
+      .select('*')
+      .eq('code', code)
+      .single();
+    
+    if (inviteError) {
+      console.error("Error fetching invitation:", inviteError);
+      return { 
+        success: false, 
+        error: "Invalid invitation code" 
+      };
+    }
+    
+    if (!invitation) {
+      return { 
+        success: false, 
+        error: "Invitation not found" 
+      };
+    }
+    
+    // 2. Check if the invitation is expired
+    const now = new Date();
+    const expiresAt = new Date(invitation.expires_at);
+    if (now > expiresAt) {
+      return { 
+        success: false, 
+        error: "Invitation has expired" 
+      };
+    }
+    
+    // 3. Get the association
+    const { data: association, error: associationError } = await supabase
+      .from('associations')
+      .select('*')
+      .eq('id', invitation.association_id)
+      .single();
+    
+    if (associationError || !association) {
+      console.error("Error fetching association:", associationError);
+      return { 
+        success: false, 
+        error: "Could not find association" 
+      };
+    }
+    
+    // 4. Check if user is already a member
+    const { data: existingMember, error: memberCheckError } = await supabase
+      .from('association_members')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('association_id', invitation.association_id)
+      .single();
+    
+    if (existingMember) {
+      // User is already a member
+      return { 
+        success: false, 
+        error: "You are already a member of this association" 
+      };
+    }
+    
+    // 5. Add user to association members
+    const { error: addMemberError } = await supabase
+      .from('association_members')
+      .insert({
+        user_id: userId,
+        association_id: invitation.association_id,
+      });
+    
+    if (addMemberError) {
+      console.error("Error adding member to association:", addMemberError);
+      return { 
+        success: false, 
+        error: "Failed to join association" 
+      };
+    }
+    
+    // 6. Update user's role if specified in invitation
+    if (invitation.role) {
+      await supabase
+        .from('profiles')
+        .update({ role: invitation.role })
+        .eq('id', userId);
+    }
+    
+    // 7. Mark invitation as used (optional)
+    await supabase
+      .from('association_invitations')
+      .update({ used: true, used_by: userId, used_at: new Date().toISOString() })
+      .eq('code', code);
+    
+    // 8. Return success with the association data
+    const formattedAssociation = formatAssociation(association);
+    
+    return {
+      success: true,
+      association: formattedAssociation
+    };
+  } catch (error: any) {
+    console.error("Error joining association:", error);
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred"
+    };
+  }
+};

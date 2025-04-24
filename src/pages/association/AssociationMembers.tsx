@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAssociationMembers, AssociationMember, ProfileData } from '@/hooks/useAssociationMembers';
@@ -15,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -26,20 +25,28 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { UsersRound, UserRoundCog, UserRoundX, UserRoundPlus } from 'lucide-react';
+import { UsersRound, UserRoundCog, UserRoundX, Building2, ArrowLeft } from 'lucide-react';
+import { useAssociation } from '@/contexts/AssociationContext';
+import InviteMemberDialog from '@/components/association/InviteMemberDialog';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const AssociationMembers = () => {
   const { id } = useParams<{ id: string }>();
-  const associationId = id || '';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentAssociation } = useAssociation();
+  const associationId = id || (currentAssociation?.id || '');
   const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(associationId);
-  const { user } = useAuth(); // Removed hasRole
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedMember, setSelectedMember] = useState<AssociationMember | null>(null);
   const [newRole, setNewRole] = useState<UserRoleType | ''>('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
-  // Check user role directly (assuming user object has a 'role' property)
-  const isAdmin = user?.role === 'admin';
+  
+  // Use profile.role to determine admin status (consistent with other components)
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
   useEffect(() => {
     fetchMembers();
@@ -109,18 +116,32 @@ const AssociationMembers = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 space-y-6">
+      {/* Header with back navigation */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Association Members</h1>
+            {currentAssociation && (
+              <p className="text-muted-foreground flex items-center">
+                <Building2 className="h-4 w-4 mr-1 inline-block" />
+                {currentAssociation.name}
+              </p>
+            )}
+          </div>
+        </div>
+        
+        {isAdmin && (
+          <InviteMemberDialog onInviteSent={fetchMembers} />
+        )}
+      </div>
+      
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl">Association Members</CardTitle>
-          {isAdmin && (
-            <Button variant="outline" size="sm">
-              <UserRoundPlus className="mr-2 h-4 w-4" />
-              Invite Member
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {members.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <UsersRound className="mx-auto mb-4 h-12 w-12 opacity-30" />

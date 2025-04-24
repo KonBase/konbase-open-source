@@ -15,9 +15,8 @@ const NoAssociationView = () => {
         <p>Associations allow you to manage inventory and conventions collaboratively.</p>
       </CardContent>
       <CardFooter>
-        {/* Update link */}
         <Button asChild>
-          <Link to="/setup/association">Set Up Association</Link> 
+          <Link to="/setup">Set Up Association</Link> 
         </Button>
       </CardFooter>
     </Card>

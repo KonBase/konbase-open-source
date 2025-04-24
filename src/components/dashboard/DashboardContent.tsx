@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
-import MemberManager from '@/components/association/MemberManager';
 import DashboardDebugPanel from '@/components/dashboard/DashboardDebugPanel';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
-import { useAssociationMembers } from '@/hooks/useAssociationMembers';
 import { useToast } from '@/components/ui/use-toast';
-import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface AuditLog {
   id: string;
@@ -24,7 +21,7 @@ interface DashboardContentProps {
   currentAssociation: Association;
   user: User | null;
   isLoadingActivity: boolean;
-  safeRecentActivity: AuditLog[];
+  safeRecentActivity: () => AuditLog[]; // Changed to function type
   activityError: any;
   handleRetry: () => void;
   onShowLocationManager: () => void;
@@ -57,17 +54,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   requestInfo
 }) => {
   const isHome = true;
-  const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(currentAssociation?.id || '');
   const { toast } = useToast();
-  const { profile } = useUserProfile();
   
-  // Fetch members when the component mounts or when the association changes
-  useEffect(() => {
-    if (currentAssociation?.id) {
-      fetchMembers();
-    }
-  }, [currentAssociation?.id, fetchMembers]);
-
   // Show a toast when in debug mode to indicate loading time
   useEffect(() => {
     if (isDebugMode && loadTime && loadTime > 0) {
@@ -104,19 +92,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         
         <ErrorBoundary>
           <ConventionManagementSection />
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <div className="py-6">
-            <MemberManager 
-              associationId={currentAssociation?.id || ''}
-              members={members}
-              loading={loading}
-              onUpdateRole={updateMemberRole}
-              onRemoveMember={removeMember}
-              minimal={true}
-            />
-          </div>
         </ErrorBoundary>
         
         <DashboardDebugPanel 

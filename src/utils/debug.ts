@@ -1,4 +1,3 @@
-
 /**
  * Utility function for logging debug information to the console
  */
@@ -10,7 +9,9 @@ export const logDebug = (
   // Only log in development environment
   if (import.meta.env.DEV) {
     const logMessage = `[DEBUG] ${message}`;
-    
+    const timestamp = new Date().toISOString();
+    const logData = data ? JSON.stringify(data, null, 2) : ''; // Stringify data for sending
+
     switch (level) {
       case 'log':
         console.log(logMessage, data);
@@ -23,6 +24,20 @@ export const logDebug = (
         break;
       case 'error':
         console.error(logMessage, data);
+        // Send error to local logging endpoint
+        fetch('/log-error', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            timestamp,
+            level,
+            message,
+            data: logData, // Send stringified data
+            stack: new Error().stack // Optionally capture stack trace
+          }),
+        }).catch(console.error); // Log fetch errors to console
         break;
     }
   }

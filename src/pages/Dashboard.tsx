@@ -79,8 +79,7 @@ const Dashboard = () => {
         loadingTimerRef.current = null; // Ensure cleanup on unmount
       }
     };
-    // Dependencies: loading state flags, debug mode flag, network status, toast function, and loadingStartTime
-  }, [associationLoading, activityLoading, isDebugMode, networkStatus.status, toast, loadingStartTime]);
+  }, [associationLoading, activityLoading, isDebugMode, networkStatus.status, toast]); // Remove loadingStartTime from dependencies
 
   // Log state changes, avoiding excessive logging due to object references or rapid duration changes
   useEffect(() => {
@@ -96,9 +95,12 @@ const Dashboard = () => {
   }, [associationLoading, user?.id, currentAssociation?.id, networkStatus.status, retryCount]);
 
   const toggleDebugMode = useCallback(() => {
-    setIsDebugMode(prev => !prev);
-    logDebug(`Debug mode ${!isDebugMode ? 'enabled' : 'disabled'} by user`, null, 'info');
-  }, [isDebugMode]); // isDebugMode is the correct dependency here
+    setIsDebugMode(prev => {
+      const newValue = !prev;
+      logDebug(`Debug mode ${newValue ? 'enabled' : 'disabled'} by user`, null, 'info');
+      return newValue;
+    });
+  }, []); // Remove isDebugMode from dependencies to prevent infinite loop
 
   const handleShowLocationManager = useCallback(() => {
     setShowLocationManager(true);
@@ -202,7 +204,7 @@ const Dashboard = () => {
       currentAssociation={currentAssociation}
       user={user}
       isLoadingActivity={isLoadingActivity}
-      safeRecentActivity={safeRecentActivity()}
+      safeRecentActivity={safeRecentActivity}
       activityError={activityError}
       handleRetry={handleRetry}
       onShowLocationManager={handleShowLocationManager}

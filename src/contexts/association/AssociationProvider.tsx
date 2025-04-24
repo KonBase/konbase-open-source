@@ -1,10 +1,9 @@
-
 import React, { createContext, useEffect, useState } from 'react';
 import { AssociationContextType, AssociationState } from './AssociationTypes';
 import { Association } from '@/types/association';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from '@/components/ui/use-toast';
-import { createAssociation, fetchUserAssociations, updateAssociation } from './AssociationUtils';
+import { createAssociation, fetchUserAssociations, updateAssociation, joinAssociationWithCode as joinWithCode } from './AssociationUtils';
 
 // Create the context with a default undefined value
 export const AssociationContext = createContext<AssociationContextType | undefined>(undefined);
@@ -111,7 +110,7 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       if (!profile) throw new Error("You must be logged in to create an association");
       
-      const newAssociation = await createAssociation(data, profile.id, profile.email);
+      const newAssociation = await createAssociation(data, profile.id);
       
       if (newAssociation) {
         updateState({
@@ -141,12 +140,48 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  // Join an association with invite code
+  const handleJoinAssociationWithCode = async (code: string, userId: string): Promise<{ success: boolean; error?: string }> => {
+    updateState({ isLoading: true });
+    try {
+      const result = await joinWithCode(code, userId);
+      
+      if (result.success && result.association) {
+        // Add the new association to the user's list and set it as current
+        const newAssociation = result.association;
+        
+        updateState({
+          userAssociations: [...state.userAssociations, newAssociation],
+          currentAssociation: newAssociation
+        });
+        
+        toast({
+          title: "Association joined",
+          description: `You have joined ${newAssociation.name} successfully.`,
+        });
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error("Error joining association:", error);
+      toast({
+        title: "Error joining association",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    } finally {
+      updateState({ isLoading: false });
+    }
+  };
+
   // Prepare the context value
   const contextValue: AssociationContextType = {
     ...state,
     setCurrentAssociation,
     updateAssociation: handleUpdateAssociation,
     createAssociation: handleCreateAssociation,
+    joinAssociationWithCode: handleJoinAssociationWithCode,
   };
 
   return (

@@ -4,14 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { UserRoundPlus, Trash2 } from 'lucide-react';
+import { UserRoundPlus, Trash2, UserCog } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
-import { Profile } from '@/types/user'; // Assuming Profile type exists
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { InviteAttendeeDialog } from '@/components/conventions/InviteAttendeeDialog';
+
+interface Profile {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface ConventionAttendee {
   id: string; // convention_access id
   user_id: string;
   created_at: string;
+  role: string; // Updated to include role
   profile: Pick<Profile, 'id' | 'name' | 'email'> | null; // Include profile details
 }
 
@@ -22,17 +37,28 @@ interface ConventionAttendeesPageProps {
 const ConventionAttendeesPage = ({ conventionId }: ConventionAttendeesPageProps) => {
   const [attendees, setAttendees] = useState<ConventionAttendee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [canManageRoles, setCanManageRoles] = useState(false);
   const { toast } = useToast();
 
   const fetchAttendees = async () => {
     setIsLoading(true);
     try {
+      // First check if current user can manage this convention
+      const { data: canManageData, error: canManageError } = await supabase
+        .rpc('can_manage_convention', { p_convention_id: conventionId });
+      
+      if (canManageError) throw canManageError;
+      setCanManageRoles(canManageData || false);
+
+      // Fetch attendees with their roles
       const { data, error } = await supabase
         .from('convention_access')
         .select(`
           id,
           user_id,
           created_at,
+          role,
           profile:profiles ( id, name, email ) 
         `)
         .eq('convention_id', conventionId);
@@ -89,13 +115,57 @@ const ConventionAttendeesPage = ({ conventionId }: ConventionAttendeesPageProps)
     }
   };
   
-  // TODO: Implement Invite Attendee functionality (likely involves convention_invitations table)
-  const handleInviteAttendee = () => {
-     toast({
-        title: 'Not Implemented',
-        description: 'Inviting attendees is not yet implemented.',
-        variant: 'default',
+  const handleUpdateRole = async (accessId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('convention_access')
+        .update({ role: newRole })
+        .eq('id', accessId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Role Updated',
+        description: 'The attendee role has been updated successfully.',
       });
+      
+      // Update local state
+      setAttendees(attendees.map(attendee => 
+        attendee.id === accessId 
+          ? { ...attendee, role: newRole } 
+          : attendee
+      ));
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast({
+        title: 'Error Updating Role',
+        description: error.message || 'Could not update the role.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleInviteAttendee = () => {
+    setIsInviteDialogOpen(true);
+  };
+
+  const handleInviteSent = () => {
+    setIsInviteDialogOpen(false);
+    fetchAttendees(); // Refresh the attendee list
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'organizer':
+        return <Badge variant="default">Organizer</Badge>;
+      case 'staff':
+        return <Badge variant="secondary">Staff</Badge>;
+      case 'helper':
+        return <Badge variant="outline">Helper</Badge>;
+      case 'attendee':
+      default:
+        return <Badge variant="outline" className="bg-muted">Attendee</Badge>;
+    }
   };
 
   return (
@@ -128,22 +198,53 @@ const ConventionAttendeesPage = ({ conventionId }: ConventionAttendeesPageProps)
           <ul className="space-y-3">
             {attendees.map((attendee) => (
               <li key={attendee.id} className="flex items-center justify-between p-3 border rounded-md bg-card">
-                <div>
-                  <p className="font-medium">{attendee.profile?.name || 'Unknown User'}</p>
-                  <p className="text-sm text-muted-foreground">{attendee.profile?.email || 'No email available'}</p>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="font-medium">{attendee.profile?.name || 'Unknown User'}</p>
+                    <p className="text-sm text-muted-foreground">{attendee.profile?.email || 'No email available'}</p>
+                  </div>
+                  <div>
+                    {getRoleBadge(attendee.role)}
+                  </div>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleRemoveAttendee(attendee.id, attendee.profile?.name)}
-                  aria-label={`Remove ${attendee.profile?.name || 'attendee'}`}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {canManageRoles && (
+                    <Select
+                      defaultValue={attendee.role}
+                      onValueChange={(value) => handleUpdateRole(attendee.id, value)}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="organizer">Organizer</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="helper">Helper</SelectItem>
+                        <SelectItem value="attendee">Attendee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleRemoveAttendee(attendee.id, attendee.profile?.name)}
+                    aria-label={`Remove ${attendee.profile?.name || 'attendee'}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         )}
+        
+        {/* Invite Attendee Dialog */}
+        <InviteAttendeeDialog 
+          isOpen={isInviteDialogOpen}
+          conventionId={conventionId}
+          onClose={() => setIsInviteDialogOpen(false)}
+          onInviteSent={handleInviteSent}
+        />
       </CardContent>
     </Card>
   );

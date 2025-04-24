@@ -22,10 +22,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  role: z.enum(['member', 'manager']),
+  role: z.enum(['member', 'manager', 'admin']),
+  createAccount: z.boolean().default(false),
+  name: z.string().optional(),
+  password: z.string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -34,6 +41,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("invite");
   const { toast } = useToast();
   const { currentAssociation } = useAssociation();
   const { safeInsert } = useTypeSafeSupabase();
@@ -43,8 +51,13 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
     defaultValues: {
       email: '',
       role: 'member',
+      createAccount: false,
+      name: '',
+      password: '',
     },
   });
+
+  const watchCreateAccount = form.watch("createAccount");
 
   const handleInvite = async (values: FormValues) => {
     if (!currentAssociation) {
@@ -59,7 +72,44 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
     setIsLoading(true);
 
     try {
-      // Check if user already exists
+      // If creating a new account directly
+      if (values.createAccount && values.name && values.password) {
+        // Create new user via Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: values.email,
+          password: values.password,
+          options: {
+            data: {
+              name: values.name,
+              role: values.role,
+            },
+          },
+        });
+        
+        if (authError) throw authError;
+        
+        if (authData.user) {
+          // Add the new user to the association_members table
+          const { error: memberError } = await supabase.from('association_members').insert({
+            user_id: authData.user.id,
+            association_id: currentAssociation.id,
+          });
+          
+          if (memberError) throw memberError;
+          
+          toast({
+            title: 'Account Created',
+            description: `${values.name} has been added to the association.`,
+          });
+          
+          setIsOpen(false);
+          if (onInviteSent) onInviteSent();
+          form.reset();
+          return;
+        }
+      }
+      
+      // Check if user already exists (for invitation flow)
       const { data: existingUser, error: userError } = await supabase
         .from('profiles')
         .select('id')
@@ -97,7 +147,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
         const { error } = await supabase.from('association_members').insert({
           user_id: existingUser.id,
           association_id: currentAssociation.id,
-        }); // Removed the role field as it no longer exists in association_members
+        }); 
 
         if (error) {
           throw error;
@@ -162,6 +212,7 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
     setIsOpen(false);
     setInviteCode(null);
     form.reset();
+    setActiveTab("invite");
   };
 
   return (
@@ -203,59 +254,191 @@ const InviteMemberDialog = ({ onInviteSent }: { onInviteSent?: () => void }) => 
             </DialogFooter>
           </div>
         ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleInvite)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter email address" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="invite">Send Invitation</TabsTrigger>
+                <TabsTrigger value="create">Create Member</TabsTrigger>
+              </TabsList>
               
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex flex-col space-y-1"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="member" id="member" />
-                          <Label htmlFor="member">Member</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="manager" id="manager" />
-                          <Label htmlFor="manager">Manager</Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <TabsContent value="invite">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleInvite)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter email address" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Role</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex flex-col space-y-1"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="member" id="invite-member" />
+                                <Label htmlFor="invite-member">Member</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="manager" id="invite-manager" />
+                                <Label htmlFor="invite-manager">Manager</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="admin" id="invite-admin" />
+                                <Label htmlFor="invite-admin">Admin</Label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={closeDialog} disabled={isLoading}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isLoading}>
+                        {isLoading ? 'Sending...' : 'Send Invitation'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </TabsContent>
               
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send Invitation'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+              <TabsContent value="create">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleInvite)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="createAccount"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Create account for member</FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Create a new user account and add them to your association directly
+                            </p>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter email address" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {watchCreateAccount && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter full name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="Create a password" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
+                    
+                    <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Role</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex flex-col space-y-1"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="member" id="create-member" />
+                                <Label htmlFor="create-member">Member</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="manager" id="create-manager" />
+                                <Label htmlFor="create-manager">Manager</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="admin" id="create-admin" />
+                                <Label htmlFor="create-admin">Admin</Label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={closeDialog} disabled={isLoading}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isLoading || (watchCreateAccount && (!form.watch("name") || !form.watch("password")))}>
+                        {isLoading ? 'Creating...' : 'Create Member'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </TabsContent>
+            </Tabs>
+          </>
         )}
       </DialogContent>
     </Dialog>

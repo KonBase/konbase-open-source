@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, Copy, CheckCircle } from 'lucide-react';
+
+interface InviteAttendeeDialogProps {
+  isOpen: boolean;
+  conventionId: string;
+  onClose: () => void;
+  onInviteSent: () => void;
+}
+
+export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
+  isOpen,
+  conventionId,
+  onClose,
+  onInviteSent
+}) => {
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('attendee');
+  const [isLoading, setIsLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const { toast } = useToast();
+
+  const handleCreateInvite = async () => {
+    setIsLoading(true);
+    try {
+      // Generate a random alphanumeric code
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      
+      // Set expiration date to 7 days from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      
+      // Get the current user's ID
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase.from('convention_invitations').insert({
+        code,
+        convention_id: conventionId,
+        created_by: user.id,
+        role, // Use the selected role
+        expires_at: expiresAt.toISOString(),
+        uses_remaining: 1, // Single-use invitation
+      });
+      
+      if (error) throw error;
+      
+      // If email was provided, send email (this would typically be done server-side)
+      if (email) {
+        // Email sending logic would go here
+        // For now, just show the code to be shared manually
+        toast({
+          title: 'Invitation Created',
+          description: `An invitation code has been created. Please share it with ${email}.`,
+        });
+      }
+      
+      // Show the invitation code
+      setInviteCode(code);
+      
+    } catch (error: any) {
+      console.error('Error creating invitation:', error);
+      toast({
+        title: 'Error Creating Invitation',
+        description: error.message || 'An unknown error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (inviteCode) {
+      navigator.clipboard.writeText(inviteCode);
+      setIsCopied(true);
+      toast({
+        title: 'Copied to Clipboard',
+        description: 'Invitation code has been copied to clipboard.',
+      });
+      
+      // Reset copy state after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  const handleClose = () => {
+    // Reset the dialog state
+    setEmail('');
+    setRole('attendee');
+    setInviteCode(null);
+    setIsCopied(false);
+    
+    // If an invite was created, notify the parent
+    if (inviteCode) {
+      onInviteSent();
+    } else {
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Invite Convention Attendee</DialogTitle>
+          <DialogDescription>
+            Create an invitation for someone to join this convention.
+          </DialogDescription>
+        </DialogHeader>
+        
+        {!inviteCode ? (
+          <>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  placeholder="Optional: recipient email"
+                  className="col-span-3"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="role" className="text-right">
+                  Role
+                </Label>
+                <Select 
+                  value={role} 
+                  onValueChange={setRole}
+                >
+                  <SelectTrigger className="col-span-3" id="role">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="organizer">Organizer</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="helper">Helper</SelectItem>
+                    <SelectItem value="attendee">Attendee</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                onClick={handleCreateInvite} 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Invitation'
+                )}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="code" className="text-right">
+                  Invite Code
+                </Label>
+                <div className="col-span-3 flex">
+                  <Input
+                    id="code"
+                    value={inviteCode}
+                    readOnly
+                    className="font-mono"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="ml-2" 
+                    onClick={handleCopyCode}
+                  >
+                    {isCopied ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="col-span-4 text-sm text-muted-foreground">
+                <p>Share this code with the attendee. They can use it to join the convention.</p>
+                <p className="mt-1">The code will expire in 7 days and can only be used once.</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={handleClose}
+              >
+                Done
+              </Button>
+              <Button
+                onClick={() => {
+                  setInviteCode(null);
+                  setEmail('');
+                  setRole('attendee');
+                }}
+              >
+                Create Another
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};

@@ -16,7 +16,7 @@ interface AuditLog {
 interface DashboardOverviewSectionProps {
   currentAssociation: Association | null;
   isLoadingActivity: boolean;
-  recentActivity: AuditLog[] | null;
+  recentActivity: (() => AuditLog[]) | AuditLog[] | null; // Support both function and direct array
   activityError: any;
   handleRetry: () => void;
 }

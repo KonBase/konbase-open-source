@@ -29,6 +29,7 @@ const formSchema = z.object({
   password: z.string().min(8, {
     message: 'Password must be at least 8 characters.',
   }),
+  invitationCode: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -47,20 +48,66 @@ const RegisterForm = () => {
       name: '',
       email: '',
       password: '',
+      invitationCode: '',
     },
   });
 
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     try {
-      logDebug('Register attempt', { email: values.email, name: values.name }, 'info');
+      logDebug('Register attempt', { email: values.email, name: values.name, hasInvitationCode: !!values.invitationCode }, 'info');
       
+      // First, check if the invitation code exists and is valid (if provided)
+      let associationInvitation = null;
+      let conventionInvitation = null;
+      let invitationType = null;
+      
+      if (values.invitationCode) {
+        // Check for association invitation
+        const { data: assocData, error: assocError } = await supabase
+          .from('association_invitations')
+          .select('*')
+          .eq('code', values.invitationCode)
+          .eq('used', false)
+          .maybeSingle();
+
+        if (assocError) {
+          logDebug('Error checking association invitation', assocError, 'error');
+        } else if (assocData) {
+          associationInvitation = assocData;
+          invitationType = 'association';
+          logDebug('Found valid association invitation', { id: assocData.id, role: assocData.role }, 'info');
+        }
+
+        // If no association invitation found, check for convention invitation
+        if (!associationInvitation) {
+          const { data: convData, error: convError } = await supabase
+            .from('convention_invitations')
+            .select('*')
+            .eq('code', values.invitationCode)
+            .gt('uses_remaining', 0)
+            .gt('expires_at', new Date().toISOString())
+            .maybeSingle();
+
+          if (convError) {
+            logDebug('Error checking convention invitation', convError, 'error');
+          } else if (convData) {
+            conventionInvitation = convData;
+            invitationType = 'convention';
+            logDebug('Found valid convention invitation', { id: convData.id, role: convData.role }, 'info');
+          }
+        }
+      }
+
+      // Register the user
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
           data: {
             name: values.name,
+            invitation_code: values.invitationCode || null,
+            invitation_type: invitationType,
           },
         },
       });
@@ -69,16 +116,102 @@ const RegisterForm = () => {
         throw error;
       }
 
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
-      });
-      
       if (data.session) {
         logDebug('User registered with session', { userId: data.user?.id }, 'info');
-        navigate('/dashboard');
+        
+        // If we have an invitation, process it
+        if (associationInvitation) {
+          // Add user to association with proper role
+          const { error: memberError } = await supabase
+            .from('association_members')
+            .insert({
+              user_id: data.user.id,
+              association_id: associationInvitation.association_id,
+              role: associationInvitation.role,
+            });
+
+          if (memberError) {
+            logDebug('Error adding user to association', memberError, 'error');
+            toast({
+              variant: "destructive",
+              title: "Error setting up association access",
+              description: "Your account was created but there was an issue with your association access. Please contact an administrator.",
+            });
+          } else {
+            // Update user's primary association and role in profile
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({
+                association_id: associationInvitation.association_id,
+                role: associationInvitation.role,
+              })
+              .eq('id', data.user.id);
+
+            if (profileError) {
+              logDebug('Error updating user profile with association', profileError, 'error');
+            }
+
+            // Mark invitation as used
+            const { error: invitationError } = await supabase
+              .from('association_invitations')
+              .update({
+                used: true,
+                used_by: data.user.id,
+                used_at: new Date().toISOString(),
+              })
+              .eq('id', associationInvitation.id);
+
+            if (invitationError) {
+              logDebug('Error marking invitation as used', invitationError, 'error');
+            }
+          }
+          
+          // Redirect to dashboard
+          navigate('/dashboard');
+        } else if (conventionInvitation) {
+          // Add user to convention access with proper role
+          const { error: accessError } = await supabase
+            .from('convention_access')
+            .insert({
+              user_id: data.user.id,
+              convention_id: conventionInvitation.convention_id,
+              role: conventionInvitation.role,
+              invitation_code: values.invitationCode,
+            });
+
+          if (accessError) {
+            logDebug('Error adding user to convention', accessError, 'error');
+            toast({
+              variant: "destructive",
+              title: "Error setting up convention access",
+              description: "Your account was created but there was an issue with your convention access. Please contact an administrator.",
+            });
+          } else {
+            // Decrease the uses_remaining count for the invitation
+            const { error: invitationError } = await supabase
+              .from('convention_invitations')
+              .update({
+                uses_remaining: conventionInvitation.uses_remaining - 1,
+              })
+              .eq('id', conventionInvitation.id);
+
+            if (invitationError) {
+              logDebug('Error updating invitation uses count', invitationError, 'error');
+            }
+          }
+          
+          // Redirect to dashboard
+          navigate('/dashboard');
+        } else {
+          // No invitation - redirect to create first association
+          navigate('/setup');
+        }
       } else {
         logDebug('User registered, email confirmation required', null, 'info');
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account.",
+        });
         navigate('/login');
       }
     } catch (error: any) {
@@ -157,6 +290,20 @@ const RegisterForm = () => {
                 <FormLabel>Password</FormLabel>
                 <FormControl>
                   <Input type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="invitationCode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Invitation Code (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter invitation code if you have one" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

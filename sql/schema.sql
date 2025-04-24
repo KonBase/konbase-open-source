@@ -14,6 +14,14 @@ CREATE TYPE public.user_role_type AS ENUM (
   'guest'
 );
 
+-- Define convention-specific role types
+CREATE TYPE public.convention_role_type AS ENUM (
+  'organizer',
+  'staff',
+  'helper',
+  'attendee'
+);
+
 -- -----------------------------------------------------------------------------
 -- Tables
 -- -----------------------------------------------------------------------------
@@ -70,7 +78,10 @@ CREATE TABLE public.association_invitations (
   email text CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'), -- Optional: restrict invitation to specific email
   role public.user_role_type NOT NULL DEFAULT 'member',
   expires_at timestamp with time zone,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  used boolean DEFAULT false,
+  used_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  used_at timestamp with time zone
 );
 COMMENT ON TABLE public.association_invitations IS 'Stores invitation codes for users to join an association.';
 
@@ -127,7 +138,6 @@ COMMENT ON COLUMN public.items.image IS 'URL pointing to the item image stored i
 -- Create partial unique indexes for items table
 CREATE UNIQUE INDEX idx_items_unique_barcode_per_association ON public.items (association_id, barcode) WHERE (barcode IS NOT NULL);
 CREATE UNIQUE INDEX idx_items_unique_serial_number_per_association ON public.items (association_id, serial_number) WHERE (serial_number IS NOT NULL);
-
 
 -- Equipment Sets Table
 CREATE TABLE public.equipment_sets (
@@ -270,11 +280,13 @@ CREATE TABLE public.convention_access (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   convention_id uuid NOT NULL REFERENCES public.conventions(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  role public.convention_role_type NOT NULL DEFAULT 'attendee',
   invitation_code text, -- Optional: track which invitation was used
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE (convention_id, user_id) -- User can only have access once per convention
 );
-COMMENT ON TABLE public.convention_access IS 'Grants explicit access to a convention for users who might not be part of the managing association.';
+COMMENT ON TABLE public.convention_access IS 'Grants explicit access to a convention for users and defines their role within that convention.';
 
 -- Convention Invitations Table (Invite external helpers)
 CREATE TABLE public.convention_invitations (
@@ -282,6 +294,7 @@ CREATE TABLE public.convention_invitations (
   code text NOT NULL UNIQUE CHECK (char_length(code) > 5),
   convention_id uuid NOT NULL REFERENCES public.conventions(id) ON DELETE CASCADE,
   created_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  role public.convention_role_type NOT NULL DEFAULT 'attendee',
   expires_at timestamp with time zone NOT NULL,
   uses_remaining integer NOT NULL DEFAULT 1 CHECK (uses_remaining >= 0),
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -406,14 +419,11 @@ CREATE OR REPLACE FUNCTION public.is_member_of_association(p_association_id uuid
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
--- SET search_path = public -- Optional: Uncomment if schema context issues arise
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM public.association_members am
-    -- JOIN public.profiles p ON am.user_id = p.id -- REMOVED JOIN
-    WHERE am.association_id = p_association_id
-      AND am.user_id = auth.uid() -- Check user_id directly
+    FROM public.association_members
+    WHERE user_id = auth.uid() AND association_id = p_association_id
   );
 $$;
 
@@ -491,19 +501,17 @@ BEGIN
     -- Check if the user is a member of the association OR has specific access granted
     RETURN EXISTS (
         SELECT 1
-        FROM public.association_members am
-        WHERE am.user_id = auth.uid()
-          AND am.association_id = v_association_id
+        FROM public.association_members
+        WHERE user_id = auth.uid() AND association_id = v_association_id
     ) OR EXISTS (
         SELECT 1
-        FROM public.convention_access ca
-        WHERE ca.user_id = auth.uid()
-          AND ca.convention_id = p_convention_id
+        FROM public.convention_access
+        WHERE user_id = auth.uid() AND convention_id = p_convention_id
     );
 END;
 $$;
 
--- NEW FUNCTION: Check if user has role or higher in a SPECIFIC association
+-- Function to check if user has role or higher in a SPECIFIC association
 CREATE OR REPLACE FUNCTION public.has_role_or_higher_in_association(p_association_id uuid, required_role public.user_role_type)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -536,6 +544,144 @@ BEGIN
 END;
 $$;
 
+-- Function to check if user can manage a convention (either through association or direct convention role)
+CREATE OR REPLACE FUNCTION public.can_manage_convention(p_convention_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_association_id uuid;
+    v_convention_role public.convention_role_type;
+BEGIN
+    -- Check if user is super admin first (always can manage)
+    IF public.is_super_admin() THEN
+        RETURN TRUE;
+    END IF;
+
+    -- Get the association ID for the convention
+    SELECT association_id INTO v_association_id
+    FROM public.conventions
+    WHERE id = p_convention_id;
+
+    IF v_association_id IS NULL THEN
+        RETURN FALSE; -- Convention not found
+    END IF;
+
+    -- Check if user has manager role or higher in the association
+    IF public.has_role_or_higher_in_association(v_association_id, 'manager') THEN
+        RETURN TRUE;
+    END IF;
+
+    -- Check if user has organizer role in this specific convention
+    SELECT role INTO v_convention_role
+    FROM public.convention_access
+    WHERE user_id = auth.uid() AND convention_id = p_convention_id;
+
+    RETURN v_convention_role = 'organizer';
+END;
+$$;
+
+-- Function to get a user's role within a specific convention
+CREATE OR REPLACE FUNCTION public.get_convention_role(p_convention_id uuid)
+RETURNS public.convention_role_type
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_association_id uuid;
+    v_association_role public.user_role_type;
+    v_convention_role public.convention_role_type;
+BEGIN
+    -- Check if the user has a specific role in the convention
+    SELECT role INTO v_convention_role
+    FROM public.convention_access
+    WHERE user_id = auth.uid() AND convention_id = p_convention_id;
+    
+    IF v_convention_role IS NOT NULL THEN
+        RETURN v_convention_role;
+    END IF;
+    
+    -- If no specific convention role, check association role
+    SELECT association_id INTO v_association_id
+    FROM public.conventions
+    WHERE id = p_convention_id;
+    
+    IF v_association_id IS NULL THEN
+        RETURN NULL; -- Convention not found
+    END IF;
+    
+    SELECT role INTO v_association_role
+    FROM public.association_members
+    WHERE user_id = auth.uid() AND association_id = v_association_id;
+    
+    -- Map association roles to convention roles
+    IF v_association_role IN ('admin', 'system_admin', 'super_admin') THEN
+        RETURN 'organizer'::public.convention_role_type;
+    ELSIF v_association_role = 'manager' THEN
+        RETURN 'staff'::public.convention_role_type;
+    ELSIF v_association_role = 'member' THEN
+        RETURN 'helper'::public.convention_role_type;
+    ELSE
+        RETURN NULL; -- No access
+    END IF;
+END;
+$$;
+
+-- Create a trigger to update convention_access.updated_at column
+CREATE TRIGGER set_convention_access_timestamp
+BEFORE UPDATE ON public.convention_access
+FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
+
+-- RLS Policies: convention_access & convention_invitations
+-- Members can view convention access records within their association
+CREATE POLICY "Members can view convention access" ON public.convention_access
+FOR SELECT
+USING (
+  can_access_convention(convention_id)
+);
+
+-- Members can view their own access record
+CREATE POLICY "Members can view own access record" ON public.convention_access
+FOR SELECT
+USING (
+  user_id = auth.uid()
+);
+
+-- Managers/Organizers can manage convention access
+CREATE POLICY "Managers can manage convention access" ON public.convention_access
+FOR ALL
+USING (
+  can_manage_convention(convention_id)
+)
+WITH CHECK (
+  can_manage_convention(convention_id)
+);
+
+-- Managers/Organizers can create invitations for conventions they manage
+CREATE POLICY "Managers can create convention invitations" ON public.convention_invitations
+FOR INSERT
+WITH CHECK (
+  can_manage_convention(convention_id) AND created_by = auth.uid()
+);
+
+-- Managers/Organizers can view invitations for conventions they manage
+CREATE POLICY "Managers can view convention invitations" ON public.convention_invitations
+FOR SELECT
+USING (
+  can_manage_convention(convention_id)
+);
+
+-- Super admins can manage all convention access and invitations
+CREATE POLICY "Super admins can manage all convention access" ON public.convention_access
+FOR ALL
+USING (is_super_admin())
+WITH CHECK (is_super_admin());
+
+CREATE POLICY "Super admins can manage all convention invitations" ON public.convention_invitations
+FOR ALL
+USING (is_super_admin())
+WITH CHECK (is_super_admin());
 
 -- -----------------------------------------------------------------------------
 -- Triggers for `updated_at` columns
@@ -614,7 +760,6 @@ CREATE TRIGGER set_module_configurations_timestamp
 BEFORE UPDATE ON public.module_configurations
 FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamp();
 
-
 -- -----------------------------------------------------------------------------
 -- Trigger to create profile on new user signup
 -- -----------------------------------------------------------------------------
@@ -652,7 +797,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER ensure_consumable_before_insert_or_update
 BEFORE INSERT OR UPDATE ON public.convention_consumables
 FOR EACH ROW EXECUTE FUNCTION public.check_item_is_consumable();
-
 
 -- -----------------------------------------------------------------------------
 -- Row Level Security (RLS) Policies
@@ -999,7 +1143,6 @@ CREATE POLICY "Super admin full access" ON public.convention_access FOR ALL USIN
 CREATE POLICY "Super admin full access" ON public.convention_invitations FOR ALL USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());
 CREATE POLICY "Super admin full access" ON public.convention_templates FOR ALL USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());
 
-
 -- RLS Policies: audit_logs
 -- Super admins can view all audit logs.
 CREATE POLICY "Allow super admins to view all audit logs" ON public.audit_logs
@@ -1025,7 +1168,6 @@ CREATE POLICY "Allow user to delete own notifications" ON public.notifications
 -- Super admins can manage all notifications (for debugging/admin purposes).
 CREATE POLICY "Allow super admins to manage all notifications" ON public.notifications
   FOR ALL USING (public.is_super_admin()) WITH CHECK (public.is_super_admin());
-
 
 -- RLS Policies: user_2fa
 -- Users can manage their own 2FA settings.
@@ -1075,7 +1217,6 @@ CREATE POLICY "Allow association admins to manage association module configurati
 -- Allow members to read association-specific configurations.
 CREATE POLICY "Allow members to read association module configurations" ON public.module_configurations
     FOR SELECT USING (public.is_member_of_association(association_id));
-
 
 -- -----------------------------------------------------------------------------
 -- Custom Functions for Complex Operations
@@ -1171,7 +1312,6 @@ $$;
 
 -- Grant execute permission to the authenticated role
 GRANT EXECUTE ON FUNCTION public.create_association_and_set_admin(jsonb, uuid) TO authenticated;
-
 
 -- -----------------------------------------------------------------------------
 -- Indexes
@@ -1444,7 +1584,6 @@ CREATE POLICY "Document view" ON storage.objects FOR SELECT
         -- Check if user is a member of the association derived from the path
         public.is_member_of_association(uuid(split_part(name, '/', 1)))
     );
-
 
 -- -----------------------------------------------------------------------------
 -- Final Setup Notes

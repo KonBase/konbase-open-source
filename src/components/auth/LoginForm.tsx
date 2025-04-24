@@ -183,7 +183,7 @@ const LoginForm = () => {
       </CardContent>
       <CardFooter className="text-sm text-center block">
         Don't have an account?{" "}
-        <Link to="/signup" className="font-medium text-primary hover:underline">
+        <Link to="/register" className="font-medium text-primary hover:underline">
           Sign up
         </Link>
       </CardFooter>

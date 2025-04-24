@@ -1,32 +1,135 @@
-import React, { useState } from 'react'; // Moved useState import here
+import React, { useState, useEffect } from 'react'; 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAssociation } from '@/contexts/AssociationContext'; // Import useAssociation
-import { useUserProfile } from '@/hooks/useUserProfile'; // Import useUserProfile
-import { useToast } from '@/components/ui/use-toast'; // Import useToast for feedback
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
+import { useAssociation } from '@/contexts/AssociationContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useToast } from '@/components/ui/use-toast';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CircleIcon } from 'lucide-react';
 
 const AssociationSetup: React.FC = () => {
-  // Placeholder state and handlers
   const [inviteCode, setInviteCode] = useState('');
   const [associationName, setAssociationName] = useState('');
-  const [contactEmail, setContactEmail] = useState(''); // Add state for contact email
-  const [isJoining, setIsJoining] = useState(true); // Toggle between Join and Create
+  const [contactEmail, setContactEmail] = useState('');
+  const [isJoining, setIsJoining] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const { createAssociation } = useAssociation(); // Get createAssociation from context
-  const { profile } = useUserProfile(); // Get user profile
-  const { toast } = useToast(); // Get toast function
-  const navigate = useNavigate(); // Get navigate function
+  const [invitationDetails, setInvitationDetails] = useState<any>(null);
+  const { createAssociation, joinAssociationWithCode } = useAssociation();
+  const { profile } = useUserProfile();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Check for invitation code in URL query parameters
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const codeFromUrl = queryParams.get('code');
+    if (codeFromUrl) {
+      setInviteCode(codeFromUrl);
+      checkInvitationCode(codeFromUrl);
+    }
+  }, [location]);
+
+  const checkInvitationCode = async (code: string) => {
+    try {
+      // Look up the invitation details
+      const { data, error } = await supabase
+        .from('association_invitations')
+        .select('*')
+        .eq('code', code)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        // Check if code is expired
+        const now = new Date();
+        const expiresAt = new Date(data.expires_at);
+        
+        if (now > expiresAt) {
+          setInvitationDetails({ error: 'This invitation code has expired.' });
+          return;
+        }
+        
+        // Store the invitation details
+        setInvitationDetails(data);
+      } else {
+        setInvitationDetails({ error: 'Invalid invitation code.' });
+      }
+    } catch (error: any) {
+      console.error('Error checking invitation code:', error);
+      setInvitationDetails({ error: 'Invalid invitation code.' });
+    }
+  };
 
   const handleJoin = async () => {
+    if (!profile) {
+      toast({
+        title: 'Error',
+        description: 'User profile not loaded. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsLoading(true);
-    console.log('Attempting to join association with code:', inviteCode);
-    // TODO: Implement logic to validate invite code and join association
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-    setIsLoading(false);
-    // On success, navigate to dashboard or relevant page
+    
+    try {
+      // Get invitation details if not already fetched
+      if (!invitationDetails) {
+        await checkInvitationCode(inviteCode);
+      }
+      
+      // Check if there's an error with the invitation
+      if (invitationDetails?.error) {
+        toast({
+          title: 'Invalid Invitation',
+          description: invitationDetails.error,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Join the association
+      const result = await joinAssociationWithCode(inviteCode, profile.id);
+      
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'You have successfully joined the association!',
+        });
+        
+        // Update user role if specified in invitation
+        if (invitationDetails?.role) {
+          await supabase
+            .from('profiles')
+            .update({ role: invitationDetails.role })
+            .eq('id', profile.id);
+        }
+        
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to join association.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error joining association:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -56,9 +159,7 @@ const AssociationSetup: React.FC = () => {
         return;
     }
 
-
     setIsLoading(true);
-    console.log('Attempting to create association:', associationName, 'with email:', contactEmail);
     try {
       // Pass both name and contactEmail to createAssociation
       const newAssociation = await createAssociation({ name: associationName, contactEmail: contactEmail });
@@ -68,11 +169,8 @@ const AssociationSetup: React.FC = () => {
           title: 'Success',
           description: `Association "${newAssociation.name}" created successfully!`,
         });
-        // On success, navigate to the dashboard or the new association's page
-        // Assuming the context automatically sets the new association as current
-        navigate('/dashboard'); // Or navigate(`/association/${newAssociation.id}`) or similar
+        navigate('/dashboard');
       } else {
-        // createAssociation handles its own errors/toasts, but we can add a fallback
         toast({
           title: 'Error',
           description: 'Failed to create association. Please check logs or try again.',
@@ -80,7 +178,6 @@ const AssociationSetup: React.FC = () => {
         });
       }
     } catch (error: any) {
-      // Catch any unexpected errors from the hook itself
       console.error('Error during association creation process:', error);
       toast({
         title: 'Creation Failed',
@@ -89,6 +186,18 @@ const AssociationSetup: React.FC = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleInviteCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const code = e.target.value;
+    setInviteCode(code);
+    
+    // Auto-check invitation details when code is complete (6 chars)
+    if (code.length >= 6) {
+      checkInvitationCode(code);
+    } else {
+      setInvitationDetails(null);
     }
   };
 
@@ -105,18 +214,39 @@ const AssociationSetup: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {isJoining ? (
-            <div className="space-y-2">
-              <Label htmlFor="inviteCode">Invitation Code</Label>
-              <Input 
-                id="inviteCode" 
-                placeholder="Enter code..." 
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="inviteCode">Invitation Code</Label>
+                <Input 
+                  id="inviteCode" 
+                  placeholder="Enter code..." 
+                  value={inviteCode}
+                  onChange={handleInviteCodeChange}
+                  disabled={isLoading}
+                />
+              </div>
+              
+              {/* Show invitation details if available */}
+              {invitationDetails && !invitationDetails.error && (
+                <Alert>
+                  <CircleIcon className="h-4 w-4" />
+                  <AlertDescription>
+                    You're joining <strong>{invitationDetails.association_id}</strong> with role: <strong>{invitationDetails.role || 'member'}</strong>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Show error if invitation is invalid */}
+              {invitationDetails?.error && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    {invitationDetails.error}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
           ) : (
-            <> {/* Use Fragment to group multiple elements */}
+            <> 
               <div className="space-y-2">
                 <Label htmlFor="associationName">Association Name</Label>
                 <Input
@@ -127,7 +257,6 @@ const AssociationSetup: React.FC = () => {
                   disabled={isLoading}
                 />
               </div>
-              {/* Add input field for contact email */}
               <div className="space-y-2">
                 <Label htmlFor="contactEmail">Contact Email</Label>
                 <Input
@@ -144,18 +273,28 @@ const AssociationSetup: React.FC = () => {
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           {isJoining ? (
-            <Button onClick={handleJoin} disabled={isLoading || !inviteCode} className="w-full">
+            <Button 
+              onClick={handleJoin} 
+              disabled={isLoading || !inviteCode || (invitationDetails && !!invitationDetails.error)} 
+              className="w-full"
+            >
               {isLoading ? 'Joining...' : 'Join Association'}
             </Button>
           ) : (
-            // Update disabled condition to include contactEmail
-            <Button onClick={handleCreate} disabled={isLoading || !associationName || !contactEmail} className="w-full">
+            <Button 
+              onClick={handleCreate} 
+              disabled={isLoading || !associationName || !contactEmail} 
+              className="w-full"
+            >
               {isLoading ? 'Creating...' : 'Create Association'}
             </Button>
           )}
           <Button 
             variant="link" 
-            onClick={() => setIsJoining(!isJoining)} 
+            onClick={() => {
+              setIsJoining(!isJoining);
+              setInvitationDetails(null);
+            }} 
             disabled={isLoading}
             className="text-sm"
           >

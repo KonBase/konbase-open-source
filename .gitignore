@@ -37,3 +37,9 @@ CREATE POLICY \"Members can view their association members\"
       WHERE id = auth.uid() AND association_id IS NOT NULL
     )
   );" > supabase/migrations/20250406_fix_association_members_policy.sql
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
