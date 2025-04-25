@@ -5,6 +5,9 @@
 </div>
 
 <p align="center">
+  <a href="https://crowdin.com/project/konbase">
+    <img src="https://badges.crowdin.net/konbase/localized.svg" alt="Localized" />
+  </a>
   <a href="https://github.com/KonBase/KonBase/stargazers">
     <img src="https://img.shields.io/github/stars/KonBase/konbase-open-source" alt="Stars" />
   </a>
