@@ -65,11 +65,11 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error verifying TOTP:', error.message);
+    console.error('Stack trace:', error.stack);
     
     return new Response(
       JSON.stringify({
-        error: error.message,
-        errorDetail: error.stack
+        error: 'An error occurred while processing your request. Please try again later.'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
