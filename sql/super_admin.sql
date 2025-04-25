@@ -36,6 +36,27 @@ WHERE id = 'YOUR_USER_ID_HERE'; -- <<< IMPORTANT: Replace this with the actual u
 -- Optional: Verify the change (uncomment the line below to run)
 -- SELECT id, email, role FROM public.profiles WHERE id = 'YOUR_USER_ID_HERE';
 
+-- Create the execute_sql function with named parameter
+CREATE OR REPLACE FUNCTION execute_sql(sql_query text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+  RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM,
+    'detail', SQLSTATE
+  );
+END;
+$$;
+
+-- Grant execution permission to authenticated users
+GRANT EXECUTE ON FUNCTION execute_sql(text) TO authenticated;
+
 -- =============================================================================
 -- End of Script
 -- =============================================================================

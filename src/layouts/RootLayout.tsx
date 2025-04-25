@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth'; // Corrected import path
+import { useAuth } from '@/contexts/auth';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -15,6 +15,7 @@ export default function RootLayout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const location = useLocation();
+  const hasProcessedOAuth = useRef(false);
   const { status, isOffline } = useNetworkStatus({
     showToasts: false,
     testInterval: 60000, // Check connection every minute
@@ -24,7 +25,9 @@ export default function RootLayout() {
   // Process OAuth redirects when the component mounts
   useEffect(() => {
     const processOAuthRedirect = async () => {
-      if (location.hash && location.hash.includes('access_token')) {
+      // Only process once per session and only if there's a hash
+      if (!hasProcessedOAuth.current && location.hash && location.hash.includes('access_token')) {
+        hasProcessedOAuth.current = true;
         const result = await handleOAuthRedirect();
         if (result.success) {
           toast({
@@ -51,26 +54,6 @@ export default function RootLayout() {
       });
     }
   }, [isOffline, toast]);
-
-  // Check if we're on a public page that doesn't require authentication
-  const isPublicPage = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/register';
-
-  // Only redirect unauthenticated users if they're not on a public page
-  useEffect(() => {
-    if (!isLoading && !user && !isPublicPage) {
-      console.log('User not authenticated, redirecting to login');
-      navigate('/login');
-    }
-  }, [user, isLoading, navigate, isPublicPage]);
-
-  // If loading, show minimal layout
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
-  }
 
   // Check if we're on the index page
   const isIndexPage = location.pathname === '/';

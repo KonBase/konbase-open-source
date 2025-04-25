@@ -799,6 +799,33 @@ BEFORE INSERT OR UPDATE ON public.convention_consumables
 FOR EACH ROW EXECUTE FUNCTION public.check_item_is_consumable();
 
 -- -----------------------------------------------------------------------------
+-- SQL Execution Function for RPC Calls
+-- -----------------------------------------------------------------------------
+-- Create the execute_sql function that can be called via RPC
+CREATE OR REPLACE FUNCTION execute_sql(sql_query text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+  RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM,
+    'detail', SQLSTATE
+  );
+END;
+$$;
+
+-- Grant execution permission to authenticated users
+GRANT EXECUTE ON FUNCTION execute_sql(text) TO authenticated;
+
+-- Add comment to document the function
+COMMENT ON FUNCTION execute_sql(text) IS 'Executes arbitrary SQL commands with SECURITY DEFINER privileges';
+
+-- -----------------------------------------------------------------------------
 -- Row Level Security (RLS) Policies
 -- -----------------------------------------------------------------------------
 

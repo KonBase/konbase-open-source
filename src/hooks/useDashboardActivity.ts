@@ -1,8 +1,7 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { handleError, logDebug } from '@/utils/debug';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 // Implement a custom hook for fetching dashboard activity data
@@ -12,11 +11,13 @@ export const useDashboardActivity = (currentAssociation: any) => {
   const [requestTimestamp, setRequestTimestamp] = useState<number | null>(null);
   const [responseTimestamp, setResponseTimestamp] = useState<number | null>(null);
   const { profile } = useUserProfile();
+  const isFetchingRef = useRef(false);
+  const cachedDataRef = useRef<any[]>([]);
   
   // Is the user an admin
   const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin';
 
-  // Query to fetch recent activity data
+  // Query to fetch recent activity data with optimized staleTime and cache settings
   const { 
     data: activityData, 
     error: activityError, 
@@ -26,15 +27,20 @@ export const useDashboardActivity = (currentAssociation: any) => {
     queryKey: ['dashboard-activity', currentAssociation?.id],
     queryFn: async () => {
       try {
-        // Log the query start
-        setRequestTimestamp(Date.now());
-        logDebug('Fetching dashboard activity', {associationId: currentAssociation?.id}, 'info');
+        // Prevent duplicate fetches
+        if (isFetchingRef.current) {
+          return cachedDataRef.current;
+        }
         
-        // Skip query if no association is selected
+        // If no association is selected, return empty array immediately
         if (!currentAssociation?.id) {
-          logDebug('No association selected, skipping activity fetch', null, 'info');
           return [];
         }
+        
+        isFetchingRef.current = true;
+        
+        // Log the query start (only in debug mode)
+        setRequestTimestamp(Date.now());
         
         // Fetch recent activity data (last 30 days)
         let query = supabase
@@ -54,24 +60,32 @@ export const useDashboardActivity = (currentAssociation: any) => {
           throw activityError;
         }
         
-        return activityData;
+        // Update our cached reference
+        if (activityData) {
+          cachedDataRef.current = activityData;
+        }
+        
+        return activityData || [];
       } catch (error) {
         setResponseTimestamp(Date.now());
         setLastError(error);
         handleError(error, 'useDashboardActivity.fetchActivity');
         throw error;
+      } finally {
+        isFetchingRef.current = false;
       }
     },
-    staleTime: 60000, // 1 minute
-    refetchOnWindowFocus: isAdmin, // Only auto-refresh for admins
+    staleTime: 300000, // 5 minutes - increase stale time to reduce refetches
+    refetchOnWindowFocus: false, // Disable automatic refetching on window focus
+    refetchOnMount: false, // Don't refetch on component mount
+    refetchOnReconnect: false, // Don't refetch when reconnecting
     enabled: !!currentAssociation?.id,
     retry: 1, // Limit retries to prevent excessive queries
   });
   
   // Safe getter for activity data with error checking
-  const safeRecentActivity = useCallback(() => {
+  const safeRecentActivity = useMemo(() => {
     if (activityError) {
-      logDebug('Error fetching recent activity', activityError, 'error');
       return [];
     }
     
@@ -85,12 +99,14 @@ export const useDashboardActivity = (currentAssociation: any) => {
   
   // Function to handle retry with tracking
   const handleRetry = useCallback(() => {
-    logDebug('Manually retrying activity fetch', {retryCount: retryCount + 1}, 'info');
+    // Prevent retry if already fetching
+    if (isFetchingRef.current) return;
+    
     setRetryCount(prev => prev + 1);
     setRequestTimestamp(Date.now());
     setResponseTimestamp(null);
     return refetchActivity();
-  }, [refetchActivity, retryCount]);
+  }, [refetchActivity]);
   
   return {
     activityData,
