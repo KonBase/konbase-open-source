@@ -1,4 +1,4 @@
-# KonBase Supply Management System
+# KonBase: Supply Chain Management for Conventions
 
 <div align="center">
   <img src="https://konbase.cfd/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" alt="KonBase Logo" width="100" />
@@ -252,9 +252,9 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 
 Join our community to get help, share ideas, and connect with other KonBase users:
 
-- **Discord**: Join our [Discord server](https://discord.gg/konbase) for discussions and support
-- **GitHub Issues**: Report bugs or request features through [GitHub Issues](https://github.com/ShiroLuxferre/KonBase/issues)
-- **Discussions**: Participate in [GitHub Discussions](https://github.com/ShiroLuxferre/KonBase/discussions) for general topics
+- **Discord**: Join our [Discord server](https://discord.gg/wt6JYqBRzU) for discussions and support
+- **GitHub Issues**: Report bugs or request features through [GitHub Issues](https://github.com/KonBase/konbase/issues)
+- **Discussions**: Participate in [GitHub Discussions](https://github.com/KonBase/konbase/discussions) for general topics
 
 ### Support the Project
 
@@ -265,7 +265,7 @@ If you find KonBase helpful, consider supporting the project:
 
 ## License
 
-KonBase is licensed under the [GNU General Public License v3.0](./LICENSE.md) - see the LICENSE.md file for details.
+KonBase is licensed under the [MIT License](./LICENSE.md) - see the LICENSE.md file for details.
 
 ---
 
