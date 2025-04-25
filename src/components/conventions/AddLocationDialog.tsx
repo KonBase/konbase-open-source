@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -10,13 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { ConventionLocationFormData } from '@/types/convention';
+import { Loader2 } from 'lucide-react';
+import { ConventionLocation } from '@/types/convention';
 
 interface AddLocationDialogProps {
   isOpen: boolean;
   onClose: () => void;
   conventionId: string;
   onLocationAdded: () => void;
+  locationToEdit?: ConventionLocation | null;
 }
 
 const locationSchema = z.object({
@@ -33,19 +35,45 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
   onClose,
   conventionId,
   onLocationAdded,
+  locationToEdit
 }) => {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditing = !!locationToEdit;
+  
   const form = useForm<z.infer<typeof locationSchema>>({
     resolver: zodResolver(locationSchema),
     defaultValues: {
-      name: '',
-      description: '',
-      type: 'room',
-      capacity: null,
-      floor: '',
-      building: '',
+      name: locationToEdit?.name || '',
+      description: locationToEdit?.description || '',
+      type: locationToEdit?.type || 'room',
+      capacity: locationToEdit?.capacity || null,
+      floor: locationToEdit?.floor || '',
+      building: locationToEdit?.building || '',
     },
   });
+
+  React.useEffect(() => {
+    if (isOpen && locationToEdit) {
+      form.reset({
+        name: locationToEdit.name,
+        description: locationToEdit.description || '',
+        type: locationToEdit.type || 'room',
+        capacity: locationToEdit.capacity || null,
+        floor: locationToEdit.floor || '',
+        building: locationToEdit.building || '',
+      });
+    } else if (isOpen) {
+      form.reset({
+        name: '',
+        description: '',
+        type: 'room',
+        capacity: null,
+        floor: '',
+        building: '',
+      });
+    }
+  }, [isOpen, locationToEdit, form]);
 
   const onSubmit = async (values: z.infer<typeof locationSchema>) => {
     if (!conventionId) {
@@ -57,44 +85,104 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      const { error } = await supabase.from('convention_locations').insert({
-        convention_id: conventionId,
-        name: values.name,
-        description: values.description || null,
-        type: values.type,
-        capacity: values.capacity,
-        floor: values.floor || null,
-        building: values.building || null,
-      });
+      console.log(`${isEditing ? "Updating" : "Creating"} location for convention:`, conventionId);
+      
+      let result;
+      
+      if (isEditing) {
+        // Update existing location
+        result = await supabase
+          .from('convention_locations')
+          .update({
+            name: values.name,
+            description: values.description || null,
+            type: values.type,
+            capacity: values.capacity,
+            floor: values.floor || null,
+            building: values.building || null,
+          })
+          .eq('id', locationToEdit.id)
+          .select();
+      } else {
+        // Create new location
+        result = await supabase
+          .from('convention_locations')
+          .insert({
+            convention_id: conventionId,
+            name: values.name,
+            description: values.description || null,
+            type: values.type,
+            capacity: values.capacity,
+            floor: values.floor || null,
+            building: values.building || null,
+          })
+          .select();
+      }
+      
+      const { data, error } = result;
 
       if (error) throw error;
 
+      console.log(`Location ${isEditing ? "updated" : "added"} successfully:`, data);
+      
+      // Log this action to convention_logs
+      const { data: userData } = await supabase.auth.getUser();
+      try {
+        await supabase.from('convention_logs').insert({
+          convention_id: conventionId,
+          user_id: userData.user?.id,
+          action: isEditing ? 'update' : 'create',
+          entity_type: 'location',
+          entity_id: isEditing ? locationToEdit.id : data[0]?.id,
+          details: { 
+            name: values.name,
+            type: values.type
+          }
+        });
+      } catch (logError) {
+        console.error("Error logging location action:", logError);
+        // Don't throw here, this is a non-critical action
+      }
+
       toast({
-        title: "Location added",
-        description: `${values.name} has been added successfully`,
+        title: isEditing ? "Location updated" : "Location added",
+        description: `${values.name} has been ${isEditing ? "updated" : "added"} successfully`,
       });
 
+      // Reset form after successful submission
       form.reset();
+      
+      // Notify parent and close dialog
       onLocationAdded();
       onClose();
     } catch (error: any) {
-      console.error("Error adding location:", error);
+      console.error(`Error ${isEditing ? "updating" : "adding"} location:`, error);
       toast({
-        title: "Error adding location",
+        title: `Error ${isEditing ? "updating" : "adding"} location`,
         description: error.message || "An unknown error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && !isSubmitting) {
+        onClose();
+      }
+    }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Location</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Location" : "Add New Location"}</DialogTitle>
           <DialogDescription>
-            Add a new room or area to your convention.
+            {isEditing 
+              ? "Update the details of this convention location." 
+              : "Add a new room or area to your convention."}
           </DialogDescription>
         </DialogHeader>
 
@@ -147,6 +235,7 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
                         <SelectItem value="area">Area</SelectItem>
                         <SelectItem value="storage">Storage</SelectItem>
                         <SelectItem value="booth">Booth</SelectItem>
+                        <SelectItem value="stage">Stage</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
@@ -202,10 +291,19 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit">Add Location</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditing ? "Updating..." : "Adding..."}
+                  </>
+                ) : (
+                  isEditing ? "Update Location" : "Add Location"
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

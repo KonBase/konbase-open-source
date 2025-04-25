@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,17 +23,20 @@ import {
   Maximize,
   MessageSquare,
   Eye,
-  Accessibility
+  Accessibility,
+  Bug,
+  Trash2
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
-import { enableDebugMode, isDebugModeEnabled } from '@/utils/debug';
+import { enableDebugMode, isDebugModeEnabled, logDebug } from '@/utils/debug';
 import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AccessibilitySettings from '@/components/settings/AccessibilitySettings';
 import LanguageRegionSettings from '@/components/settings/LanguageRegionSettings';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useTranslation } from '@/utils/languageUtils';
+import { useLocation } from 'react-router-dom';
 
 const Settings = () => {
   const { profile, loading, refreshProfile } = useUserProfile();
@@ -42,6 +44,8 @@ const Settings = () => {
   const { toast } = useToast();
   const { isMobile, isTablet, screenWidth } = useResponsive();
   const { t, language } = useTranslation();
+  const componentMountedRef = useRef(false);
+  const location = useLocation();
   
   const [isFormSaving, setIsFormSaving] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(() => isDebugModeEnabled());
@@ -54,6 +58,49 @@ const Settings = () => {
     messages: true,
     updates: true
   });
+  
+  // Force refresh when component mounts to ensure we have the latest data
+  useEffect(() => {
+    if (!componentMountedRef.current) {
+      componentMountedRef.current = true;
+      refreshProfile();
+      logDebug('Settings component mounted', { path: location.pathname }, 'info');
+    }
+  }, [refreshProfile, location]);
+  
+  // Listen for forced refresh events from RouteChangeHandler
+  useEffect(() => {
+    const handleForceRefresh = (event: CustomEvent) => {
+      if (event.detail?.targetSection === 'settings') {
+        logDebug('Forced refresh in settings component', null, 'info');
+        refreshProfile();
+      }
+    };
+    
+    window.addEventListener('force-section-refresh', handleForceRefresh as EventListener);
+    
+    return () => {
+      window.removeEventListener('force-section-refresh', handleForceRefresh as EventListener);
+    };
+  }, [refreshProfile]);
+  
+  // Listen for route section changes
+  useEffect(() => {
+    const handleRouteChange = (event: CustomEvent) => {
+      const { currentPath } = event.detail;
+      
+      if (currentPath?.includes('/settings')) {
+        logDebug('Route changed to settings', { currentPath }, 'info');
+        refreshProfile();
+      }
+    };
+    
+    window.addEventListener('route-section-changed', handleRouteChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('route-section-changed', handleRouteChange as EventListener);
+    };
+  }, [refreshProfile]);
 
   const handleNotificationChange = (type: keyof typeof notifications) => {
     setNotifications(prev => ({
@@ -161,18 +208,68 @@ const Settings = () => {
                 
                 <Separator />
                 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="debug-mode">{t("Debug Mode")}</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {t("Show additional debugging information")}
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="debug-mode" className="flex items-center gap-2">
+                        <Bug className="h-4 w-4" />
+                        {t("Debug Mode")}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t("Show additional debugging information")}
+                      </p>
+                    </div>
+                    <Switch 
+                      id="debug-mode" 
+                      checked={isDebugMode} 
+                      onCheckedChange={handleDebugModeToggle} 
+                    />
                   </div>
-                  <Switch 
-                    id="debug-mode" 
-                    checked={isDebugMode} 
-                    onCheckedChange={handleDebugModeToggle} 
-                  />
+                  
+                  {isDebugMode && (
+                    <div className="bg-muted p-3 rounded-md border border-border/50 space-y-2">
+                      <h4 className="text-sm font-medium">{t("Debug Options")}</h4>
+                      <p className="text-xs text-muted-foreground">{t("Debug mode provides additional information that can help troubleshoot issues with the application.")}</p>
+                      
+                      <div className="flex justify-between gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={() => {
+                            setIsDebugMode(false);
+                            enableDebugMode(false);
+                            toast({
+                              title: t("Debug mode disabled"),
+                              description: t("Debug mode has been turned off."),
+                            });
+                            // Reload the page to ensure all components respect the new setting
+                            setTimeout(() => window.location.reload(), 500);
+                          }}
+                        >
+                          <ToggleLeft className="h-3 w-3 mr-1" />
+                          {t("Disable & Reload")}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={() => {
+                            // Clear all debug logs
+                            localStorage.removeItem('konbase_debug_logs');
+                            toast({
+                              title: t("Debug logs cleared"),
+                              description: t("All debug logs have been cleared."),
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          {t("Clear Debug Logs")}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center justify-between">

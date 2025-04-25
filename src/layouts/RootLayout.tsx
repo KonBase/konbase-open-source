@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import useNetworkStatus from '@/hooks/useNetworkStatus';
 import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
 import { SessionRecovery } from '@/components/SessionRecovery';
+import RouteChangeHandler from '@/components/RouteChangeHandler';
 
 export default function RootLayout() {
   const { user, loading: isLoading } = useAuth();
@@ -77,6 +78,7 @@ export default function RootLayout() {
   return (
     <>
       <SessionRecovery />
+      <RouteChangeHandler />
       {!!user && !isIndexPage && <Header />}
       <main className="flex-1">
         <Outlet />

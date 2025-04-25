@@ -1,20 +1,40 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Loader, Clock, Activity, Database } from 'lucide-react';
+import { Loader, Clock, Activity, Database, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { isDebugModeEnabled } from '@/utils/debug';
 
 interface DashboardLoadingProps {
   networkStatus: 'online' | 'offline';
   loadingDuration?: number;
   isDebugMode?: boolean;
+  retryCount?: number;
 }
 
+/**
+ * Loading screen for the dashboard with visual feedback on loading progress
+ * Includes debugging information when debug mode is enabled
+ */
 const DashboardLoading: React.FC<DashboardLoadingProps> = ({ 
   networkStatus, 
   loadingDuration = 0,
-  isDebugMode = false
+  isDebugMode: propIsDebugMode,
+  retryCount = 0
 }) => {
+  // Check both prop-based debug mode and localStorage setting
+  // This ensures debug information is shown consistently regardless of how debug mode was enabled
+  const [effectiveDebugMode, setEffectiveDebugMode] = useState(!!propIsDebugMode);
+  
+  useEffect(() => {
+    // Dynamically check if debug mode is enabled via localStorage
+    setEffectiveDebugMode(propIsDebugMode || isDebugModeEnabled());
+  }, [propIsDebugMode]);
+  
+  // Determine if loading is slow (more than 3 seconds)
+  const isSlowLoading = loadingDuration > 3000;
+  
   // Loading animations for cards
   const loadingIcons = [
     <Activity key="activity" className="h-8 w-8 text-primary animate-pulse" />,
@@ -33,12 +53,37 @@ const DashboardLoading: React.FC<DashboardLoadingProps> = ({
           </div>
         </div>
         
-        {isDebugMode && (
-          <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-            <div className="flex justify-between">
-              <span>Status: {networkStatus}</span>
-              <span>Loading time: {loadingDuration}ms</span>
+        {effectiveDebugMode && (
+          <div className="text-xs bg-muted p-2 rounded border-l-2 border-primary">
+            <div className="flex flex-wrap justify-between gap-2">
+              <div className="flex items-center">
+                <span className="font-medium mr-2">Network:</span>
+                <Badge variant={networkStatus === 'online' ? 'outline' : 'destructive'} className="text-xs">
+                  {networkStatus}
+                </Badge>
+              </div>
+              <div className="flex items-center">
+                <span className="font-medium mr-2">Loading time:</span>
+                <Badge variant={isSlowLoading ? 'warning' : 'outline'} className="text-xs">
+                  {loadingDuration}ms
+                </Badge>
+              </div>
+              {retryCount > 0 && (
+                <div className="flex items-center">
+                  <span className="font-medium mr-2">Retries:</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {retryCount}
+                  </Badge>
+                </div>
+              )}
             </div>
+            
+            {isSlowLoading && (
+              <div className="flex items-center mt-2 text-amber-500">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                <span>Loading is taking longer than expected</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -54,15 +99,10 @@ const DashboardLoading: React.FC<DashboardLoadingProps> = ({
               <div className="flex flex-col items-center justify-center h-40 space-y-4">
                 {loadingIcons[i-1]}
                 <Skeleton className="h-4 w-2/3" />
-                <div className="w-full bg-secondary/30 rounded-full h-2.5 dark:bg-secondary/10">
-                  <div 
-                    className="bg-primary h-2.5 rounded-full animate-pulse" 
-                    style={{ 
-                      width: `${Math.min(100, loadingDuration / 100)}%`,
-                      transition: 'width 0.5s ease-in-out'
-                    }}
-                  ></div>
-                </div>
+                <Progress 
+                  value={Math.min(100, loadingDuration / 100)}
+                  className="w-full transition-all duration-500 ease-in-out" 
+                />
               </div>
             </CardContent>
           </Card>
@@ -77,9 +117,9 @@ const DashboardLoading: React.FC<DashboardLoadingProps> = ({
       <div className="flex justify-center my-8">
         <div className="flex items-center space-x-2">
           <Loader className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-muted-foreground text-sm">
+          <span className={`text-sm ${networkStatus === 'offline' ? 'text-destructive' : 'text-muted-foreground'}`}>
             {networkStatus === 'online' 
-              ? 'Loading dashboard data...' 
+              ? `Loading dashboard data${loadingDuration > 2000 ? ' (this is taking longer than usual)' : ''}...` 
               : 'Network connection issues, retrying...'}
           </span>
         </div>

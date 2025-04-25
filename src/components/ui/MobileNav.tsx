@@ -1,24 +1,44 @@
 import React, { useState } from 'react';
-import { Menu, X, ChevronRight } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, ChevronRight, Home, Settings, User, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose
+} from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { navItems, SidebarItem } from '@/components/layout/navigation/navItems';
 import { useAuth } from '@/contexts/auth';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useMobileDetect } from '@/hooks/useMobileDetect';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { screenWidth } = useMobileDetect();
 
   const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setOpen(false);
+    navigate('/login');
   };
 
   // Render a nav item with its submenu (if any)
@@ -31,32 +51,34 @@ export function MobileNav() {
           to={item.path}
           onClick={() => setOpen(false)}
           className={cn(
-            "flex items-center justify-between w-full p-2 rounded-md text-sm",
-            active ? "bg-accent text-accent-foreground font-medium" : "hover:bg-accent/50"
+            "flex items-center justify-between w-full p-3 rounded-md text-sm transition-colors",
+            active 
+              ? "bg-accent text-accent-foreground font-medium" 
+              : "hover:bg-accent/50"
           )}
         >
-          <div className="flex items-center gap-2">
-            {item.icon}
+          <div className="flex items-center gap-3">
+            <span className="text-muted-foreground">{item.icon}</span>
             <span>{item.title}</span>
           </div>
           {item.submenu && <ChevronRight className="h-4 w-4 opacity-70" />}
         </Link>
         
         {item.submenu && (
-          <div className="ml-6 mt-1 space-y-1 border-l pl-3 border-sidebar-border">
+          <div className="ml-6 mt-1 space-y-1 border-l pl-4 border-sidebar-border">
             {item.submenu.map(subItem => (
               <Link
                 key={subItem.path}
                 to={subItem.path}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-2 p-2 rounded-md text-sm",
+                  "flex items-center gap-3 p-2 rounded-md text-sm transition-colors",
                   isActive(subItem.path) 
                     ? "bg-accent text-accent-foreground font-medium" 
                     : "hover:bg-accent/50"
                 )}
               >
-                {subItem.icon}
+                <span className="text-muted-foreground">{subItem.icon}</span>
                 <span>{subItem.title}</span>
               </Link>
             ))}
@@ -74,39 +96,102 @@ export function MobileNav() {
           <span className="sr-only">Toggle menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[80vw] max-w-[300px] p-0">
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b flex items-center justify-between">
-            <Link to="/dashboard" className="flex items-center space-x-2" onClick={() => setOpen(false)}>
-              <img 
-                src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
-                alt="KonBase Logo" 
-                className="h-8 w-8" 
-              />
-              <h1 className="text-xl font-bold text-primary">KonBase</h1>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          
-          <div className="flex items-center justify-between px-4 py-2 border-b">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{userInitial}</AvatarFallback>
-              </Avatar>
-              <div className="text-sm font-medium truncate">
-                {user?.email || "User"}
-              </div>
+      <SheetContent 
+        side="left" 
+        className="w-[85vw] max-w-[300px] p-0 overflow-hidden"
+      >
+        <SheetHeader className="px-4 py-3 border-b">
+          <SheetTitle className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+              alt="KonBase Logo" 
+              className="h-7 w-7" 
+            />
+            KonBase Dashboard
+          </SheetTitle>
+          <SheetDescription className="sr-only">
+            Navigate through different sections of your KonBase dashboard
+          </SheetDescription>
+        </SheetHeader>
+        
+        <div className="flex flex-col h-[calc(100vh-65px)]">
+          <div className="flex items-center p-4 border-b bg-muted/40">
+            <Avatar className="h-10 w-10 mr-3">
+              <AvatarFallback>{userInitial}</AvatarFallback>
+              {user?.user_metadata?.avatar_url && (
+                <AvatarImage src={user.user_metadata.avatar_url} alt={userName} />
+              )}
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate">{userName}</div>
+              <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
             </div>
             <ThemeToggle />
           </div>
           
-          <ScrollArea className="flex-1 p-4">
-            <nav className="flex flex-col">
-              {navItems.map(renderNavItem)}
-            </nav>
+          <ScrollArea className="flex-1 p-3">
+            <div className="mb-3">
+              <Badge variant="outline" className="mb-2">Main Navigation</Badge>
+              <nav className="flex flex-col space-y-1">
+                {navItems.filter(item => !item.submenu).map(renderNavItem)}
+              </nav>
+            </div>
+            
+            <Separator className="my-3" />
+            
+            {navItems.filter(item => item.submenu).map((category) => (
+              <div key={category.path} className="mb-3">
+                <Badge variant="outline" className="mb-2">{category.title}</Badge>
+                <nav className="flex flex-col space-y-1">
+                  {category.submenu?.map(subItem => (
+                    <Link
+                      key={subItem.path}
+                      to={subItem.path}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-md text-sm transition-colors",
+                        isActive(subItem.path) 
+                          ? "bg-accent text-accent-foreground font-medium" 
+                          : "hover:bg-accent/50"
+                      )}
+                    >
+                      <span className="text-muted-foreground">{subItem.icon}</span>
+                      <span>{subItem.title}</span>
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            ))}
           </ScrollArea>
+          
+          <div className="p-3 border-t">
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to="/profile"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-accent/50 transition-colors"
+              >
+                <User className="h-4 w-4" />
+                <span>Profile</span>
+              </Link>
+              <Link
+                to="/settings"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-accent/50 transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full mt-2 text-muted-foreground" 
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign out
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

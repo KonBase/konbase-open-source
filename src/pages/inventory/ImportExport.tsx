@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/lib/supabase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Association } from '@/types/association';
 
 interface ImportStats {
   categoriesAdded: number;
@@ -35,8 +36,22 @@ interface ExportOperation {
   status: 'completed' | 'failed' | 'in_progress';
 }
 
+// Helper function to download text content as a file
+const downloadTextFile = (content: string, filename: string, contentType: string = 'text/plain') => {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 const ImportExport: React.FC = () => {
-  const { association, categories, locations, items } = useAssociation();
+  const { currentAssociation } = useAssociation();
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -51,17 +66,15 @@ const ImportExport: React.FC = () => {
   const [parsedData, setParsedData] = useState<any>(null);
 
   useEffect(() => {
-    if (association) {
+    if (currentAssociation) {
       fetchImportExportHistory();
     }
-  }, [association]);
+  }, [currentAssociation]);
 
   const fetchImportExportHistory = async () => {
-    if (!association) return;
+    if (!currentAssociation) return;
     
     try {
-      // For a real implementation, you would store these operations in Supabase
-      // This is a placeholder for now
       setImportHistory([]);
       setExportHistory([]);
     } catch (error) {
@@ -70,7 +83,7 @@ const ImportExport: React.FC = () => {
   };
 
   const handleExport = async () => {
-    if (!association || !categories || !locations || !items) {
+    if (!currentAssociation ) {
       toast({
         title: 'Error',
         description: 'Association data not fully loaded.',
@@ -78,10 +91,29 @@ const ImportExport: React.FC = () => {
       });
       return;
     }
-
+    
+    setIsExporting(true);
     try {
-      const csvData = associationToCSV(association, categories, locations, items);
-      exportToCSV(csvData, `${association.name}_inventory_export`);
+      const dataToExport = currentAssociation.items.map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        serial_number: item.serial_number,
+        barcode: item.barcode,
+        condition: item.condition,
+        category_id: item.category_id,
+        location_id: item.location_id,
+        purchase_date: item.purchase_date,
+        purchase_price: item.purchase_price,
+        warranty_expiration: item.warranty_expiration,
+        is_consumable: item.is_consumable,
+        quantity: item.quantity,
+        minimum_quantity: item.minimum_quantity,
+        notes: item.notes,
+      }));
+
+      exportToCSV(dataToExport, `${currentAssociation.name}_inventory_export`);
+      
       toast({
         title: 'Export Successful',
         description: 'Your inventory data has been exported to CSV.',
@@ -93,13 +125,15 @@ const ImportExport: React.FC = () => {
         description: 'An error occurred while exporting data.',
         variant: 'destructive',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
   
   const handleExportTemplate = () => {
     try {
       const template = generateCSVTemplate();
-      exportToCSV(template, 'association_import_template.csv');
+      downloadTextFile(template, 'association_import_template.csv', 'text/csv');
       
       toast({
         title: "Template Downloaded",
@@ -124,18 +158,16 @@ const ImportExport: React.FC = () => {
   };
   
   const validateImportFile = async () => {
-    if (!importFile || !association) return;
+    if (!importFile || !currentAssociation) return false;
     
     setIsImporting(true);
     setImportProgress(10);
     
     try {
-      // Read the file
       const fileContent = await readFileAsText(importFile);
       setImportProgress(30);
       
-      // Parse and validate the CSV
-      const { categories, locations, items, errors } = await parseCSVForImport(fileContent, association.id);
+      const { categories, locations, items, errors } = await parseCSVForImport(fileContent, currentAssociation.id);
       setImportProgress(70);
       
       if (errors.length > 0) {
@@ -144,14 +176,12 @@ const ImportExport: React.FC = () => {
         setImportProgress(100);
         setTimeout(() => setImportProgress(0), 500);
         setIsImporting(false);
-        return;
+        return false;
       }
       
-      // If validation passes, store the parsed data for import
       setParsedData({ categories, locations, items });
       setImportProgress(100);
       
-      // Proceed with import if there are no errors
       return true;
     } catch (error: any) {
       console.error('Validation error:', error);
@@ -164,7 +194,7 @@ const ImportExport: React.FC = () => {
   };
   
   const handleImport = async () => {
-    if (!importFile || !association) {
+    if (!importFile || !currentAssociation) {
       toast({
         title: "No File Selected",
         description: "Please select a file to import",
@@ -173,15 +203,13 @@ const ImportExport: React.FC = () => {
       return;
     }
     
-    // First validate the file
     const isValid = await validateImportFile();
     if (!isValid) return;
     
     try {
       setImportProgress(70);
       
-      // Import the data
-      const { success, errors, stats } = await importCSVData(parsedData, association.id);
+      const { success, errors, stats } = await importCSVData(parsedData, currentAssociation.id);
       
       const importStats: ImportStats = {
         categoriesAdded: stats.categoriesAdded || 0,
@@ -189,7 +217,6 @@ const ImportExport: React.FC = () => {
         itemsAdded: stats.itemsAdded || 0
       };
       
-      // Record the import operation
       const newImport: ImportOperation = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
@@ -214,7 +241,6 @@ const ImportExport: React.FC = () => {
           description: `Imported ${importStats.categoriesAdded} categories, ${importStats.locationsAdded} locations, and ${importStats.itemsAdded} items.`
         });
         
-        // Close the dialog after successful import
         setTimeout(() => {
           setImportDialogOpen(false);
           setImportFile(null);
@@ -233,7 +259,6 @@ const ImportExport: React.FC = () => {
       setValidationErrors([`Error during import: ${error.message}`]);
       setValidationDialogOpen(true);
       
-      // Record the failed import
       const newImport: ImportOperation = {
         id: crypto.randomUUID(),
         timestamp: new Date(),
@@ -269,15 +294,15 @@ const ImportExport: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Import & Export</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Import & Export</h1>
           <p className="text-muted-foreground">Import and export your inventory data.</p>
         </div>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Import Inventory</CardTitle>
@@ -288,7 +313,7 @@ const ImportExport: React.FC = () => {
               Upload a CSV file in the supported format to import inventory items.
               Download the template for the correct format.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                 <ArrowDownIcon className="mr-2 h-4 w-4" />
                 Select Import File
@@ -312,7 +337,7 @@ const ImportExport: React.FC = () => {
             </p>
             <Button 
               variant="outline" 
-              onClick={handleExportCSV} 
+              onClick={handleExport} 
               disabled={isExporting || !currentAssociation}
             >
               <ArrowUpIcon className="mr-2 h-4 w-4" />
@@ -349,7 +374,7 @@ const ImportExport: React.FC = () => {
                 ) : (
                   <div className="divide-y">
                     {importHistory.map(operation => (
-                      <div key={operation.id} className="p-4 flex items-center justify-between">
+                      <div key={operation.id} className="p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                         <div>
                           <div className="font-medium flex items-center">
                             {operation.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-500 mr-2" />}
@@ -372,6 +397,7 @@ const ImportExport: React.FC = () => {
                           <Button 
                             variant="ghost" 
                             size="sm"
+                            className="mt-2 sm:mt-0"
                             onClick={() => {
                               setValidationErrors(operation.errors);
                               setValidationDialogOpen(true);
@@ -394,7 +420,7 @@ const ImportExport: React.FC = () => {
                 ) : (
                   <div className="divide-y">
                     {exportHistory.map(operation => (
-                      <div key={operation.id} className="p-4">
+                      <div key={operation.id} className="p-3 sm:p-4">
                         <div className="font-medium flex items-center">
                           {operation.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-500 mr-2" />}
                           {operation.status === 'failed' && <XCircle className="w-4 h-4 text-red-500 mr-2" />}
@@ -423,7 +449,7 @@ const ImportExport: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="grid w-full max-w-sm items-center gap-1.5">
               <Label htmlFor="csv-file">CSV File</Label>
               <Input
@@ -444,7 +470,7 @@ const ImportExport: React.FC = () => {
               </div>
             )}
             
-            <DialogFooter className="flex justify-end space-x-2">
+            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2">
               <Button
                 variant="outline"
                 onClick={() => setImportDialogOpen(false)}
@@ -469,7 +495,7 @@ const ImportExport: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="h-[300px] rounded border p-4">
+          <ScrollArea className="h-[60vh] max-h-[400px] rounded border p-4 my-4">
             <div className="space-y-2">
               {validationErrors.map((error, index) => (
                 <div key={index} className="flex items-start gap-2">

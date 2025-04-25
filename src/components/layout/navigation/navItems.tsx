@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Building2, 
@@ -62,7 +61,6 @@ export const navItems: SidebarItem[] = [
     submenu: [
       { title: 'All Conventions', path: '/conventions', icon: <Calendar className="w-4 h-4" /> },
       { title: 'Requirements', path: '/conventions/requirements', icon: <FileText className="w-4 h-4" /> },
-      { title: 'Logs', path: '/conventions/logs', icon: <FileText className="w-4 h-4" /> },
       { title: 'Archive', path: '/conventions/archive', icon: <FileBox className="w-4 h-4" /> },
     ],
     requiredRole: 'member'
@@ -78,12 +76,6 @@ export const navItems: SidebarItem[] = [
     path: '/reports',
     icon: <FileText className="w-5 h-5" />,
     requiredRole: 'manager'
-  },
-  {
-    title: 'Chat',
-    path: '/chat',
-    icon: <MessageCircle className="w-5 h-5" />,
-    requiredRole: 'member'
   },
   {
     title: 'Settings',

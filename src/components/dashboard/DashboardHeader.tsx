@@ -1,8 +1,5 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Building2, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Building2 } from 'lucide-react';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -24,13 +21,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <div className="flex flex-col space-y-2">
       <div className="flex items-center gap-3">
-        {!isHome && (
-          <Button variant="outline" size="icon" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-        )}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           {currentAssociation && (

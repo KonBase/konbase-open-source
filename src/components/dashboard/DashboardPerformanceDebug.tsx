@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, Database, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PerformanceMetrics from '@/utils/debug/performance-metrics';
-import { logDebug } from '@/utils/debug';
+import { logDebug, isDebugModeEnabled } from '@/utils/debug';
 import { supabase } from '@/lib/supabase';
 
 interface DashboardPerformanceDebugProps {
@@ -40,11 +40,36 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
   const [supabaseLatency, setSupabaseLatency] = useState<number | null>(null);
   const [hasWarnings, setHasWarnings] = useState(false);
   
+  // Track the last time we tested to prevent frequent retesting
+  const lastNetworkTestRef = useRef<number | null>(null);
+  const lastSupabaseTestRef = useRef<number | null>(null);
+  const testThrottleTime = 10000; // Minimum time between auto-tests (10 seconds)
+  
   const queryTime = requestInfo?.requestTimestamp && requestInfo?.responseTimestamp
     ? requestInfo.responseTimestamp - requestInfo.requestTimestamp
     : null;
   
-  const testNetworkLatency = async () => {
+  // Check if we should perform test based on throttling
+  const shouldPerformTest = (lastTestRef: React.MutableRefObject<number | null>) => {
+    const now = Date.now();
+    
+    // Allow testing if:
+    // 1. We have never tested before (lastTestRef.current is null)
+    // 2. It's been longer than throttleTime since last test
+    return !lastTestRef.current || (now - lastTestRef.current) > testThrottleTime;
+  };
+  
+  const testNetworkLatency = async (manual = false) => {
+    // Skip if not a manual test and we shouldn't perform the test due to throttling
+    if (!manual && !shouldPerformTest(lastNetworkTestRef)) {
+      return null;
+    }
+    
+    // Skip tests if debug mode is disabled and this isn't a manual test
+    if (!manual && !isDebugModeEnabled()) {
+      return null;
+    }
+    
     setIsTesting(true);
     
     try {
@@ -57,15 +82,24 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
       const end = performance.now();
       const latency = Math.round(end - start);
       setNetworkLatency(latency);
-      logDebug('Network latency test', { latency: `${latency}ms` }, 'info');
+      
+      // Only log if this is a manual test or debug mode is enabled
+      if (manual || isDebugModeEnabled()) {
+        logDebug('Network latency test', { latency: `${latency}ms`, manual }, 'info');
+      }
       
       if (latency > 500) {
         setHasWarnings(true);
       }
       
+      // Update last test timestamp
+      lastNetworkTestRef.current = Date.now();
+      
       return latency;
     } catch (error) {
-      logDebug('Network latency test failed', error, 'error');
+      if (manual || isDebugModeEnabled()) {
+        logDebug('Network latency test failed', error, 'error');
+      }
       setHasWarnings(true);
       return null;
     } finally {
@@ -73,7 +107,17 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
     }
   };
   
-  const testSupabaseLatency = async () => {
+  const testSupabaseLatency = async (manual = false) => {
+    // Skip if not a manual test and we shouldn't perform the test due to throttling
+    if (!manual && !shouldPerformTest(lastSupabaseTestRef)) {
+      return null;
+    }
+    
+    // Skip tests if debug mode is disabled and this isn't a manual test
+    if (!manual && !isDebugModeEnabled()) {
+      return null;
+    }
+    
     setIsTesting(true);
     
     try {
@@ -86,15 +130,24 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
       const end = performance.now();
       const latency = Math.round(end - start);
       setSupabaseLatency(latency);
-      logDebug('Supabase latency test', { latency: `${latency}ms` }, 'info');
+      
+      // Only log if this is a manual test or debug mode is enabled
+      if (manual || isDebugModeEnabled()) {
+        logDebug('Supabase latency test', { latency: `${latency}ms`, manual }, 'info');
+      }
       
       if (latency > 800) {
         setHasWarnings(true);
       }
       
+      // Update last test timestamp
+      lastSupabaseTestRef.current = Date.now();
+      
       return latency;
     } catch (error) {
-      logDebug('Supabase latency test failed', error, 'error');
+      if (manual || isDebugModeEnabled()) {
+        logDebug('Supabase latency test failed', error, 'error');
+      }
       setHasWarnings(true);
       return null;
     } finally {
@@ -102,12 +155,44 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
     }
   };
   
+  // Only run automatic tests when component becomes visible and debug mode is enabled
   useEffect(() => {
-    if (isVisible) {
-      testNetworkLatency();
-      testSupabaseLatency();
+    if (isVisible && isDebugModeEnabled()) {
+      // Set a slight delay to avoid running tests immediately on tab switch
+      const timer = setTimeout(() => {
+        if (isDebugModeEnabled()) {
+          testNetworkLatency(false);
+          testSupabaseLatency(false);
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
   }, [isVisible]);
+  
+  // Listen for debug mode changes to avoid showing stale data
+  useEffect(() => {
+    const checkDebugMode = () => {
+      const debugEnabled = isDebugModeEnabled();
+      
+      // If debug mode is disabled, we should clear latency values
+      // to force re-testing when debug mode is enabled again
+      if (!debugEnabled) {
+        setNetworkLatency(null);
+        setSupabaseLatency(null);
+        lastNetworkTestRef.current = null;
+        lastSupabaseTestRef.current = null;
+      }
+    };
+    
+    // Initial check
+    checkDebugMode();
+    
+    // Set up a timer to check periodically
+    const timerId = setInterval(checkDebugMode, 5000);
+    
+    return () => clearInterval(timerId);
+  }, []);
   
   if (!isVisible) return null;
   
@@ -153,7 +238,7 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
                   size="sm" 
                   variant="outline" 
                   className="w-full h-7 text-xs"
-                  onClick={testNetworkLatency}
+                  onClick={() => testNetworkLatency(true)} // Set manual=true for manual button clicks
                   disabled={isTesting}
                 >
                   {isTesting ? (
@@ -178,7 +263,7 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
                   size="sm" 
                   variant="outline" 
                   className="w-full h-7 text-xs"
-                  onClick={testSupabaseLatency}
+                  onClick={() => testSupabaseLatency(true)} // Set manual=true for manual button clicks
                   disabled={isTesting}
                 >
                   {isTesting ? (
@@ -220,7 +305,7 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
                 size="sm" 
                 variant="outline" 
                 className="w-full mt-2 h-7 text-xs"
-                onClick={networkStatus.testConnection}
+                onClick={() => networkStatus.testConnection()}
                 disabled={networkStatus.isTestingConnection}
               >
                 {networkStatus.isTestingConnection ? (

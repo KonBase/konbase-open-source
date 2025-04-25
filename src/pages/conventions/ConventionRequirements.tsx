@@ -31,12 +31,13 @@ const ConventionRequirements = () => {
     if (!conventionId || !currentAssociation) return;
     
     setIsLoading(true);
-    try {      const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('convention_requirements')
         .select(`
           *,
-          requestor:requested_by(id, email, display_name),
-          approver:approved_by(id, email, display_name)
+          profiles!requested_by(id, email, display_name),
+          approver:profiles!approved_by(id, email, display_name)
         `)
         .eq('convention_id', conventionId)
         .order('created_at', { ascending: false });
@@ -46,7 +47,7 @@ const ConventionRequirements = () => {
       // Transform the data to include joined fields
       const transformedData = data?.map(item => ({
         ...item,
-        requestor: item.requestor,
+        requestor: item.profiles,
         approver: item.approver
       })) || [];
       

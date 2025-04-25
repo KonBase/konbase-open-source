@@ -1,73 +1,157 @@
 /**
- * Utility function for logging debug information to the console
+ * Unified utility functions for debugging
+ * This is the central place for all debugging functionality
+ */
+
+/**
+ * Storage key used for debug mode preferences
+ * Always use this constant to ensure consistency
+ */
+export const DEBUG_MODE_STORAGE_KEY = 'konbase_debug_mode';
+export const DEBUG_LOGS_STORAGE_KEY = 'konbase_debug_logs';
+
+/**
+ * Log debug information with optional context data
+ * 
+ * @param message The message to log
+ * @param data Optional data to include with the log
+ * @param level Log level (info, warn, error)
  */
 export const logDebug = (
   message: string, 
-  data?: any, 
-  level: 'log' | 'info' | 'warn' | 'error' = 'log'
+  data: any = null, 
+  level: 'info' | 'warn' | 'error' = 'info'
 ) => {
-  // Only log in development environment
-  if (import.meta.env.DEV) {
-    const logMessage = `[DEBUG] ${message}`;
-    const timestamp = new Date().toISOString();
-    const logData = data ? JSON.stringify(data, null, 2) : ''; // Stringify data for sending
+  // Check if debug mode is enabled explicitly
+  const isDebugEnabled = isDebugModeEnabled();
+  
+  // Only proceed if debug mode is enabled
+  // We no longer check isDev because we want consistent behavior across environments
+  if (!isDebugEnabled) return;
 
-    switch (level) {
-      case 'log':
-        console.log(logMessage, data);
-        break;
-      case 'info':
-        console.info(logMessage, data);
-        break;
-      case 'warn':
-        console.warn(logMessage, data);
-        break;
-      case 'error':
-        console.error(logMessage, data);
-        // Send error to local logging endpoint
-        fetch('/log-error', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            timestamp,
-            level,
-            message,
-            data: logData, // Send stringified data
-            stack: new Error().stack // Optionally capture stack trace
-          }),
-        }).catch(console.error); // Log fetch errors to console
-        break;
+  const logObject = {
+    timestamp: new Date().toISOString(),
+    message,
+    data,
+    level
+  };
+
+  switch (level) {
+    case 'error':
+      console.error(`[Konbase Debug] ${message}`, data ? logObject : '');
+      break;
+    case 'warn':
+      console.warn(`[Konbase Debug] ${message}`, data ? logObject : '');
+      break;
+    case 'info':
+    default:
+      console.info(`[Konbase Debug] ${message}`, data ? logObject : '');
+      break;
+  }
+
+  // Store logs in localStorage for the debug panel to display
+  if (typeof window !== 'undefined') {
+    try {
+      const debugLogs = JSON.parse(localStorage.getItem(DEBUG_LOGS_STORAGE_KEY) || '[]');
+      debugLogs.push(logObject);
+      
+      // Keep only the last 100 logs to prevent excessive storage usage
+      if (debugLogs.length > 100) {
+        debugLogs.shift();
+      }
+      
+      localStorage.setItem(DEBUG_LOGS_STORAGE_KEY, JSON.stringify(debugLogs));
+    } catch (e) {
+      // Fail silently if localStorage is not available or permission is denied
+      console.warn('[Konbase Debug] Failed to store debug logs in localStorage');
     }
   }
 };
 
 /**
  * Utility function for handling and logging errors
+ * 
+ * @param error The error to handle
+ * @param source The source of the error (component or function name)
+ * @returns A human-readable error message
  */
 export const handleError = (error: any, source: string): string => {
   const errorMessage = error?.message || String(error) || 'Unknown error';
-  logDebug(`Error in ${source}: ${errorMessage}`, error, 'error');
+  
+  // Always log critical errors to console in development mode
+  if (import.meta.env.DEV) {
+    console.error(`[Konbase] Error in ${source}: ${errorMessage}`, error);
+  }
+  
+  // Only log to debug system if debug mode is enabled
+  if (isDebugModeEnabled()) {
+    logDebug(`Error in ${source}: ${errorMessage}`, error, 'error');
+  }
+  
   return errorMessage;
 };
 
 /**
- * Utility function to enable debug mode
+ * Enable or disable debug mode
+ * This function updates the localStorage setting and logs the change
+ * 
+ * @param enabled Whether to enable or disable debug mode
  */
 export const enableDebugMode = (enabled: boolean = true): void => {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem('konbase-debug-mode', enabled ? 'true' : 'false');
-    logDebug(`Debug mode ${enabled ? 'enabled' : 'disabled'}`, null, 'info');
+    try {
+      // Always clear old storage key to avoid confusion
+      localStorage.removeItem('konbase-debug-mode');
+      
+      // Set the new standardized key
+      localStorage.setItem(DEBUG_MODE_STORAGE_KEY, enabled ? 'true' : 'false');
+      
+      // Log to console directly (not through logDebug) to ensure it's always shown
+      console.info(`[Konbase] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (e) {
+      // Fail silently if localStorage is not available
+      console.warn(`[Konbase] Unable to ${enabled ? 'enable' : 'disable'} debug mode:`, e);
+    }
   }
 };
 
 /**
- * Utility function to check if debug mode is enabled
+ * Check if debug mode is currently enabled
+ * 
+ * @returns boolean indicating if debug mode is enabled
  */
 export const isDebugModeEnabled = (): boolean => {
   if (typeof window !== 'undefined') {
-    return window.localStorage.getItem('konbase-debug-mode') === 'true';
+    try {
+      // First check the new standardized key
+      const isEnabled = localStorage.getItem(DEBUG_MODE_STORAGE_KEY) === 'true';
+      
+      // If not found, check the legacy key
+      if (localStorage.getItem(DEBUG_MODE_STORAGE_KEY) === null) {
+        return localStorage.getItem('konbase-debug-mode') === 'true';
+      }
+      
+      return isEnabled;
+    } catch (e) {
+      // Fail silently if localStorage is not available
+      return false;
+    }
   }
   return false;
+};
+
+/**
+ * Clear all debug logs from storage
+ */
+export const clearDebugLogs = (): void => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(DEBUG_LOGS_STORAGE_KEY);
+      
+      // Log directly to console instead of using logDebug
+      console.info('[Konbase] Debug logs cleared');
+    } catch (e) {
+      console.warn('[Konbase] Failed to clear debug logs');
+    }
+  }
 };

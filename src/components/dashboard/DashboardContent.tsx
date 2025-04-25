@@ -4,7 +4,6 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
-import DashboardDebugPanel from '@/components/dashboard/DashboardDebugPanel';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
 import { useToast } from '@/components/ui/use-toast';
@@ -93,19 +92,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         <ErrorBoundary>
           <ConventionManagementSection />
         </ErrorBoundary>
-        
-        <DashboardDebugPanel 
-          isDebugMode={isDebugMode}
-          toggleDebugMode={toggleDebugMode}
-          networkStatus={networkStatus}
-          user={user}
-          currentAssociation={currentAssociation}
-          lastError={lastError}
-          handleRetry={handleRetry}
-          retryCount={retryCount}
-          loadTime={loadTime}
-          requestInfo={requestInfo}
-        />
       </div>
     </div>
   );

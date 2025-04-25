@@ -1,21 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-// Added Edit, Settings, LogOut icons. Ensured all used icons are imported.
-import { Calendar, MapPin, Users, Package, Loader2, Edit, Settings, LogOut, Info, ListChecks, Map, Droplets, FileText } from 'lucide-react';
+import { Calendar, MapPin, Users, Package, Loader2, Edit, LogOut, Info, ListChecks, Map, Droplets, FileText, History } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { Convention } from '@/types/convention';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ConventionAttendeesPage from '@/components/conventions/ConventionAttendeesPage'; // Assuming this exists and works
-import { Badge } from '@/components/ui/badge'; // Import Badge
-import { Separator } from '@/components/ui/separator'; // Import Separator
+import ConventionAttendeesPage from '@/components/conventions/ConventionAttendeesPage';
+import ConventionLocationsTab from '@/components/conventions/ConventionLocationsTab';
+import ConventionLogsTab from '@/components/conventions/ConventionLogsTab';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const ConventionDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
   const [convention, setConvention] = useState<Convention | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [equipmentCount, setEquipmentCount] = useState(0);
@@ -40,8 +41,8 @@ const ConventionDetails = () => {
       if (staffResult.error) throw staffResult.error;
 
       setConvention(conventionResult.data);
-      setEquipmentCount(equipmentResult.count ?? 0); // Use nullish coalescing
-      setStaffCount(staffResult.count ?? 0); // Use nullish coalescing
+      setEquipmentCount(equipmentResult.count ?? 0);
+      setStaffCount(staffResult.count ?? 0);
 
     } catch (error: any) {
       console.error('Error loading convention data:', error);
@@ -90,7 +91,7 @@ const ConventionDetails = () => {
 
   if (!convention) {
     return (
-      <div className="container mx-auto py-6 p-4 md:p-6"> {/* Added padding */}
+      <div className="container mx-auto py-6 p-4 md:p-6">
         <Card className="text-center">
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
@@ -99,7 +100,7 @@ const ConventionDetails = () => {
             <CardDescription>The requested convention (ID: {id}) could not be found or loaded. It might have been deleted or you may not have access.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate('/conventions')}> {/* Use navigate for programmatic navigation */}
+            <Button onClick={() => navigate('/conventions')}>
               <LogOut className="mr-2 h-4 w-4" /> Back to Conventions List
             </Button>
           </CardContent>
@@ -112,13 +113,13 @@ const ConventionDetails = () => {
   const endDate = new Date(convention.end_date);
 
   return (
-    <div className="space-y-6 p-4 md:p-6"> {/* Added padding */}
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b">
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             {convention.name}
-            {getStatusBadge(convention.status)} {/* Display status badge next to title */}
+            {getStatusBadge(convention.status)}
           </h1>
           <p className="text-muted-foreground flex items-center gap-2 mt-1">
             <Calendar className="h-4 w-4" />
@@ -133,8 +134,6 @@ const ConventionDetails = () => {
           <Button variant="outline" disabled>
             <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
-          {/* TODO: Add Settings/Actions Dropdown if needed */}
-          {/* <Button variant="ghost" size="icon" disabled><Settings className="h-4 w-4" /></Button> */}
         </div>
       </div>
 
@@ -186,16 +185,17 @@ const ConventionDetails = () => {
       <Tabs defaultValue="details" className="w-full">
         {/* Scrollable TabsList on smaller screens */}
         <div className="overflow-x-auto">
-          <TabsList className="inline-grid w-full grid-cols-[auto,auto,auto,auto,auto,auto] sm:w-auto sm:grid-cols-6 gap-1">
+          <TabsList className="inline-grid w-full grid-cols-[auto,auto,auto,auto,auto,auto,auto] sm:w-auto sm:grid-cols-7 gap-1">
             <TabsTrigger value="details" className="flex items-center gap-1"><FileText className="h-4 w-4"/>Details</TabsTrigger>
             <TabsTrigger value="attendees" className="flex items-center gap-1"><Users className="h-4 w-4"/>Attendees</TabsTrigger>
             <TabsTrigger value="equipment" className="flex items-center gap-1"><Package className="h-4 w-4"/>Equipment</TabsTrigger>
             <TabsTrigger value="consumables" className="flex items-center gap-1"><Droplets className="h-4 w-4"/>Consumables</TabsTrigger>
             <TabsTrigger value="requirements" className="flex items-center gap-1"><ListChecks className="h-4 w-4"/>Requirements</TabsTrigger>
             <TabsTrigger value="locations" className="flex items-center gap-1"><Map className="h-4 w-4"/>Locations</TabsTrigger>
+            <TabsTrigger value="logs" className="flex items-center gap-1"><History className="h-4 w-4"/>Logs</TabsTrigger>
           </TabsList>
         </div>
-        <Separator className="my-4" /> {/* Added separator */}
+        <Separator className="my-4" />
 
         {/* Tab Content Panes */}
         <TabsContent value="details" className="mt-4">
@@ -227,7 +227,7 @@ const ConventionDetails = () => {
         </TabsContent>
 
         <TabsContent value="attendees" className="mt-4">
-          {/* Render the ConventionAttendeesPage component - Assumes it handles its own loading/error states */}
+          {/* Render the ConventionAttendeesPage component */}
           {id ? (
             <ConventionAttendeesPage conventionId={id} />
           ) : (
@@ -244,8 +244,44 @@ const ConventionDetails = () => {
           )}
         </TabsContent>
 
+        <TabsContent value="locations" className="mt-4">
+          {/* Render the ConventionLocationsTab component */}
+          {id ? (
+            <ConventionLocationsTab conventionId={id} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Locations</CardTitle>
+                <CardDescription>Manage locations for this convention.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center p-6">
+                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                 <span className="ml-2">Loading locations information...</span>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-4">
+          {/* Render the ConventionLogsTab component */}
+          {id ? (
+            <ConventionLogsTab conventionId={id} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Activity Logs</CardTitle>
+                <CardDescription>View convention activity logs.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center p-6">
+                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                 <span className="ml-2">Loading logs information...</span>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
         {/* Placeholder Cards for other sections - linking to dedicated pages */}
-        {(['equipment', 'consumables', 'requirements', 'locations'] as const).map((section) => (
+        {(['equipment', 'consumables', 'requirements'] as const).map((section) => (
           <TabsContent key={section} value={section} className="mt-4">
             <Card>
               <CardHeader>

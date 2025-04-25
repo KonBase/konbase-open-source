@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import LocationManager from '@/components/inventory/LocationManager';
-import { ArrowLeft, MapPin } from 'lucide-react'; // Added icons
+import { MapPin } from 'lucide-react'; // Removed ArrowLeft as we no longer need it
 
 const StorageLocations = () => {
   const { currentAssociation, isLoading } = useAssociation(); // Added isLoading
@@ -51,21 +51,13 @@ const StorageLocations = () => {
     // Use container for consistent padding
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
-         <div className="flex items-center gap-2">
-           {/* Optional Back Button */}
-           <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-             <Link to="/inventory"> {/* Adjust link as needed */}
-               <ArrowLeft className="h-4 w-4" />
-             </Link>
-           </Button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <MapPin className="h-6 w-6" /> Storage Locations
-            </h1>
-            <p className="text-muted-foreground">
-              Define physical or logical locations where inventory items are stored (e.g., Warehouse A, Shelf 3, Room 101).
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <MapPin className="h-6 w-6" /> Storage Locations
+          </h1>
+          <p className="text-muted-foreground">
+            Define physical or logical locations where inventory items are stored (e.g., Warehouse A, Shelf 3, Room 101).
+          </p>
         </div>
          {/* Add Location button might be inside LocationManager, if not, add here */}
       </div>

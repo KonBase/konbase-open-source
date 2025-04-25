@@ -100,10 +100,12 @@ export interface ConventionLocation {
   convention_id: string;
   name: string;
   description: string | null;
-  type: string;
-  capacity: number | null;
-  floor: string | null;
+  type: string | null;
   building: string | null;
+  floor: string | null;
+  capacity: number | null;
+  map_x: number | null;
+  map_y: number | null;
   created_at: string;
   updated_at: string;
 }

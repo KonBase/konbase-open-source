@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from "@/components/ui/button";
 import { Building2, ArrowLeft } from "lucide-react";
@@ -14,6 +14,7 @@ import { useMobileDetect } from '@/hooks/useMobileDetect';
 import UserMenu from './shared/UserMenu';
 import MobileMenuButton from './shared/MobileMenuButton';
 import { MobileNav } from '@/components/ui/MobileNav';
+import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,13 +23,18 @@ export function Header() {
   const location = useLocation();
   const { profile } = useUserProfile();
   const { isMobile } = useMobileDetect();
+  const navigate = useNavigate();
   
   // Check if user has admin or super_admin role
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'system_admin';
   
-  const showBackToDashboard = location.pathname !== '/dashboard' && 
-                             !location.pathname.startsWith('/settings') && 
-                             !location.pathname.startsWith('/profile');
+  // Show back button on all pages except dashboard
+  const showBackButton = location.pathname !== '/dashboard';
+
+  const handleBackNavigation = () => {
+    // Go back in browser history
+    window.history.back();
+  };
 
   const userName = profile?.name || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email || '';
@@ -41,11 +47,14 @@ export function Header() {
           
           {currentAssociation && (
             <div className="flex items-center gap-2 flex-1">
-              {showBackToDashboard && (
-                <Button variant="ghost" size="icon" asChild className="mr-2">
-                  <Link to="/dashboard">
-                    <ArrowLeft className="h-4 w-4" />
-                  </Link>
+              {showBackButton && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleBackNavigation}
+                  className="mr-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
               <div className="hidden md:flex items-center">
@@ -56,7 +65,14 @@ export function Header() {
           )}
         </div>
         
-        <div className="flex-1 flex justify-end items-center gap-2 sm:gap-4">
+        {/* Global Search Bar - only show when an association is selected */}
+        {currentAssociation && (
+          <div className="flex-1 px-4">
+            <GlobalSearch className="max-w-[600px] mx-auto" />
+          </div>
+        )}
+        
+        <div className="flex justify-end items-center gap-2 sm:gap-4">
           {/* Association Selector - hide on small screens */}
           <div className="hidden md:block">
             <AssociationSelector />
@@ -81,4 +97,4 @@ export function Header() {
       </div>
     </header>
   );
-};
+}
