@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Loader, Clock, Activity, Database, AlertCircle } from 'lucide-react';
@@ -23,24 +23,18 @@ const DashboardLoading: React.FC<DashboardLoadingProps> = ({
   isDebugMode: propIsDebugMode,
   retryCount = 0
 }) => {
-  // Check both prop-based debug mode and localStorage setting
-  // This ensures debug information is shown consistently regardless of how debug mode was enabled
-  const [effectiveDebugMode, setEffectiveDebugMode] = useState(!!propIsDebugMode);
-  
-  useEffect(() => {
-    // Dynamically check if debug mode is enabled via localStorage
-    setEffectiveDebugMode(propIsDebugMode || isDebugModeEnabled());
-  }, [propIsDebugMode]);
+  // Initialize once on mount rather than checking localStorage on every render
+  const [effectiveDebugMode] = useState(() => propIsDebugMode || isDebugModeEnabled());
   
   // Determine if loading is slow (more than 3 seconds)
   const isSlowLoading = loadingDuration > 3000;
   
-  // Loading animations for cards
-  const loadingIcons = [
+  // Memoize loading icons to prevent recreation on every render
+  const loadingIcons = useMemo(() => [
     <Activity key="activity" className="h-8 w-8 text-primary animate-pulse" />,
     <Clock key="clock" className="h-8 w-8 text-primary animate-pulse" />,
     <Database key="database" className="h-8 w-8 text-primary animate-pulse" />
-  ];
+  ], []);
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -98,20 +92,19 @@ const DashboardLoading: React.FC<DashboardLoadingProps> = ({
             <CardContent>
               <div className="flex flex-col items-center justify-center h-40 space-y-4">
                 {loadingIcons[i-1]}
-                <Skeleton className="h-4 w-2/3" />
-                <Progress 
-                  value={Math.min(100, loadingDuration / 100)}
-                  className="w-full transition-all duration-500 ease-in-out" 
-                />
+                {effectiveDebugMode && (
+                  <div className="w-full mt-4">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Progress 
+                      value={Math.min(100, loadingDuration / 100)}
+                      className="w-full transition-all duration-500 ease-in-out" 
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Skeleton className="h-[200px] w-full rounded-lg" />
-        <Skeleton className="h-[200px] w-full rounded-lg" />
       </div>
 
       <div className="flex justify-center my-8">

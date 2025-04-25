@@ -26,6 +26,7 @@ export function NotificationsDropdown() {
   const [retryCount, setRetryCount] = useState(0);
   const [subscribed, setSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [websocketStatus, setWebsocketStatus] = useState<'connected' | 'disconnected' | 'connecting' | 'error'>('disconnected');
   const { user } = useAuth();
   const { toast } = useToast();
   const { safeSelect, safeUpdate, supabase } = useTypeSafeSupabase();
@@ -35,7 +36,8 @@ export function NotificationsDropdown() {
   const isFetchingRef = useRef<boolean>(false);
   const lastFetchTimeRef = useRef<number>(0);
   const fetchDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const websocketTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Track debug mode changes
   useEffect(() => {
     const checkDebugMode = () => {
@@ -137,6 +139,31 @@ export function NotificationsDropdown() {
     }
   }, [user, safeSelect, retryCount, loading]);
   
+  const cleanupWebSocketConnection = useCallback(() => {
+    if (channelRef.current && supabase) {
+      try {
+        supabase.removeChannel(channelRef.current);
+        if (debugModeEnabledRef.current) {
+          logDebug('Removed notification channel', null, 'info');
+        }
+      } catch (error) {
+        if (debugModeEnabledRef.current) {
+          logDebug('Error removing notification channel:', error, 'error');
+        }
+      }
+      channelRef.current = null;
+    }
+    
+    // Clear any pending WebSocket timeout
+    if (websocketTimeoutRef.current) {
+      clearTimeout(websocketTimeoutRef.current);
+      websocketTimeoutRef.current = null;
+    }
+    
+    setSubscribed(false);
+    setWebsocketStatus('disconnected');
+  }, [supabase]);
+  
   const setupRealtimeSubscription = useCallback(() => {
     if (!user || !supabase || isSubscribing) return;
     
@@ -147,20 +174,39 @@ export function NotificationsDropdown() {
       return;
     }
     
+    // Clean up any existing subscription 
+    cleanupWebSocketConnection();
+    
     // Avoid multiple subscriptions in rapid succession
     const currentAttempt = subscriptionAttemptRef.current + 1;
     subscriptionAttemptRef.current = currentAttempt;
     
     setIsSubscribing(true);
+    setWebsocketStatus('connecting');
+    
     try {
-      // Clean up any existing subscription to prevent duplicates
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      
       // Create new subscription with a unique channel name to avoid conflicts
-      const channelName = `notifications-changes-${user.id}-${currentAttempt}`;
+      const channelName = `notifications-changes-${user.id}-${currentAttempt}-${Date.now()}`;
+      
+      // Set WebSocket connection timeout
+      websocketTimeoutRef.current = setTimeout(() => {
+        if (isSubscribing && websocketStatus === 'connecting') {
+          setWebsocketStatus('error');
+          setIsSubscribing(false);
+          if (debugModeEnabledRef.current) {
+            logDebug(`WebSocket connection timeout (attempt ${currentAttempt})`, null, 'error');
+          }
+          
+          // Retry after a delay with exponential backoff
+          const retryDelay = Math.min(5000 * Math.pow(1.5, Math.min(subscriptionAttemptRef.current, 5)), 30000);
+          setTimeout(() => {
+            if (subscriptionAttemptRef.current === currentAttempt) {
+              setupRealtimeSubscription();
+            }
+          }, retryDelay);
+        }
+      }, 10000); // 10-second timeout for WebSocket connection
+      
       const channel = supabase
         .channel(channelName)
         .on(
@@ -190,29 +236,65 @@ export function NotificationsDropdown() {
             }
           }
         )
+        .on('system', { event: 'disconnect' }, () => {
+          setWebsocketStatus('disconnected');
+          if (debugModeEnabledRef.current) {
+            logDebug(`WebSocket disconnected (attempt ${currentAttempt})`, null, 'warn');
+          }
+
+          // Try to reconnect after a delay
+          setTimeout(() => {
+            if (subscriptionAttemptRef.current === currentAttempt) {
+              setupRealtimeSubscription();
+            }
+          }, 5000); // 5-second delay before reconnection attempt
+        })
         .subscribe((status) => {
+          // Clear the WebSocket timeout
+          if (websocketTimeoutRef.current) {
+            clearTimeout(websocketTimeoutRef.current);
+            websocketTimeoutRef.current = null;
+          }
+          
           // Only process if this is still the current subscription attempt
           if (subscriptionAttemptRef.current !== currentAttempt) return;
           
           if (status === 'SUBSCRIBED') {
             setSubscribed(true);
             setIsSubscribing(false);
+            setWebsocketStatus('connected');
             if (debugModeEnabledRef.current) {
               logDebug(`Successfully subscribed to notifications (attempt ${currentAttempt})`, null, 'info');
             }
           } else if (status === 'CHANNEL_ERROR') {
             setSubscribed(false);
             setIsSubscribing(false);
+            setWebsocketStatus('error');
             if (debugModeEnabledRef.current) {
               logDebug(`Error subscribing to notifications (attempt ${currentAttempt})`, null, 'error');
             }
+            
             // Try to resubscribe after a delay with exponential backoff
-            const retryDelay = Math.min(3000 * Math.pow(2, Math.min(subscriptionAttemptRef.current, 4)), 30000);
+            const retryDelay = Math.min(5000 * Math.pow(1.5, Math.min(subscriptionAttemptRef.current, 5)), 30000);
             setTimeout(() => {
               if (subscriptionAttemptRef.current === currentAttempt) {
                 setupRealtimeSubscription();
               }
             }, retryDelay);
+          } else if (status === 'TIMED_OUT') {
+            setSubscribed(false);
+            setIsSubscribing(false);
+            setWebsocketStatus('error');
+            if (debugModeEnabledRef.current) {
+              logDebug(`Subscription timed out (attempt ${currentAttempt})`, null, 'error');
+            }
+            
+            // Try to resubscribe after a delay
+            setTimeout(() => {
+              if (subscriptionAttemptRef.current === currentAttempt) {
+                setupRealtimeSubscription();
+              }
+            }, 8000); // 8-second delay before reconnection attempt
           }
         });
         
@@ -224,8 +306,15 @@ export function NotificationsDropdown() {
       }
       setSubscribed(false);
       setIsSubscribing(false);
+      setWebsocketStatus('error');
+      
+      // Clear any pending WebSocket timeout
+      if (websocketTimeoutRef.current) {
+        clearTimeout(websocketTimeoutRef.current);
+        websocketTimeoutRef.current = null;
+      }
     }
-  }, [user, supabase, toast]);
+  }, [user, supabase, toast, cleanupWebSocketConnection, websocketStatus]);
   
   // Set up initial subscription and fetch notifications
   useEffect(() => {
@@ -251,24 +340,15 @@ export function NotificationsDropdown() {
         fetchDebounceTimeoutRef.current = null;
       }
       
-      if (channelRef.current && supabase) {
-        try {
-          supabase.removeChannel(channelRef.current);
-          channelRef.current = null;
-          // Just update the refs to prevent further subscription attempts
-          subscriptionAttemptRef.current = 0;
-        } catch (error) {
-          if (debugModeEnabledRef.current) {
-            logDebug('Error removing notification channel:', error, 'error');
-          }
-        }
-      }
+      cleanupWebSocketConnection();
+      // Reset attempts to prevent further subscription attempts
+      subscriptionAttemptRef.current = 0;
     };
-  }, [user, fetchNotifications, supabase, setupRealtimeSubscription, isSubscribing, subscribed]);
+  }, [user, fetchNotifications, supabase, setupRealtimeSubscription, isSubscribing, subscribed, cleanupWebSocketConnection]);
   
   // Resubscribe when retryCount changes
   useEffect(() => {
-    if (retryCount > 0 && user && supabase && !isSubscribing) {
+    if (retryCount > 0 && user && supabase && !isSubscribing && websocketStatus !== 'connected') {
       // Add delay before resubscribing
       const retryDelay = 3000 + (retryCount * 1000); // Increasing delay with retry count
       const timeoutId = setTimeout(() => {
@@ -277,7 +357,7 @@ export function NotificationsDropdown() {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [retryCount, user, supabase, setupRealtimeSubscription, isSubscribing]);
+  }, [retryCount, user, supabase, setupRealtimeSubscription, isSubscribing, websocketStatus]);
   
   const markAsRead = async (id: string) => {
     if (!user) return;
@@ -368,11 +448,31 @@ export function NotificationsDropdown() {
   const unreadCount = notifications.filter(n => !n.read).length;
   const isMobile = window.innerWidth < 768; // Simple mobile detection
   
+  // Add window online/offline event listeners to retry WebSocket when reconnecting
+  useEffect(() => {
+    const handleOnline = () => {
+      if (!subscribed && user && supabase) {
+        if (debugModeEnabledRef.current) {
+          logDebug('Network connection restored, reconnecting WebSocket', null, 'info');
+        }
+        // Wait a bit for the connection to stabilize then reconnect
+        setTimeout(() => {
+          setupRealtimeSubscription();
+        }, 3000);
+      }
+    };
+    
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [subscribed, user, supabase, setupRealtimeSubscription]);
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+          <Bell className={cn("h-5 w-5", websocketStatus === 'error' && "text-red-500")} />
           {unreadCount > 0 && (
             <Badge className="absolute -top-1 -right-1 px-1 min-w-[1.25rem] h-5 flex items-center justify-center">
               {unreadCount}
@@ -404,21 +504,45 @@ export function NotificationsDropdown() {
                   setRetryCount(0);
                   fetchNotifications(true); // Pass true to force fetch
                   
-                  // Only attempt to setup realtime if not already subscribing
-                  if (!isSubscribing) {
+                  // Always attempt to reconnect WebSocket if not already connected
+                  if (websocketStatus !== 'connected' && !isSubscribing) {
                     setupRealtimeSubscription();
                   }
                 }
               }}
-              title="Refresh notifications"
+              title={websocketStatus === 'connected' ? 
+                "Connected. Click to refresh" : 
+                websocketStatus === 'error' ? 
+                  "Connection error. Click to retry" : 
+                  "Refreshing..."}
               disabled={loading || isFetchingRef.current}
             >
-              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              <RefreshCw className={cn(
+                "h-4 w-4", 
+                loading && "animate-spin",
+                websocketStatus === 'error' && "text-red-500",
+                websocketStatus === 'connecting' && "text-amber-500"
+              )} />
             </Button>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        
+        {/* Show WebSocket connection status if in error state */}
+        {websocketStatus === 'error' && (
+          <div className="px-4 py-2 text-xs text-red-500 flex items-center gap-2 bg-red-50 dark:bg-red-950/20">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+            <span>
+              Real-time updates unavailable. 
+              <Button variant="link" className="p-0 h-auto text-xs" onClick={setupRealtimeSubscription}>
+                Retry connection
+              </Button>
+            </span>
+          </div>
+        )}
+        
         <DropdownMenuGroup className={cn("overflow-y-auto", isMobile ? "max-h-[50vh]" : "max-h-[400px]")}>
+          {/* Existing notification list rendering code */}
           {loading ? (
             <div className="p-4 text-center">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
@@ -433,7 +557,7 @@ export function NotificationsDropdown() {
                 className="mt-2"
                 onClick={() => {
                   setRetryCount(0);
-                  fetchNotifications();
+                  fetchNotifications(true);
                   setupRealtimeSubscription();
                 }}
               >

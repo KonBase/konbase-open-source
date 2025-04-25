@@ -1,29 +1,79 @@
-
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect, useRef, memo } from 'react';
 import Dashboard from './Dashboard';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { logDebug } from '@/utils/debug';
+import { logDebug, isDebugModeEnabled } from '@/utils/debug';
+
+// Memoize the Dashboard component to prevent unnecessary re-renders
+const MemoizedDashboard = memo(Dashboard);
 
 const DashboardPage = () => {
   const [hasError, setHasError] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
   const [key, setKey] = useState(0);
+  const reloadRequestedRef = useRef(false);
+  const reloadTimerRef = useRef<number | null>(null);
 
   const handleError = (error: Error) => {
-    logDebug('Dashboard error caught by ErrorBoundary', error, 'error');
+    // Only log errors in debug mode
+    if (isDebugModeEnabled()) {
+      logDebug('Dashboard error caught by ErrorBoundary', error, 'error');
+    }
     setHasError(true);
     setErrorCount(prev => prev + 1);
   };
 
   const handleRetry = () => {
-    logDebug('Manual dashboard reload requested', null, 'info');
+    // Only log in debug mode
+    if (isDebugModeEnabled()) {
+      logDebug('Manual dashboard reload requested', null, 'info');
+    }
     setHasError(false);
     setKey(prev => prev + 1);
   };
+
+  // Listen for dashboard reload requests from navigation events
+  // Using a more optimized approach with debouncing
+  useEffect(() => {
+    const handleDashboardReloadRequest = () => {
+      if (!reloadRequestedRef.current) {
+        reloadRequestedRef.current = true;
+        
+        // Only log in debug mode
+        if (isDebugModeEnabled()) {
+          logDebug('Dashboard reload requested via event', null, 'info');
+        }
+        
+        // Clear any existing timer
+        if (reloadTimerRef.current !== null) {
+          clearTimeout(reloadTimerRef.current);
+        }
+        
+        // We use setTimeout to ensure we don't reload too frequently
+        // This debounces reload requests
+        reloadTimerRef.current = window.setTimeout(() => {
+          setKey(prev => prev + 1);
+          reloadRequestedRef.current = false;
+          reloadTimerRef.current = null;
+        }, 500); // Increased timeout to further reduce chances of rapid reloads
+      }
+    };
+
+    window.addEventListener('dashboard-reload-requested', handleDashboardReloadRequest);
+    
+    return () => {
+      window.removeEventListener('dashboard-reload-requested', handleDashboardReloadRequest);
+      
+      // Clean up any pending timers
+      if (reloadTimerRef.current !== null) {
+        clearTimeout(reloadTimerRef.current);
+        reloadTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,7 +124,7 @@ const DashboardPage = () => {
         }
       >
         <Suspense fallback={<div className="container mx-auto py-6"><DashboardSkeleton /></div>}>
-          <Dashboard />
+          <MemoizedDashboard key={key} />
         </Suspense>
       </ErrorBoundary>
     </div>
