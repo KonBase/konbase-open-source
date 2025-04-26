@@ -1,5 +1,3 @@
-# KonBase: Supply Chain Management for Conventions
-
 <div align="center">
   <img src="./public/uploads/1.svg" alt="KonBase Logo" width="300" />
 </div>
