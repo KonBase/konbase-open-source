@@ -15,6 +15,7 @@ export const SessionRecovery = () => {
   const navigate = useNavigate();
   const hasAttemptedRecovery = useRef(false);
   const isProcessingAuth = useRef(false);
+  const isGitHubPages = window.location.hostname.includes('github.io');
 
   useEffect(() => {
     // Only attempt recovery once per component lifecycle
@@ -32,7 +33,10 @@ export const SessionRecovery = () => {
           location.pathname === '/register' ||
           location.pathname.includes('/auth/callback') ||
           location.pathname.includes('/forgot-password') ||
-          location.pathname.includes('/reset-password');
+          location.pathname.includes('/reset-password') ||
+          // For HashRouter paths (#/route)
+          location.hash.includes('/login') ||
+          location.hash.includes('/register');
           
         if (isPublicRoute) {
           hasAttemptedRecovery.current = true;
@@ -40,7 +44,11 @@ export const SessionRecovery = () => {
         }
         
         isProcessingAuth.current = true;
-        logDebug('Starting session recovery attempt', { path: location.pathname }, 'info');
+        logDebug('Starting session recovery attempt', { 
+          path: location.pathname, 
+          hash: location.hash,
+          isGitHubPages
+        }, 'info');
         
         // Check if we have saved session data
         const sessionData = getSavedSessionData();
@@ -67,7 +75,10 @@ export const SessionRecovery = () => {
           logDebug('Session recovered successfully', null, 'info');
           
           // If we're not on a valid route, redirect to last known path or dashboard
-          if (location.pathname !== lastPath) {
+          // For HashRouter, check both pathname and hash
+          const currentPath = isGitHubPages ? location.hash.replace('#', '') : location.pathname;
+          
+          if (currentPath !== lastPath) {
             const redirectTo = lastPath || '/dashboard';
             logDebug('Redirecting to recovered path', { path: redirectTo }, 'info');
             
@@ -96,7 +107,7 @@ export const SessionRecovery = () => {
     };
 
     attemptSessionRecovery();
-  }, [session, loading, location.pathname, navigate, user]);
+  }, [session, loading, location.pathname, location.hash, navigate, user]);
 
   return null;
 };

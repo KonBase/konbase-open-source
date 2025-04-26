@@ -12,19 +12,22 @@ const RouteChangeHandler = () => {
   const [lastTransition, setLastTransition] = useState<string | null>(null);
   const isInitialMount = useRef(true);
   const pendingNavigationRef = useRef<NodeJS.Timeout | null>(null);
+  const isGitHubPages = window.location.hostname.includes('github.io');
 
   useEffect(() => {
     // Skip processing on initial mount to avoid interference with initial page load
     if (isInitialMount.current) {
       isInitialMount.current = false;
       // Store initial path in navigation history
-      addToNavigationHistory(location.pathname);
+      const initialPath = isGitHubPages ? location.hash.replace('#', '') : location.pathname;
+      addToNavigationHistory(initialPath);
       return;
     }
 
     // Get previous path from sessionStorage (if available)
     const previousPath = sessionStorage.getItem('kb_previous_path') || '';
-    const currentPath = location.pathname;
+    // For GitHub Pages, we need to use the hash part as the path
+    const currentPath = isGitHubPages ? location.hash.replace('#', '') : location.pathname;
     
     // Add current path to navigation history 
     addToNavigationHistory(currentPath);
@@ -40,7 +43,8 @@ const RouteChangeHandler = () => {
       if (isDebugModeEnabled()) {
         logDebug('Main section change detected', {
           from: previousPath,
-          to: currentPath
+          to: currentPath,
+          isGitHubPages
         }, 'info');
       }
 
@@ -81,7 +85,7 @@ const RouteChangeHandler = () => {
         clearTimeout(pendingNavigationRef.current);
       }
     };
-  }, [location.pathname, lastTransition]);
+  }, [location.pathname, location.hash, lastTransition]);
 
   /**
    * Handle transitions between specific sections that are known to cause issues

@@ -22,11 +22,13 @@ const LoginForm = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const { login, signInWithOAuth, userProfile, user, loading: authLoading } = useAuth();
+  const [isReady] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
   const emailVerificationNeeded = location.state?.emailVerification;
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const redirectAttempts = useState(0);
+  const isGitHubPages = window.location.hostname.includes('github.io');
 
   // Enhanced redirection effect
   useEffect(() => {
@@ -35,7 +37,8 @@ const LoginForm = () => {
       logDebug('Attempting redirection after login', { 
         path: redirectTo, 
         userExists: !!user, 
-        profileExists: !!userProfile 
+        profileExists: !!userProfile,
+        isGitHubPages
       }, 'info');
       
       // If we have a user or profile, we can redirect
@@ -59,7 +62,7 @@ const LoginForm = () => {
         redirectAttempts[1](prev => prev + 1);
       }
     }
-  }, [redirectTo, user, userProfile, authLoading, navigate, redirectAttempts]);
+  }, [redirectTo, user, userProfile, authLoading, navigate, redirectAttempts, isGitHubPages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
