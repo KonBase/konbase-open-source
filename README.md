@@ -4,6 +4,7 @@
   <img src="https://konbase.cfd/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" alt="KonBase Logo" width="100" />
 </div>
 
+
 <p align="center">
   <a href="https://github.com/KonBase/KonBase/stargazers">
     <img src="https://img.shields.io/github/stars/KonBase/konbase-open-source" alt="Stars" />
@@ -11,6 +12,7 @@
   <a href="https://github.com/KonBase/KonBase/network/members">
     <img src="https://img.shields.io/github/forks/KonBase/konbase-open-source" alt="Forks" />
   </a>
+  <a href="https://deepscan.io/dashboard#view=project&tid=26785&pid=29370&bid=943878"><img src="https://deepscan.io/api/teams/26785/projects/29370/branches/943878/badge/grade.svg" alt="DeepScan grade"></a>
   <a href="https://github.com/KonBase/KonBase/issues">
     <img src="https://img.shields.io/github/issues/KonBase/konbase-open-source" alt="Issues" />
   </a>
