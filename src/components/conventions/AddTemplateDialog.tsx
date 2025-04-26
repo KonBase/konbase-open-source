@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { Label } from '@/components/ui/label';
 
 interface AddTemplateDialogProps {
   isOpen: boolean;

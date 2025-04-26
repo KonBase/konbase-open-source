@@ -1,6 +1,4 @@
-
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
 import { logDebug, handleError } from '@/utils/debug';
 
 /**

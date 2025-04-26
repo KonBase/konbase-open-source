@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowDownIcon, ArrowUpIcon, Package, AlertCircle, PlusIcon, CheckCircle, XCircle, Truck, Warehouse, Loader2, Info } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, Package, AlertCircle, PlusIcon, CheckCircle, Truck, Warehouse, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +10,6 @@ import { ConventionEquipment } from '@/types/convention';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AddEquipmentDialog } from '@/components/conventions/AddEquipmentDialog';
-import { Separator } from '@/components/ui/separator';
 
 const ConventionEquipmentPage = () => {
   const { id: conventionId } = useParams<{ id: string }>();

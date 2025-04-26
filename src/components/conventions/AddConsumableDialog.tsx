@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { ConventionConsumableFormData } from '@/types/convention';
 
 interface AddConsumableDialogProps {
   isOpen: boolean;

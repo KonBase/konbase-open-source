@@ -16,7 +16,7 @@ const LoginForm: React.FC = () => {
       // Check for which method exists and use the appropriate one
       if (typeof supabase.auth.signInWithPassword === 'function') {
         // For Supabase v2+
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });

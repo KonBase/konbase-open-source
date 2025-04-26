@@ -112,21 +112,17 @@ export const AssociationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       const newAssociation = await createAssociation(data, profile.id);
       
-      if (newAssociation) {
-        updateState({
-          userAssociations: [...state.userAssociations, newAssociation],
-          currentAssociation: newAssociation
-        });
-        
-        toast({
-          title: "Association created",
-          description: `${newAssociation.name} has been created successfully.`,
-        });
-        
-        return newAssociation;
-      }
+      updateState({
+        userAssociations: [...state.userAssociations, newAssociation],
+        currentAssociation: newAssociation
+      });
       
-      return null;
+      toast({
+        title: "Association created",
+        description: `${newAssociation.name} has been created successfully.`,
+      });
+      
+      return newAssociation;
     } catch (error: any) {
       console.error("Error creating association:", error);
       toast({

@@ -1,11 +1,11 @@
 import React, { createContext, useEffect, useState } from 'react';
 import { AuthContextType, AuthState, AuthUser, AuthUserProfile } from './AuthTypes';
 import { supabase } from '@/lib/supabase';
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 import { toast } from '@/components/ui/use-toast';
 import { USER_ROLES, UserRoleType } from '@/types/user';
 import { handleOAuthRedirect } from '@/utils/oauth-redirect-handler';
-import { saveSessionData, clearSessionData, getSavedSessionData } from '@/utils/session-utils';
+import { saveSessionData, clearSessionData } from '@/utils/session-utils';
 
 // Create the context with a default undefined value
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Listen for auth changes
         const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-          async (event, session) => {
+          async (session) => {
             if (session?.user) {
               await updateUserState(session);
             } else {
@@ -169,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -294,7 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithOAuth = async (provider: 'google' | 'discord') => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/`,
