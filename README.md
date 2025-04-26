@@ -1,13 +1,10 @@
 # KonBase: Supply Chain Management for Conventions
 
 <div align="center">
-  <img src="./.github/1.svg" alt="KonBase Logo" width="50%" />
+  <img src="https://konbase.cfd/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" alt="KonBase Logo" width="100" />
 </div>
 
 <p align="center">
-  <a href="https://crowdin.com/project/konbase">
-    <img src="https://badges.crowdin.net/konbase/localized.svg" alt="Localized" />
-  </a>
   <a href="https://github.com/KonBase/KonBase/stargazers">
     <img src="https://img.shields.io/github/stars/KonBase/konbase-open-source" alt="Stars" />
   </a>
@@ -134,17 +131,22 @@ KonBase is built using modern web technologies:
 
 ### GitHub Pages Deployment
 
-To deploy to GitHub Pages:
+This project is configured for automatic deployment to GitHub Pages using GitHub Actions.
 
-1. Configure GitHub repository settings:
-   - Go to Settings > Pages
-   - Set source to GitHub Actions
+1.  **Enable GitHub Pages:**
+    *   Go to your repository's `Settings` > `Pages`.
+    *   Under `Build and deployment`, select `GitHub Actions` as the source. GitHub might suggest a workflow; you can use the one provided in this repository (`.github/workflows/deploy-pages.yml`).
 
-2. Set up repository secrets:
-   - SUPABASE_URL: Your Supabase project URL
-   - SUPABASE_ANON_KEY: Your Supabase anonymous key
+2.  **Configure Repository Secrets (if needed by build):**
+    *   If your build process requires environment variables (like Supabase keys), add them as repository secrets under `Settings` > `Secrets and variables` > `Actions`. The workflow (`deploy-pages.yml`) is set up to use `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` secrets during the build step.
+        *   `VITE_SUPABASE_URL`: Your Supabase project URL.
+        *   `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key.
 
-3. Push changes to the main branch to trigger automatic deployment
+3.  **Trigger Deployment:**
+    *   Pushing changes to the `main` branch will automatically trigger the deployment workflow defined in `.github/workflows/deploy-pages.yml`.
+    *   You can also manually trigger the workflow from the `Actions` tab in your repository.
+
+The workflow will build the application and deploy the contents of the `dist` directory to your GitHub Pages site.
 
 ## Connecting to Supabase
 
