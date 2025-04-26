@@ -16,8 +16,8 @@
 
     /* Linting */
     "strict": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true, 
+    "noUnusedParameters": true, 
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
@@ -26,5 +26,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "tests/badge.test.tsx"]
+  "include": ["src"]
 }

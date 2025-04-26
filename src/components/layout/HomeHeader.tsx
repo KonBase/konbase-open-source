@@ -149,7 +149,7 @@ const HomeHeader = () => {
             
             <Link to="/" className="flex items-center space-x-2">
               <img 
-                src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+                src="/uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
                 alt="KonBase Logo" 
                 className="h-10 w-10" 
               />

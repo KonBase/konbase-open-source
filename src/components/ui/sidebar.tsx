@@ -203,7 +203,7 @@ const Sidebar = React.forwardRef<
               <div className="flex h-14 items-center border-b border-sidebar-border px-4">
                 <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setOpenMobile(false)}>
                   <img 
-                    src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+                    src="/uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
                     alt="KonBase Logo" 
                     className="h-6 w-6" 
                   />

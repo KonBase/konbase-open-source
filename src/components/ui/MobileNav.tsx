@@ -103,7 +103,7 @@ export function MobileNav() {
         <SheetHeader className="px-4 py-3 border-b">
           <SheetTitle className="flex items-center gap-2">
             <img 
-              src="/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
+              src="/uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" 
               alt="KonBase Logo" 
               className="h-7 w-7" 
             />
