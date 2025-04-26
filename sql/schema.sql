@@ -2,6 +2,18 @@
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 
 -- -----------------------------------------------------------------------------
+-- Trigger Function for Updated Timestamps
+-- -----------------------------------------------------------------------------
+-- Define the timestamp trigger function first so it can be referenced by triggers
+CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = timezone('utc', now());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- -----------------------------------------------------------------------------
 -- Enum Types
 -- -----------------------------------------------------------------------------
 -- Define user roles
@@ -686,14 +698,6 @@ WITH CHECK (is_super_admin());
 -- -----------------------------------------------------------------------------
 -- Triggers for `updated_at` columns
 -- -----------------------------------------------------------------------------
--- Function to update the `updated_at` timestamp
-CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = timezone('utc', now());
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 -- Apply the trigger to tables with `updated_at`
 CREATE TRIGGER set_associations_timestamp
@@ -797,6 +801,33 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER ensure_consumable_before_insert_or_update
 BEFORE INSERT OR UPDATE ON public.convention_consumables
 FOR EACH ROW EXECUTE FUNCTION public.check_item_is_consumable();
+
+-- -----------------------------------------------------------------------------
+-- SQL Execution Function for RPC Calls
+-- -----------------------------------------------------------------------------
+-- Create the execute_sql function that can be called via RPC
+CREATE OR REPLACE FUNCTION execute_sql(sql_query text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+  RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM,
+    'detail', SQLSTATE
+  );
+END;
+$$;
+
+-- Grant execution permission to authenticated users
+GRANT EXECUTE ON FUNCTION execute_sql(text) TO authenticated;
+
+-- Add comment to document the function
+COMMENT ON FUNCTION execute_sql(text) IS 'Executes arbitrary SQL commands with SECURITY DEFINER privileges';
 
 -- -----------------------------------------------------------------------------
 -- Row Level Security (RLS) Policies

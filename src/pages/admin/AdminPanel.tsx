@@ -10,16 +10,40 @@ import { useAuth } from '@/contexts/auth';
 import { SuperAdminElevationButton } from '@/components/admin/SuperAdminElevationButton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { ModuleManager } from '@/components/modules/ModuleManager';
+import { ModuleProvider } from '@/components/modules/ModuleContext';
+import { useLocation } from 'react-router-dom';
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('users');
-  const { user } = useAuth(); // Removed hasRole
+  const { user } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   
   // Determine if the user has access to specific admin sections
   const canAccessSettings = user?.role === 'super_admin';
   const canAccessAuditLogs = user?.role === 'super_admin';
+  const canAccessModules = user?.role === 'super_admin';
   const isSystemAdmin = user?.role === 'system_admin';
+  
+  // Handle URL params for direct tab navigation
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    
+    // If a valid tab is specified in the URL and user has access to it
+    if (tabParam) {
+      if (tabParam === 'modules' && canAccessModules) {
+        setActiveTab('modules');
+      } else if (tabParam === 'settings' && canAccessSettings) {
+        setActiveTab('settings');
+      } else if (tabParam === 'audit-logs' && canAccessAuditLogs) {
+        setActiveTab('audit-logs');
+      } else if (tabParam === 'users' || tabParam === 'associations') {
+        setActiveTab(tabParam);
+      }
+    }
+  }, [location.search, canAccessModules, canAccessSettings, canAccessAuditLogs]);
   
   // Effect to check for elevation success on page load (useful after page refreshes)
   useEffect(() => {
@@ -33,8 +57,11 @@ export default function AdminPanel() {
         variant: 'default',
       });
       
-      // Remove the query parameter
-      const newUrl = window.location.pathname;
+      // Remove the query parameter but preserve any tab parameter
+      const tabParam = urlParams.get('tab');
+      const newUrl = tabParam 
+        ? `${window.location.pathname}?tab=${tabParam}` 
+        : window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
   }, [toast]);
@@ -63,6 +90,7 @@ export default function AdminPanel() {
                 
                 {/* Only show these tabs to super_admin */}
                 {canAccessAuditLogs && <TabsTrigger value="audit-logs" className="flex-shrink-0">Audit Logs</TabsTrigger>}
+                {canAccessModules && <TabsTrigger value="modules" className="flex-shrink-0">Modules</TabsTrigger>}
                 {canAccessSettings && <TabsTrigger value="settings" className="flex-shrink-0">Settings</TabsTrigger>}
               </TabsList>
             </ScrollArea>
@@ -78,6 +106,14 @@ export default function AdminPanel() {
             {canAccessAuditLogs && (
               <TabsContent value="audit-logs" className="space-y-4 px-2 md:px-4 pt-4">
                 <AuditLogViewer />
+              </TabsContent>
+            )}
+            
+            {canAccessModules && (
+              <TabsContent value="modules" className="space-y-4 px-2 md:px-4 pt-4">
+                <ModuleProvider>
+                  <ModuleManager />
+                </ModuleProvider>
               </TabsContent>
             )}
             

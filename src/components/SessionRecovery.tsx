@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { logDebug, handleError } from '@/utils/debug';
@@ -13,47 +13,60 @@ export const SessionRecovery = () => {
   const { session, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const hasAttemptedRecovery = useRef(false);
 
   useEffect(() => {
+    // Only attempt recovery once per component lifecycle
+    if (hasAttemptedRecovery.current) return;
+    
     const attemptSessionRecovery = async () => {
       // Skip if already authenticated (session exists) or still loading
       if (session || loading) return;
       
       try {
+        // Check if we're already on a public route that doesn't need recovery
+        const isPublicRoute = 
+          location.pathname === '/' || 
+          location.pathname === '/login' || 
+          location.pathname === '/register' ||
+          location.pathname.includes('/auth/callback');
+          
+        if (isPublicRoute) return;
+        
         // Check if we have saved session data
         const sessionData = getSavedSessionData();
         if (!sessionData) return;
         
-        // Check if the session is fresh enough (within the last hour rather than 24 hours)
-        const isSessionRecent = Date.now() - sessionData.timestamp < 1 * 60 * 60 * 1000;
-        if (!isSessionRecent) return;
+        // Get the last path the user visited
+        const lastPath = getLastVisitedPath();
         
-        // Check if we're on a 404 or public page
-        const isPublicRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
-        const is404 = location.pathname === '/404' || location.key === 'default';
+        // If we have session data but no active session, we might need recovery
+        const { data, error } = await supabase.auth.getSession();
         
-        if (is404 || isPublicRoute) {
-          // Try to restore the session if possible
-          const { data } = await supabase.auth.getSession();
+        if (error) {
+          throw error;
+        }
+        
+        // If we have a session or successfully restored one, redirect to last path if needed
+        if (data?.session) {
+          logDebug('Session recovered successfully', null, 'info');
           
-          if (data.session) {
-            logDebug('Valid session found during recovery', null, 'info');
-            const lastPath = getLastVisitedPath();
-            navigate(lastPath, { replace: true });
+          // If we're not on a valid route, redirect to last known path or dashboard
+          if (!isPublicRoute && location.pathname !== lastPath) {
+            const redirectTo = lastPath || '/dashboard';
+            navigate(redirectTo, { replace: true });
           }
         }
       } catch (error) {
-        handleError(error, 'SessionRecovery.attemptSessionRecovery');
+        handleError('Session recovery failed', error);
       }
+      
+      // Mark that we've attempted recovery
+      hasAttemptedRecovery.current = true;
     };
 
-    // Add a slight delay to ensure other auth processes complete first
-    const timer = setTimeout(() => {
-      attemptSessionRecovery();
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [session, loading, location, navigate]);
+    attemptSessionRecovery();
+  }, [session, loading, location.pathname, navigate]);
 
-  return null; // This component doesn't render anything
+  return null;
 };

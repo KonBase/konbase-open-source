@@ -120,10 +120,6 @@ const AssociationMembers = () => {
       {/* Header with back navigation */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Association Members</h1>
             {currentAssociation && (

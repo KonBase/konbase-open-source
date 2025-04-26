@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, Database, AlertTriangle } from 'lucide-react';
@@ -43,14 +43,22 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
   // Track the last time we tested to prevent frequent retesting
   const lastNetworkTestRef = useRef<number | null>(null);
   const lastSupabaseTestRef = useRef<number | null>(null);
-  const testThrottleTime = 10000; // Minimum time between auto-tests (10 seconds)
+  const testThrottleTime = 30000; // Increase minimum time between auto-tests (30 seconds)
+  const testInitiated = useRef(false);
   
-  const queryTime = requestInfo?.requestTimestamp && requestInfo?.responseTimestamp
-    ? requestInfo.responseTimestamp - requestInfo.requestTimestamp
-    : null;
+  // Memoize query time calculation to avoid recalculating on every render
+  const queryTime = useMemo(() => {
+    if (requestInfo?.requestTimestamp && requestInfo?.responseTimestamp) {
+      return requestInfo.responseTimestamp - requestInfo.requestTimestamp;
+    }
+    return null;
+  }, [requestInfo?.requestTimestamp, requestInfo?.responseTimestamp]);
   
   // Check if we should perform test based on throttling
   const shouldPerformTest = (lastTestRef: React.MutableRefObject<number | null>) => {
+    // Skip if not in debug mode
+    if (!isDebugModeEnabled()) return false;
+    
     const now = Date.now();
     
     // Allow testing if:
@@ -65,20 +73,29 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
       return null;
     }
     
-    // Skip tests if debug mode is disabled and this isn't a manual test
+    // Skip automatic tests entirely if not in debug mode
     if (!manual && !isDebugModeEnabled()) {
       return null;
     }
     
+    // Skip if already testing to prevent parallel tests
+    if (isTesting) return null;
+    
     setIsTesting(true);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const start = performance.now();
       await fetch('https://www.google.com', { 
         method: 'HEAD',
         cache: 'no-cache',
-        mode: 'no-cors' 
+        mode: 'no-cors',
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+      
       const end = performance.now();
       const latency = Math.round(end - start);
       setNetworkLatency(latency);
@@ -113,20 +130,29 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
       return null;
     }
     
-    // Skip tests if debug mode is disabled and this isn't a manual test
+    // Skip automatic tests entirely if not in debug mode
     if (!manual && !isDebugModeEnabled()) {
       return null;
     }
     
+    // Skip if already testing to prevent parallel tests
+    if (isTesting) return null;
+    
     setIsTesting(true);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const start = performance.now();
       await fetch('https://ecvsnnfdaqjnbcpvxlly.supabase.co', { 
         method: 'HEAD',
         cache: 'no-cache',
-        mode: 'no-cors' 
+        mode: 'no-cors',
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+      
       const end = performance.now();
       const latency = Math.round(end - start);
       setSupabaseLatency(latency);
@@ -155,46 +181,29 @@ const DashboardPerformanceDebug: React.FC<DashboardPerformanceDebugProps> = ({
     }
   };
   
-  // Only run automatic tests when component becomes visible and debug mode is enabled
+  // Only run automatic tests when component becomes visible AND debug mode is enabled,
+  // but make sure we only run it once (not on every re-render)
   useEffect(() => {
-    if (isVisible && isDebugModeEnabled()) {
-      // Set a slight delay to avoid running tests immediately on tab switch
+    if (isVisible && isDebugModeEnabled() && !testInitiated.current) {
+      // Set a delay to avoid running tests immediately on initial load
       const timer = setTimeout(() => {
         if (isDebugModeEnabled()) {
+          testInitiated.current = true;
           testNetworkLatency(false);
-          testSupabaseLatency(false);
         }
-      }, 1000);
+      }, 2000);
       
       return () => clearTimeout(timer);
     }
+    
+    if (!isVisible) {
+      // Reset test initiated flag when component is hidden
+      testInitiated.current = false;
+    }
   }, [isVisible]);
   
-  // Listen for debug mode changes to avoid showing stale data
-  useEffect(() => {
-    const checkDebugMode = () => {
-      const debugEnabled = isDebugModeEnabled();
-      
-      // If debug mode is disabled, we should clear latency values
-      // to force re-testing when debug mode is enabled again
-      if (!debugEnabled) {
-        setNetworkLatency(null);
-        setSupabaseLatency(null);
-        lastNetworkTestRef.current = null;
-        lastSupabaseTestRef.current = null;
-      }
-    };
-    
-    // Initial check
-    checkDebugMode();
-    
-    // Set up a timer to check periodically
-    const timerId = setInterval(checkDebugMode, 5000);
-    
-    return () => clearInterval(timerId);
-  }, []);
-  
-  if (!isVisible) return null;
+  // Don't render anything if not visible or debug mode is disabled
+  if (!isVisible || !isDebugModeEnabled()) return null;
   
   return (
     <Card className="mt-4">

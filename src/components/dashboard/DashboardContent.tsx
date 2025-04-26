@@ -4,9 +4,11 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardOverviewSection from '@/components/dashboard/DashboardOverviewSection';
 import AssociationManagementSection from '@/components/dashboard/AssociationManagementSection';
 import ConventionManagementSection from '@/components/dashboard/ConventionManagementSection';
+import { DashboardModulesSection } from '@/components/dashboard/DashboardModulesSection';
 import { Association } from '@/types/association';
 import { User } from '@/types/user';
 import { useToast } from '@/components/ui/use-toast';
+import { ModuleProvider } from '@/components/modules/ModuleContext';
 
 interface AuditLog {
   id: string;
@@ -91,6 +93,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         
         <ErrorBoundary>
           <ConventionManagementSection />
+        </ErrorBoundary>
+        
+        <ErrorBoundary>
+          <ModuleProvider>
+            <DashboardModulesSection />
+          </ModuleProvider>
         </ErrorBoundary>
       </div>
     </div>

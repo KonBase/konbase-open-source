@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useAuth } from '@/contexts/auth';
 import { logDebug, isDebugModeEnabled, enableDebugMode } from '@/utils/debug';
@@ -19,22 +19,23 @@ const Dashboard = () => {
   // Initialize debug mode state from localStorage ONCE
   const [isDebugMode, setIsDebugMode] = useState(() => isDebugModeEnabled());
   
-  // Track when we've shown the slow loading warning to avoid duplicate notifications
-  const hasShownSlowLoadingWarningRef = useRef(false);
-  
   const [showLocationManager, setShowLocationManager] = useState(false);
   const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
   const [loadingDuration, setLoadingDuration] = useState(0);
   const loadingTimerRef = useRef<number | null>(null);
-  const checkDebugModeTimerRef = useRef<number | null>(null);
+  const dataLoadingAttempted = useRef(false);
+  const loadingTimeUpdateInterval = useRef<number>(100); // Update loading time every 100ms instead of every frame
+  const lastLoadingUpdateTime = useRef<number>(0);
   const { toast } = useToast();
 
-  // Configure network status monitoring with optimized settings
+  // Configure network status monitoring - FIXED: Don't wrap hook in useMemo
+  // This was causing the "Should have a queue" React error
   const networkStatus = useNetworkStatus({
-    showToasts: isDebugMode, // Only show network status toasts in debug mode
-    testInterval: isDebugMode ? 30000 : 300000, // Dramatically reduce tests when debug is off
+    showToasts: false,
+    // Only enable periodic checks in debug mode
+    testInterval: isDebugMode ? 30000 : 0,
     testEndpoint: 'https://www.google.com',
-    respectDebugMode: true // Ensure it respects debug mode settings
+    respectDebugMode: true
   });
 
   const {
@@ -44,147 +45,111 @@ const Dashboard = () => {
     handleRetry,
     retryCount,
     lastError,
-    safeRecentActivity,
-    isLoadingActivity,
-    requestInfo
+    requestInfo,
   } = useDashboardActivity(currentAssociation);
 
-  // Check for debug mode changes periodically instead of on every render
-  // This avoids the infinite update loop
-  useEffect(() => {
-    const checkDebugMode = () => {
-      const storedDebugMode = isDebugModeEnabled();
-      if (storedDebugMode !== isDebugMode) {
-        setIsDebugMode(storedDebugMode);
-      }
-    };
-
-    // Check immediately on mount
-    checkDebugMode();
-    
-    // Set up a timer to check periodically
-    checkDebugModeTimerRef.current = window.setInterval(checkDebugMode, 5000);
-    
-    return () => {
-      if (checkDebugModeTimerRef.current) {
-        clearInterval(checkDebugModeTimerRef.current);
-      }
-    };
-  }, []); // Empty dependency array - only run on mount and cleanup
-
-  // Track loading duration with optimized performance
-  useEffect(() => {
-    const isLoading = associationLoading || activityLoading;
-
-    if (isLoading) {
-      if (loadingTimerRef.current === null) {
-        const startTime = Date.now();
-        setLoadingStartTime(startTime);
-        
-        // Use requestAnimationFrame for smoother updates in modern browsers
-        const updateDuration = () => {
-          // Only update duration every ~100ms to reduce render overhead
-          const now = Date.now();
-          const duration = now - startTime;
-          if (Math.abs(duration - loadingDuration) > 100) {
-            setLoadingDuration(duration);
-          }
-          
-          // Continue animation frame loop if still loading
-          if (isLoading) {
-            loadingTimerRef.current = requestAnimationFrame(updateDuration);
-          }
-        };
-        
-        loadingTimerRef.current = requestAnimationFrame(updateDuration);
-      }
-    } else {
-      if (loadingTimerRef.current !== null) {
-        cancelAnimationFrame(loadingTimerRef.current);
-        loadingTimerRef.current = null;
-        
-        // Calculate final duration when loading stops
-        const finalDuration = loadingStartTime ? Date.now() - loadingStartTime : 0;
-        setLoadingDuration(finalDuration);
-
-        // Show toast with loading stats if debug mode is on
-        if (isDebugMode && finalDuration > 0) {
-          toast({
-            title: "Dashboard loaded successfully",
-            description: `Loaded in ${finalDuration}ms. Network: ${networkStatus.status}`,
-            variant: "default",
-          });
-          
-          // Log performance metrics in debug mode
-          logDebug('Dashboard loading performance', {
-            loadTime: finalDuration,
-            networkStatus: networkStatus.status,
-            retryCount
-          }, 'info');
-        }
-        
-        // Reset start time for the next loading cycle
-        setLoadingStartTime(null);
-        // Reset the slow loading warning flag
-        hasShownSlowLoadingWarningRef.current = false;
-      }
-    }
-
-    return () => {
-      if (loadingTimerRef.current !== null) {
-        cancelAnimationFrame(loadingTimerRef.current);
-        loadingTimerRef.current = null;
-      }
-    };
-  }, [associationLoading, activityLoading, isDebugMode, networkStatus.status, toast, retryCount]);
+  // Memoize safe version of activity data to avoid unnecessary re-renders
+  const safeRecentActivity = useMemo(() => activityData || [], [activityData]);
 
   // Toggle debug mode with consistent localStorage update
   const toggleDebugMode = useCallback(() => {
     setIsDebugMode(prev => {
       const newValue = !prev;
       enableDebugMode(newValue); // Update localStorage
-      
-      // Show toast for better user feedback
-      toast({
-        title: newValue ? "Debug mode enabled" : "Debug mode disabled",
-        description: newValue 
-          ? "Additional debugging information is now available." 
-          : "Debug mode has been turned off.",
-      });
-      
       return newValue;
     });
-  }, [toast]);
-
-  const handleShowLocationManager = useCallback(() => {
-    setShowLocationManager(true);
   }, []);
 
-  const handleBackFromLocationManager = useCallback(() => {
-    setShowLocationManager(false);
-  }, []);
-
-  // Show warning toast for slow loading only in debug mode
-  // Using a separate effect to avoid race conditions with the loading timer
+  // Track loading duration with optimized performance
   useEffect(() => {
     const isLoading = associationLoading || activityLoading;
-    
-    // Only show warning if all these conditions are met:
-    // 1. Currently loading
-    // 2. Loading has been ongoing for more than 5 seconds
-    // 3. Debug mode is enabled
-    // 4. We haven't shown a warning yet for this loading cycle
-    if (isLoading && loadingDuration > 5000 && isDebugMode && !hasShownSlowLoadingWarningRef.current) {
-      toast({
-        title: "Loading is taking longer than usual",
-        description: `Current duration: ${Math.round(loadingDuration / 1000)}s. Network: ${networkStatus.status}`,
-        variant: "warning",
-      });
+
+    if (isLoading) {
+      if (loadingTimerRef.current === null && loadingStartTime === null) {
+        // Start tracking loading time
+        const startTime = performance.now();
+        setLoadingStartTime(startTime);
+        
+        // Use more efficient animation frame handling with throttling
+        const updateLoadingDuration = () => {
+          if (loadingStartTime !== null) {
+            const now = performance.now();
+            // Only update state if enough time has passed (throttle updates)
+            if (now - lastLoadingUpdateTime.current > loadingTimeUpdateInterval.current) {
+              const currentDuration = now - loadingStartTime;
+              setLoadingDuration(currentDuration);
+              lastLoadingUpdateTime.current = now;
+            }
+            loadingTimerRef.current = requestAnimationFrame(updateLoadingDuration);
+          }
+        };
+        
+        loadingTimerRef.current = requestAnimationFrame(updateLoadingDuration);
+      }
+    } else if (!isLoading && loadingStartTime !== null) {
+      // We're done loading, calculate final duration
+      const finalDuration = performance.now() - loadingStartTime;
       
-      // Mark that we've shown the warning for this loading cycle
-      hasShownSlowLoadingWarningRef.current = true;
+      if (loadingTimerRef.current !== null) {
+        cancelAnimationFrame(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+      
+      // Only show load time notification if debug mode is on
+      if (isDebugMode) {
+        // Log performance metrics in debug mode only
+        logDebug('Dashboard loading performance', {
+          loadTime: finalDuration,
+          networkStatus: networkStatus.status,
+          retryCount
+        }, 'info');
+      }
+      
+      // Mark that data has been loaded at least once
+      dataLoadingAttempted.current = true;
+      
+      // Set final duration
+      setLoadingDuration(finalDuration);
+      
+      // Reset start time for the next loading cycle
+      setLoadingStartTime(null);
     }
-  }, [loadingDuration, isDebugMode, associationLoading, activityLoading, networkStatus.status, toast]);
+
+    return () => {
+      if (loadingTimerRef.current !== null) {
+        cancelAnimationFrame(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
+    };
+  }, [associationLoading, activityLoading, isDebugMode, networkStatus.status, retryCount, loadingStartTime]);
+
+  // Listen for dashboard reload requests from navigation events - only add once
+  // Using a ref to prevent unnecessary reattachment of event listener
+  const handleRetryRef = useRef(handleRetry);
+  const activityLoadingRef = useRef(activityLoading);
+  
+  useEffect(() => {
+    handleRetryRef.current = handleRetry;
+    activityLoadingRef.current = activityLoading;
+  }, [handleRetry, activityLoading]);
+  
+  useEffect(() => {
+    const handleDashboardReloadRequest = () => {
+      // Force a retry on the dashboard data
+      if (!activityLoadingRef.current) {
+        handleRetryRef.current();
+      }
+    };
+
+    window.addEventListener('dashboard-reload-requested', handleDashboardReloadRequest);
+    
+    return () => {
+      window.removeEventListener('dashboard-reload-requested', handleDashboardReloadRequest);
+    };
+  }, []); // Empty dependency array since we're using refs
+
+  // Derived values
+  const isLoading = associationLoading || activityLoading;
 
   // Loading state
   if (associationLoading) {
@@ -201,17 +166,6 @@ const Dashboard = () => {
             networkStatus={networkStatus.status}
             testConnection={networkStatus.testConnection}
             isTestingConnection={networkStatus.isTestingConnection}
-            lastTestedAt={networkStatus.lastTestedAt}
-            testResults={networkStatus.testResults}
-            userData={{
-              userId: user?.id,
-              associationId: currentAssociation?.id
-            }}
-            requestInfo={{
-              requestTimestamp: requestInfo?.requestTimestamp,
-              responseTimestamp: requestInfo?.responseTimestamp,
-              retryCount: retryCount
-            }}
           />
         )}
       </div>
@@ -219,9 +173,9 @@ const Dashboard = () => {
   }
 
   // Error state
-  if (activityError) {
+  if (activityError && !activityLoading) {
     return (
-      <DashboardError
+      <DashboardError 
         error={activityError}
         handleRetry={handleRetry}
         isDebugMode={isDebugMode}
@@ -235,15 +189,15 @@ const Dashboard = () => {
     );
   }
 
-  // No association state
+  // Empty state - no association selected
   if (!currentAssociation) {
     return (
-      <DashboardEmptyState
+      <DashboardEmptyState 
         networkStatus={networkStatus}
         isDebugMode={isDebugMode}
         toggleDebugMode={toggleDebugMode}
         user={user}
-        currentAssociation={currentAssociation}
+        currentAssociation={null}
         handleRetry={handleRetry}
         lastError={lastError}
         retryCount={retryCount}
@@ -251,26 +205,26 @@ const Dashboard = () => {
     );
   }
 
-  // Location manager view
+  // Location manager modal
   if (showLocationManager) {
     return (
       <DashboardLocationView
         currentAssociation={currentAssociation}
-        onBack={handleBackFromLocationManager}
+        onBack={() => setShowLocationManager(false)}
       />
     );
   }
 
-  // Main dashboard view
+  // Main dashboard content
   return (
     <DashboardContent
       currentAssociation={currentAssociation}
       user={user}
-      isLoadingActivity={isLoadingActivity}
+      isLoadingActivity={activityLoading}
       safeRecentActivity={safeRecentActivity}
       activityError={activityError}
       handleRetry={handleRetry}
-      onShowLocationManager={handleShowLocationManager}
+      onShowLocationManager={() => setShowLocationManager(true)}
       isDebugMode={isDebugMode}
       toggleDebugMode={toggleDebugMode}
       networkStatus={networkStatus}
