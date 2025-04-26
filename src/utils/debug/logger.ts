@@ -38,13 +38,5 @@ export const logDebug = (
 
   // You could also send logs to a service or store them in localStorage
   // for a debug panel to display
-  const debugLogs = JSON.parse(localStorage.getItem('konbase_debug_logs') || '[]');
-  debugLogs.push(logObject);
-  
-  // Keep only the last 100 logs
-  if (debugLogs.length > 100) {
-    debugLogs.shift();
-  }
-  
-  localStorage.setItem('konbase_debug_logs', JSON.stringify(debugLogs));
+  // Removed localStorage logging to prevent potential storage of sensitive data
 };

@@ -50,22 +50,7 @@ export const logDebug = (
   }
 
   // Store logs in localStorage for the debug panel to display
-  if (typeof window !== 'undefined') {
-    try {
-      const debugLogs = JSON.parse(localStorage.getItem(DEBUG_LOGS_STORAGE_KEY) || '[]');
-      debugLogs.push(logObject);
-      
-      // Keep only the last 100 logs to prevent excessive storage usage
-      if (debugLogs.length > 100) {
-        debugLogs.shift();
-      }
-      
-      localStorage.setItem(DEBUG_LOGS_STORAGE_KEY, JSON.stringify(debugLogs));
-    } catch (e) {
-      // Fail silently if localStorage is not available or permission is denied
-      console.warn('[Konbase Debug] Failed to store debug logs in localStorage');
-    }
-  }
+  // Removed localStorage logging to prevent potential storage of sensitive data
 };
 
 /**
