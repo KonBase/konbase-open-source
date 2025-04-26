@@ -42,13 +42,17 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      - name: Verify 404 page exists
+      - name: Handle 404 page
         run: |
-          # Check if 404.html exists in the build directory, if not, copy it from public
-          if [ ! -f "./dist/404.html" ]; then
-            echo "404.html not found in build output, copying from public folder"
-            cp ./public/404.html ./dist/404.html
+          # Remove any existing 404.html if it's a directory (causes the EEXIST error)
+          if [ -d "./dist/404.html" ]; then
+            echo "Found 404.html as a directory, removing it"
+            rm -rf "./dist/404.html"
           fi
+          
+          # Now create the 404.html file properly (either by copying from public or creating new)
+          echo "Creating 404.html file in dist folder"
+          cat ./public/404.html > ./dist/404.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
