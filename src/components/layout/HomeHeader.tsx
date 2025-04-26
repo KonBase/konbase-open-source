@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth';
@@ -10,7 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetClose
 } from '@/components/ui/sheet';
 import {
   NavigationMenu,
@@ -19,16 +18,12 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
-import { useMobileDetect } from '@/hooks/useMobileDetect';
-import MobileMenuButton from './shared/MobileMenuButton';
 import { checkUserHasRole } from '@/contexts/auth/AuthUtils'; // Import the utility function
-import { AuthUserProfile } from '@/contexts/auth/AuthTypes'; // Import AuthUserProfile type
 
 const HomeHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user, userProfile } = useAuth(); // Get user and userProfile from context
-  const { isMobile } = useMobileDetect();
 
   // Extract user display values with fallbacks
   // Access name from user_metadata

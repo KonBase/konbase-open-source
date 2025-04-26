@@ -11,7 +11,6 @@ import {
   Settings,
   ShieldAlert,
   Home,
-  MessageCircle
 } from 'lucide-react';
 
 export interface SidebarItem {

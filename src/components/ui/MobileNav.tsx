@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Menu, X, ChevronRight, Home, Settings, User, LogOut } from 'lucide-react';
+import { useState } from 'react';
+import { Menu, ChevronRight, Settings, User, LogOut } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,7 +9,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetClose
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -19,14 +18,12 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useMobileDetect } from '@/hooks/useMobileDetect';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { screenWidth } = useMobileDetect();
 
   const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';

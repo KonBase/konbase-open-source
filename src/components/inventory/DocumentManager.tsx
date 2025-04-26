@@ -37,15 +37,13 @@ import {
 import { 
   PlusCircle, 
   Trash, 
-  Download, 
-  File,
+  Download,
   Upload,
   FileText,
   FileImage,
   FileUp,
   FolderOpen
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Document {

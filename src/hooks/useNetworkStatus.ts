@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { isDebugModeEnabled, logDebug } from '@/utils/debug';
+import { isDebugModeEnabled } from '@/utils/debug';
 
 interface UseNetworkStatusProps {
   showToasts?: boolean;

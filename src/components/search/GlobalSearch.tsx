@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Package, FileText, MapPin, Box, FileWarning, Archive, 
-  BarChart, Calendar, Search, Briefcase, Clock, Bookmark,
-  FileBox, Layers, Settings, Users, AlertCircle 
+  BarChart, Calendar, Search, Briefcase, Bookmark, Settings, Users, AlertCircle 
 } from 'lucide-react';
 
 import { useDebounce } from '../../hooks/useDebounce';
@@ -13,7 +12,6 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/components/ui/use-toast';
 
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,

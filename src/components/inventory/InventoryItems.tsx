@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   InventoryItem, 
   NewInventoryItem, 
@@ -109,7 +109,6 @@ const InventoryItemsComponent: React.FC<InventoryItemsComponentProps> = ({ // Us
   setSort,
   isAddDialogOpen,
   setIsAddDialogOpen,
-  refreshItems // Destructure refreshItems
 }) => {
   const { toast } = useToast();
   const { currentAssociation } = useAssociation();

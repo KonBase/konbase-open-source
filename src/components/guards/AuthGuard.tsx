@@ -74,7 +74,6 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, requiredRoles }) => {
     // Redirect to login page if not authenticated
     logDebug('Redirecting to login - not authenticated', { from: location.pathname }, 'info');
     return <Navigate to="/login" state={{ from: location }} replace />;
-    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (!hasRequiredRole) {

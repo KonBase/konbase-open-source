@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useAuth } from '@/contexts/auth';
 import { logDebug, isDebugModeEnabled, enableDebugMode } from '@/utils/debug';
@@ -10,7 +10,6 @@ import DashboardLocationView from '@/components/dashboard/DashboardLocationView'
 import DashboardEmptyState from '@/components/dashboard/DashboardEmptyState';
 import DebugPanel from '@/utils/debug-panel';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
-import { useToast } from '@/components/ui/use-toast';
 
 const Dashboard = () => {
   const { currentAssociation, isLoading: associationLoading } = useAssociation();
@@ -26,7 +25,6 @@ const Dashboard = () => {
   const dataLoadingAttempted = useRef(false);
   const loadingTimeUpdateInterval = useRef<number>(100); // Update loading time every 100ms instead of every frame
   const lastLoadingUpdateTime = useRef<number>(0);
-  const { toast } = useToast();
 
   // Configure network status monitoring - FIXED: Don't wrap hook in useMemo
   // This was causing the "Should have a queue" React error
@@ -147,9 +145,6 @@ const Dashboard = () => {
       window.removeEventListener('dashboard-reload-requested', handleDashboardReloadRequest);
     };
   }, []); // Empty dependency array since we're using refs
-
-  // Derived values
-  const isLoading = associationLoading || activityLoading;
 
   // Loading state
   if (associationLoading) {

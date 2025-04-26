@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { logDebug, isDebugModeEnabled } from '@/utils/debug';
 import { isMainSectionChange, addToNavigationHistory, setNavigationState } from '@/utils/session-utils';
 
@@ -9,7 +9,6 @@ import { isMainSectionChange, addToNavigationHistory, setNavigationState } from 
  */
 const RouteChangeHandler = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [lastTransition, setLastTransition] = useState<string | null>(null);
   const isInitialMount = useRef(true);
   const pendingNavigationRef = useRef<NodeJS.Timeout | null>(null);

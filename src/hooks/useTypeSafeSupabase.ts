@@ -1,14 +1,11 @@
-
-import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { handleError, logDebug } from '@/utils/debug';
+import { handleError } from '@/utils/debug';
 import { Database } from '@/lib/database.types';
-import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 // Get the available tables from our database schema
 export type Tables = keyof Database['public']['Tables'];
 
-export interface SupabaseQueryOptions<T extends Tables> {
+export interface SupabaseQueryOptions {
   column?: string;
   value?: any;
   order?: {
@@ -25,7 +22,7 @@ export function useTypeSafeSupabase() {
   const safeSelect = async <T extends Tables>(
     table: T,
     columns: string = '*',
-    options?: SupabaseQueryOptions<T>
+    options?: SupabaseQueryOptions
   ) => {
     try {
       let query = supabase.from(table).select(columns);

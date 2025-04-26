@@ -37,7 +37,7 @@ export function useNetworkStatus() {
 
     return () => {
       window.removeEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -56,7 +56,7 @@ export function useNetworkStatus() {
       const startTime = Date.now();
       
       // Use the Supabase health check endpoint or a simple public endpoint on our own domain
-      const response = await fetch('/api/health-check', {
+      await fetch('/api/health-check', {
         method: 'HEAD',
         cache: 'no-cache',
         mode: 'no-cors' // This ensures we don't get CORS errors

@@ -123,7 +123,7 @@ export function CategoryManager() {
     }
     
     try {
-      const newCategory = await createCategory(
+      await createCategory(
         formData.name,
         formData.description,
         formData.parentId // Pass parentId directly (it's null or a string ID)

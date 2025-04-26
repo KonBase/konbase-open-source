@@ -342,9 +342,6 @@ const LocationMap: React.FC<LocationMapProps> = ({
               const size = getLocationSize(location.capacity);
               const { bg, border, text } = getLocationTypeColor(location.type);
               
-              // Calculate offset based on size to ensure the center point is at the actual position
-              const offset = size / 2;
-              
               return (
                 <Tooltip key={location.id}>
                   <TooltipTrigger asChild>

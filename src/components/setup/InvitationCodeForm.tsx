@@ -19,7 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/auth';
 import { logDebug, handleError } from '@/utils/debug';
-import { UserRoleType } from '@/types/user';
 
 const formSchema = z.object({
   invitationCode: z.string().min(6, {

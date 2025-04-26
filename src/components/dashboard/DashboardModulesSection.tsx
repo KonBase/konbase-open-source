@@ -81,7 +81,7 @@ export const DashboardModulesSection = () => {
   }
   
   // No dashboard components but has enabled modules
-  if (!hasComponents && hasEnabledModules) {
+  if (!hasComponents ) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">

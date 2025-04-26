@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from "@/components/ui/button";
 import { Building2, ArrowLeft } from "lucide-react";
@@ -8,22 +7,15 @@ import { AssociationSelector } from '@/components/admin/AssociationSelector';
 import { useAuth } from '@/contexts/auth';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useMobileDetect } from '@/hooks/useMobileDetect';
 import UserMenu from './shared/UserMenu';
-import MobileMenuButton from './shared/MobileMenuButton';
 import { MobileNav } from '@/components/ui/MobileNav';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 export function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
   const { currentAssociation } = useAssociation();
   const location = useLocation();
   const { profile } = useUserProfile();
-  const { isMobile } = useMobileDetect();
-  const navigate = useNavigate();
   
   // Check if user has admin or super_admin role
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'system_admin';

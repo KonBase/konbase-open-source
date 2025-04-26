@@ -1,10 +1,10 @@
 // filepath: c:\Users\Artur\Documents\konbase-open-source\src\components\conventions\ConventionAttendeesPage.tsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { UserRoundPlus, Trash2, UserCog } from 'lucide-react';
+import { UserRoundPlus, Trash2 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { 
   Select,

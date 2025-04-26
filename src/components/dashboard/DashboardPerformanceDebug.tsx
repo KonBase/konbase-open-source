@@ -5,7 +5,6 @@ import { RefreshCw, Wifi, Database, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PerformanceMetrics from '@/utils/debug/performance-metrics';
 import { logDebug, isDebugModeEnabled } from '@/utils/debug';
-import { supabase } from '@/lib/supabase';
 
 interface DashboardPerformanceDebugProps {
   isVisible: boolean;

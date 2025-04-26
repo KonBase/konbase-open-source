@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
-import { AlertCircle, Info, Package, Upload, RefreshCw, Download, Shield, ExternalLink, ArrowDownToLine } from 'lucide-react';
+import { AlertCircle, Info, Package, Upload, RefreshCw, Shield, ExternalLink, ArrowDownToLine } from 'lucide-react';
 import { ErrorDetails } from '../../utils/debug/error-details';
 import moduleService from './ModuleService';
 import { useToast } from '@/hooks/use-toast';

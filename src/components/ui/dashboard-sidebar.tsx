@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from './button';
 import { cn } from '@/utils/classnames';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {

@@ -1,7 +1,6 @@
 
 import { PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js';
-import { Database } from '@/lib/database.types';
-import { logDebug, handleError } from '@/utils/debug';
+import { handleError } from '@/utils/debug';
 
 /**
  * Type-safe helper for handling Supabase query responses
@@ -35,7 +34,7 @@ export function extractRowData<T, K extends keyof T>(
 /**
  * Type-safe wrapper for database insert operations
  */
-export async function insertRow<T>(
+export async function insertRow(
   supabaseQuery: any,
   row: Record<string, any>
 ) {
@@ -52,7 +51,7 @@ export async function insertRow<T>(
 /**
  * Type-safe wrapper for database update operations
  */
-export async function updateRow<T>(
+export async function updateRow(
   supabaseQuery: any,
   row: Record<string, any>,
   condition: any
@@ -79,7 +78,7 @@ export function safelyConvertQueryResult<T>(
   }
   
   // Handle potential error types
-  if (typeof queryResult === 'string' || (queryResult as any).error === true) {
+  if (typeof queryResult === 'string') {
     return defaultArray;
   }
   

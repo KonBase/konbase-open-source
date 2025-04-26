@@ -1,8 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/lib/database.types'; // Ensure Database type is imported
 import { supabase } from '@/lib/supabase';
 import { Association } from '@/types/association';
-import { toast } from '@/components/ui/use-toast';
 
 /**
  * Format an association from database response
@@ -17,7 +14,8 @@ export const formatAssociation = (association: any): Association => ({
   contactPhone: association.contact_phone || undefined,
   website: association.website || undefined,
   createdAt: association.created_at,
-  updatedAt: association.updated_at
+  updatedAt: association.updated_at,
+  items: association.items || []
 });
 
 /**
@@ -162,7 +160,7 @@ export const createAssociation = async (
         throw rpcError;
       } else {
         // Attempt to create a meaningful error message
-        const message = typeof rpcError === 'object' && rpcError !== null && 'message' in rpcError
+        const message = typeof rpcError === 'object' && 'message' in rpcError
           ? String(rpcError.message)
           : `Supabase RPC failed: ${JSON.stringify(rpcError)}`;
         throw new Error(message);
@@ -309,7 +307,7 @@ export const joinAssociationWithCode = async (
     }
     
     // 4. Check if user is already a member
-    const { data: existingMember, error: memberCheckError } = await supabase
+    const { data: existingMember } = await supabase
       .from('association_members')
       .select('id')
       .eq('user_id', userId)
