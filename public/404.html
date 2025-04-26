@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KonBase - Page Not Found</title>
+  <script>
+    // Single Page Apps for GitHub Pages
+    // MIT License
+    // https://github.com/rafgraph/spa-github-pages
+    (function() {
+      // This script takes the current URL and converts the path and query
+      // string into a single route format for client-side routing
+      var segmentCount = 1;
+      var location = window.location;
+      var l = document.createElement('a');
+      l.href = location.href;
+      l.search = '';
+
+      // Store the path+query in sessionStorage and then redirect to the root
+      // The root index.html will read from sessionStorage and redirect
+      sessionStorage.setItem('konbase_spa_route', l.pathname.split('/').slice(segmentCount).join('/') + location.search);
+      location.replace(
+        location.pathname.split('/').slice(0, segmentCount).join('/') + '/'
+      );
+    })();
+  </script>
+</head>
+<body>
+  <div style="text-align:center; font-family: Arial, sans-serif; padding: 50px;">
+    <h1>KonBase</h1>
+    <p>Redirecting you to the right place...</p>
+    <noscript>
+      <h2>Page Not Found</h2>
+      <p>JavaScript is required to use this application. Please enable JavaScript and try again.</p>
+    </noscript>
+  </div>
+</body>
+</html>

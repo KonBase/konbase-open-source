@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { logDebug, handleError } from '@/utils/debug';
-import { getLastVisitedPath } from '@/utils/session-utils';
+import { getLastVisitedPath, saveCurrentPath } from '@/utils/session-utils';
 
 const LoginForm = () => {
   const location = useLocation();
@@ -21,24 +21,45 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
-  const { login, signInWithOAuth, userProfile, loading: authLoading } = useAuth();
-  const [isReady] = useState(true);
+  const { login, signInWithOAuth, userProfile, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const emailVerificationNeeded = location.state?.emailVerification;
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  const redirectAttempts = useState(0);
 
+  // Enhanced redirection effect
   useEffect(() => {
-    if (redirectTo && isReady && !authLoading && userProfile) {
-      logDebug('Redirecting based on role', { role: userProfile.role, path: redirectTo }, 'info');
-      navigate(redirectTo, { replace: true });
-      setRedirectTo(null);
-    } else if (redirectTo && isReady && !authLoading && !userProfile) {
-      logDebug('User profile not found after login, redirecting to dashboard', null, 'warn');
-      navigate('/dashboard', { replace: true }); 
-      setRedirectTo(null);
+    // Only attempt redirection if we have a target and auth is not loading
+    if (redirectTo && !authLoading) {
+      logDebug('Attempting redirection after login', { 
+        path: redirectTo, 
+        userExists: !!user, 
+        profileExists: !!userProfile 
+      }, 'info');
+      
+      // If we have a user or profile, we can redirect
+      if (user || userProfile) {
+        logDebug('User authenticated, redirecting to', { path: redirectTo }, 'info');
+        
+        // Small delay to ensure all auth state is properly updated
+        setTimeout(() => {
+          navigate(redirectTo, { replace: true });
+          setRedirectTo(null);
+        }, 100);
+      } 
+      // If we're still not logged in after multiple attempts, force redirect to dashboard
+      else if (redirectAttempts[0] >= 3) {
+        logDebug('Forcing dashboard redirect after multiple attempts', null, 'warn');
+        navigate('/dashboard', { replace: true });
+        setRedirectTo(null);
+      }
+      // Increment redirect attempts
+      else {
+        redirectAttempts[1](prev => prev + 1);
+      }
     }
-  }, [redirectTo, userProfile, authLoading, isReady, navigate]);
+  }, [redirectTo, user, userProfile, authLoading, navigate, redirectAttempts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,10 +75,16 @@ const LoginForm = () => {
         description: 'Welcome back! Redirecting...',
       });
 
+      // Reset redirect attempts counter
+      redirectAttempts[1](0);
+
       if (location.state?.from) {
         setRedirectTo(location.state.from);
       } else {
-        setRedirectTo(getLastVisitedPath() || '/dashboard');
+        const lastPath = getLastVisitedPath();
+        // Save dashboard as the destination, in case redirection fails
+        saveCurrentPath('/dashboard');
+        setRedirectTo(lastPath || '/dashboard');
       }
     } catch (error: any) {
       handleError(error, 'LoginForm.handleSubmit');

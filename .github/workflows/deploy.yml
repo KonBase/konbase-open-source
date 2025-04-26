@@ -42,6 +42,13 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      - name: Verify 404 page exists
+        run: |
+          # Check if 404.html exists in the build directory, if not, copy it from public
+          if [ ! -f "./dist/404.html" ]; then
+            echo "404.html not found in build output, copying from public folder"
+            cp ./public/404.html ./dist/404.html
+          fi
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
@@ -49,8 +56,12 @@ jobs:
         with:
           # Upload dist folder
           path: './dist' # Ensure this matches your build output directory
-      - name: Deploy check # Optional: Add a step to check files if needed
-        run: ls -R ./dist
+      - name: Deploy check # Verify the contents of the distribution folder
+        run: |
+          echo "Checking build output directory contents:"
+          ls -la ./dist
+          echo "Verifying 404.html exists:"
+          [ -f "./dist/404.html" ] && echo "✅ 404.html exists" || echo "❌ 404.html is missing"
 
   # Deployment job
   deploy:

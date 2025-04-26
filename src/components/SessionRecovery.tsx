@@ -10,14 +10,15 @@ import { useAuth } from '@/contexts/auth';
  * This helps prevent 404 errors by redirecting users to their last path
  */
 export const SessionRecovery = () => {
-  const { session, loading } = useAuth();
+  const { session, loading, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const hasAttemptedRecovery = useRef(false);
+  const isProcessingAuth = useRef(false);
 
   useEffect(() => {
     // Only attempt recovery once per component lifecycle
-    if (hasAttemptedRecovery.current) return;
+    if (hasAttemptedRecovery.current || isProcessingAuth.current) return;
     
     const attemptSessionRecovery = async () => {
       // Skip if already authenticated (session exists) or still loading
@@ -29,13 +30,27 @@ export const SessionRecovery = () => {
           location.pathname === '/' || 
           location.pathname === '/login' || 
           location.pathname === '/register' ||
-          location.pathname.includes('/auth/callback');
+          location.pathname.includes('/auth/callback') ||
+          location.pathname.includes('/forgot-password') ||
+          location.pathname.includes('/reset-password');
           
-        if (isPublicRoute) return;
+        if (isPublicRoute) {
+          hasAttemptedRecovery.current = true;
+          return;
+        }
+        
+        isProcessingAuth.current = true;
+        logDebug('Starting session recovery attempt', { path: location.pathname }, 'info');
         
         // Check if we have saved session data
         const sessionData = getSavedSessionData();
-        if (!sessionData) return;
+        if (!sessionData) {
+          logDebug('No saved session data found, redirecting to login', null, 'info');
+          navigate('/login', { replace: true });
+          hasAttemptedRecovery.current = true;
+          isProcessingAuth.current = false;
+          return;
+        }
         
         // Get the last path the user visited
         const lastPath = getLastVisitedPath();
@@ -52,13 +67,28 @@ export const SessionRecovery = () => {
           logDebug('Session recovered successfully', null, 'info');
           
           // If we're not on a valid route, redirect to last known path or dashboard
-          if ( location.pathname !== lastPath) {
+          if (location.pathname !== lastPath) {
             const redirectTo = lastPath || '/dashboard';
-            navigate(redirectTo, { replace: true });
+            logDebug('Redirecting to recovered path', { path: redirectTo }, 'info');
+            
+            // Small delay to ensure all auth state is updated
+            setTimeout(() => {
+              navigate(redirectTo, { replace: true });
+              isProcessingAuth.current = false;
+            }, 100);
+          } else {
+            isProcessingAuth.current = false;
           }
+        } else {
+          // No valid session found, redirect to login
+          logDebug('No valid session found during recovery, redirecting to login', null, 'info');
+          navigate('/login', { replace: true });
+          isProcessingAuth.current = false;
         }
       } catch (error) {
         handleError('Session recovery failed', error);
+        navigate('/login', { replace: true });
+        isProcessingAuth.current = false;
       }
       
       // Mark that we've attempted recovery
@@ -66,7 +96,7 @@ export const SessionRecovery = () => {
     };
 
     attemptSessionRecovery();
-  }, [session, loading, location.pathname, navigate]);
+  }, [session, loading, location.pathname, navigate, user]);
 
   return null;
 };

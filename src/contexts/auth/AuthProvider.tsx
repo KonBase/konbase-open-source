@@ -157,7 +157,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw verificationError;
       }
       
-      // Session updates will be handled by the auth state change listener
+      // Ensure we update the user state immediately after login
+      if (data.session) {
+        await updateUserState(data.session);
+      }
+      
+      return data;
     } catch (error: any) {
       console.error("Error signing in:", error);
       setState(prev => ({ ...prev, loading: false, error: error.message }));
