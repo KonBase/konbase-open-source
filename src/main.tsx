@@ -10,6 +10,11 @@ const isGitHubPages = window.location.hostname.includes('github.io');
 // Use HashRouter for GitHub Pages deployment, BrowserRouter for other environments
 const Router = isGitHubPages ? HashRouter : BrowserRouter;
 
+// Log routing mode for debugging
+if (process.env.NODE_ENV !== 'production') {
+  console.log(`Using ${isGitHubPages ? 'HashRouter' : 'BrowserRouter'} for routing`);
+}
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Router>

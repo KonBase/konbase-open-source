@@ -37,22 +37,98 @@ jobs:
         run: rm -rf node_modules package-lock.json
       - name: Install dependencies
         run: npm install
+      - name: Create .nojekyll file
+        run: touch .nojekyll
       - name: Build
         run: npm run build # Assuming your build script generates output in 'dist'
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      - name: Handle 404 page
+      - name: Debug directory structure
         run: |
-          # Remove any existing 404.html if it's a directory (causes the EEXIST error)
-          if [ -d "./dist/404.html" ]; then
-            echo "Found 404.html as a directory, removing it"
-            rm -rf "./dist/404.html"
+          echo "Checking if dist/404.html exists:"
+          if [ -e "./dist/404.html" ]; then
+            echo "404.html exists as:"
+            ls -la ./dist/404.html
+          else
+            echo "404.html does not exist in dist folder"
+          fi
+      - name: Prepare GitHub Pages files
+        run: |
+          # Copy .nojekyll to the dist directory
+          cp .nojekyll ./dist/
+          
+          # Create a directory for the 404 page if it doesn't exist
+          mkdir -p ./dist/error-pages
+          
+          # Copy 404.html from public folder to the dist folder
+          # Using a different approach to avoid mkdir error
+          if [ -f "./public/404.html" ]; then
+            echo "Creating 404.html in dist folder"
+            cat ./public/404.html > ./dist/error-pages/404.html
+            cp ./dist/error-pages/404.html ./dist/404.html || echo "Failed to copy 404.html directly"
+          else
+            echo "Creating default 404.html file"
+            cat > ./dist/error-pages/404.html << 'EOL'
+              <!DOCTYPE html>
+              <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>KonBase - Page Not Found</title>
+                <script>
+                  // Single Page Apps for GitHub Pages
+                  // MIT License
+                  // https://github.com/rafgraph/spa-github-pages
+                  (function() {
+                    var segmentCount = 1;
+                    var l = window.location;
+                    l.replace(
+                      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+                      l.pathname.split('/').slice(0, segmentCount).join('/') + '/?/' +
+                      l.pathname.slice(1).split('/').slice(segmentCount-1).join('/').replace(/&/g, '~and~') +
+                      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+                      l.hash
+                    );
+                  })();
+                </script>
+              </head>
+              <body>
+                <div style="text-align:center; font-family: Arial, sans-serif; padding: 50px;">
+                  <h1>KonBase</h1>
+                  <p>Redirecting you to the right place...</p>
+                  <noscript>
+                    <h2>Page Not Found</h2>
+                    <p>JavaScript is required to use this application. Please enable JavaScript and try again.</p>
+                  </noscript>
+                </div>
+              </body>
+              </html>
+              EOL
+            cp ./dist/error-pages/404.html ./dist/404.html || echo "Failed to copy 404.html directly"
           fi
           
-          # Now create the 404.html file properly (either by copying from public or creating new)
-          echo "Creating 404.html file in dist folder"
-          cat ./public/404.html > ./dist/404.html
+          # Add the index.html script for handling redirects
+          sed -i '/<head>/a \
+            <script type="text/javascript"> \
+              // Handle redirects for SPA on GitHub Pages \
+              (function(l) { \
+                if (l.search[1] === "/") { \
+                  var decoded = l.search.slice(1).split("&").map(function(s) { \
+                    return s.replace(/~and~/g, "&") \
+                  }).join("?"); \
+                  window.history.replaceState(null, null, \
+                    l.pathname.slice(0, -1) + decoded + l.hash \
+                  ); \
+                } \
+              }(window.location)) \
+            </script>' ./dist/index.html
+      - name: Debug output after fix
+        run: |
+          echo "Checking dist directory structure:"
+          ls -la ./dist/
+          echo "Checking if 404.html exists now:"
+          ls -la ./dist/404.html || echo "Still no 404.html file"
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
@@ -60,12 +136,6 @@ jobs:
         with:
           # Upload dist folder
           path: './dist' # Ensure this matches your build output directory
-      - name: Deploy check # Verify the contents of the distribution folder
-        run: |
-          echo "Checking build output directory contents:"
-          ls -la ./dist
-          echo "Verifying 404.html exists:"
-          [ -f "./dist/404.html" ] && echo "✅ 404.html exists" || echo "❌ 404.html is missing"
 
   # Deployment job
   deploy:
