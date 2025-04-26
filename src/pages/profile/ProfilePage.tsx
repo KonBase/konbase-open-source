@@ -2,14 +2,19 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useDemoUserIds } from '@/hooks/useDemoUserIds';
 import { Spinner } from '@/components/ui/spinner';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
+import { User, Info, AlertTriangle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const ProfilePage = () => {
-  const { profile, loading } = useUserProfile();
+  const { profile, loading: profileLoading } = useUserProfile();
+  const { demoUserIds, loading: demoIdsLoading, error: demoIdsError } = useDemoUserIds();
 
-  if (loading) {
+  const isDemoUser = !profileLoading && !demoIdsLoading && profile && demoUserIds.includes(profile.id);
+
+  if (profileLoading || demoIdsLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="lg" />
@@ -30,6 +35,17 @@ const ProfilePage = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 space-y-6">
         <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
+
+        {demoIdsError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error Loading Configuration</AlertTitle>
+            <AlertDescription>
+              Could not load demo user configuration. Functionality may be affected.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -85,6 +101,15 @@ const ProfilePage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isDemoUser && !demoIdsLoading && !demoIdsError && (
+                <Alert variant="default">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Demo Account Restriction</AlertTitle>
+                  <AlertDescription>
+                    As a demo user, you cannot modify your account settings (e.g., email, password, profile details).
+                  </AlertDescription>
+                </Alert>
+              )}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Two-Factor Authentication</p>
                 <p className="mt-1">

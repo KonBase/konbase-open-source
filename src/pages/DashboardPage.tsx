@@ -3,9 +3,11 @@ import Dashboard from './Dashboard';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logDebug, isDebugModeEnabled } from '@/utils/debug';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useDemoUserIds } from '@/hooks/useDemoUserIds'; // Import the new hook
 
 // Memoize the Dashboard component to prevent unnecessary re-renders
 const MemoizedDashboard = memo(Dashboard);
@@ -16,6 +18,11 @@ const DashboardPage = () => {
   const [key, setKey] = useState(0);
   const reloadRequestedRef = useRef(false);
   const reloadTimerRef = useRef<number | null>(null);
+  const { profile, loading: profileLoading } = useUserProfile();
+  const { demoUserIds, loading: demoIdsLoading, error: demoIdsError } = useDemoUserIds(); // Use the hook
+
+  // Determine if the user is a demo user, considering loading states
+  const isDemoUser = !profileLoading && !demoIdsLoading && profile && demoUserIds.includes(profile.id);
 
   const handleError = (error: Error) => {
     // Only log errors in debug mode
@@ -77,6 +84,37 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Optionally show loading/error state for demo IDs */}
+      {demoIdsLoading && (
+          <div className="container mx-auto pt-4">
+              <p>Loading configuration...</p>
+          </div>
+      )}
+      {demoIdsError && (
+          <div className="container mx-auto pt-4">
+              <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error Loading Configuration</AlertTitle>
+                  <AlertDescription>
+                      Could not load demo user configuration. Functionality may be affected.
+                  </AlertDescription>
+              </Alert>
+          </div>
+      )}
+
+      {/* Demo User Annotation - only show if not loading and no error */}
+      {isDemoUser && !demoIdsLoading && !demoIdsError && (
+        <div className="container mx-auto pt-4">
+          <Alert variant="default">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Demo Account</AlertTitle>
+            <AlertDescription>
+              You are currently using a demo account. Some features, like changing profile settings, may be restricted.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {errorCount > 3 && (
         <div className="container mx-auto pt-4">
           <Alert variant="destructive">
