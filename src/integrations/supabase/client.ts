@@ -2,16 +2,15 @@
 // This file creates a Supabase client using configuration from localStorage or defaults
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import { loadConfig, isConfigured } from '@/lib/config-store';
+import { isConfigured } from '@/lib/config-store';
 
 // Default values - these will be used only if no configuration exists in localStorage
 const DEFAULT_SUPABASE_URL = "";
 const DEFAULT_SUPABASE_KEY = "";
 
 // Get values from localStorage config if available
-const config = loadConfig();
-const SUPABASE_URL = config?.url || DEFAULT_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = config?.key || DEFAULT_SUPABASE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
