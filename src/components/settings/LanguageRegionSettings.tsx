@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { languages } from '@/utils/languageUtils';
 import { useTheme } from '@/contexts/ThemeProvider';
-import { dateFormats, timeFormats } from '@/utils/dateTimeUtils';
+import { dateFormats } from '@/utils/dateTimeUtils';
 import { Globe, CalendarIcon, Clock } from 'lucide-react';
 import { useResponsive } from '@/hooks/useResponsive';
 

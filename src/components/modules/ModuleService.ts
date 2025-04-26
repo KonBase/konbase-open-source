@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import moduleRegistry from './ModuleRegistry';
-import { KonbaseModule, ModuleManifest, ModuleDatabaseMigration, ModuleConfiguration } from '@/types/modules';
+import { ModuleManifest, ModuleDatabaseMigration, ModuleConfiguration } from '@/types/modules';
 import { logDebug } from '@/utils/debug';
 
 /**

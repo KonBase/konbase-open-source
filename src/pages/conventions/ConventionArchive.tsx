@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 import { Convention } from '@/types/convention';
 import { Link } from '@/components/ui/Link'; // Ensure accessible link rendering
-import { Loader2, Search, Calendar, Archive, ArrowRightIcon, Info } from 'lucide-react'; // Added icons
+import { Search, Calendar, Archive, ArrowRightIcon, Info } from 'lucide-react'; // Added icons
 import { Badge } from '@/components/ui/badge'; // Import Badge
 
 const ConventionArchive = () => {

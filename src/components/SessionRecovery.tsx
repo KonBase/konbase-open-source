@@ -52,7 +52,7 @@ export const SessionRecovery = () => {
           logDebug('Session recovered successfully', null, 'info');
           
           // If we're not on a valid route, redirect to last known path or dashboard
-          if (!isPublicRoute && location.pathname !== lastPath) {
+          if ( location.pathname !== lastPath) {
             const redirectTo = lastPath || '/dashboard';
             navigate(redirectTo, { replace: true });
           }

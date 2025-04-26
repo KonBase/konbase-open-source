@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { ConventionEquipmentFormData } from '@/types/convention';
 
 interface AddEquipmentDialogProps {
   isOpen: boolean;

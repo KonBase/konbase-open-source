@@ -1,7 +1,4 @@
-import { Association } from '@/types/association';
 import { supabase } from '@/lib/supabase';
-import { useTypeSafeSupabase } from '@/hooks/useTypeSafeSupabase';
-
 /**
  * Escape special characters for CSV
  */

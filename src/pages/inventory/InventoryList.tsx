@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Box, FolderTree, MapPin, PlusCircle } from 'lucide-react'; // Added icons
 import { useAssociation } from '@/contexts/AssociationContext';
 import { Link } from 'react-router-dom';
 import InventoryItemsPage from './InventoryItems'; // Import the page component

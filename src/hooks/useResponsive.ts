@@ -1,13 +1,9 @@
 
 import { useMobileDetect } from './useMobileDetect';
-import { useIsMobile as useIsMobileBasic } from './use-mobile';
 
 export function useResponsive() {
   // Get the detailed device info
   const deviceInfo = useMobileDetect();
-  
-  // Get the simple mobile check (for backward compatibility)
-  const isMobileBasic = useIsMobileBasic();
   
   return {
     ...deviceInfo,

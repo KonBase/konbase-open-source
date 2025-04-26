@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useAssociationMembers } from '@/hooks/useAssociationMembers';
-import { UserRoundPlus } from 'lucide-react';
 import MemberList from './MemberList';
 import MemberLoadingState from './MemberLoadingState';
 import { UserRoleType } from '@/types/user';

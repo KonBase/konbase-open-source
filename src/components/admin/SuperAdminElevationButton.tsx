@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +34,7 @@ export function SuperAdminElevationButton() {
     setIsProcessing(true);
     try {
       // Call the Supabase edge function with proper authorization
-      const { data, error } = await supabase.functions.invoke('elevate-to-super-admin', {
+      const { error } = await supabase.functions.invoke('elevate-to-super-admin', {
         body: { securityCode },
         headers: {
           Authorization: `Bearer ${session?.access_token}`,

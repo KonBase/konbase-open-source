@@ -17,7 +17,7 @@ export async function initializeStorage() {
 async function verifyBucketAccess(bucketName: string) {
   try {
     // First just try to list the bucket contents to see if it exists and we have access
-    const { data, error } = await supabase
+    const { error } = await supabase
       .storage
       .from(bucketName)
       .list();
@@ -83,7 +83,7 @@ async function verifyBucketAccess(bucketName: string) {
 async function addPublicBucketPolicy() {
   try {
     // Test the bucket permission instead of immediately creating a file
-    const { data, error } = await supabase
+    const { error } = await supabase
       .storage
       .from('profiles')
       .list();

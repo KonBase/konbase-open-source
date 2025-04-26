@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAssociationMembers, AssociationMember, ProfileData } from '@/hooks/useAssociationMembers';
 import { UserRoleType, USER_ROLES } from '@/types/user';
 import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -25,20 +24,17 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { UsersRound, UserRoundCog, UserRoundX, Building2, ArrowLeft } from 'lucide-react';
+import { UsersRound, UserRoundCog, UserRoundX, Building2, } from 'lucide-react';
 import { useAssociation } from '@/contexts/AssociationContext';
 import InviteMemberDialog from '@/components/association/InviteMemberDialog';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 const AssociationMembers = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { currentAssociation } = useAssociation();
   const associationId = id || (currentAssociation?.id || '');
   const { members, loading, fetchMembers, updateMemberRole, removeMember } = useAssociationMembers(associationId);
   const { user } = useAuth();
-  const { toast } = useToast();
   const [selectedMember, setSelectedMember] = useState<AssociationMember | null>(null);
   const [newRole, setNewRole] = useState<UserRoleType | ''>('');
   const [dialogOpen, setDialogOpen] = useState(false);

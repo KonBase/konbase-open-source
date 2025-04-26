@@ -3,14 +3,14 @@ import { AuthProvider } from '@/contexts/auth';
 import { AssociationProvider } from './contexts/AssociationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from './components/ui/toaster';
 import { SessionRecovery } from '@/components/SessionRecovery';
 import AuthGuard from './components/guards/AuthGuard';
 import { RoleGuard } from './components/auth/RoleGuard'; // Use named import for RoleGuard
 import { UserRoleType } from '@/types/user';
 import { isConfigured } from '@/lib/config-store';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -81,25 +81,9 @@ function App() {
   const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
   const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];
-  const systemAdminRoles: UserRoleType[] = ['system_admin', 'super_admin'];
-  const superAdminRoles: UserRoleType[] = ['super_admin'];
-  // Define roles allowed to access association setup
-  const associationSetupRoles: UserRoleType[] = ['admin', 'guest'];
-
-  // Use hooks from react-router-dom
-  const navigate = useNavigate();
-  const location = useLocation();
-  // Use state to track configuration status to avoid potential SSR issues if used
-  const [setupCompleted, setSetupCompleted] = useState(false);
 
   useEffect(() => {
-    // Check configuration status on mount
-    const configured = isConfigured();
-    setSetupCompleted(configured);
-
-    // If not configured via .env, we might want to show an error or specific page.
-    // For now, we assume .env is the only method, and AuthContext/Supabase init will handle connection errors.
-    // Removed the redirect to /setup logic.
+    isConfigured();
 
   }, []); // Run only once on mount
 

@@ -1,8 +1,7 @@
-
 import { supabase } from '@/lib/supabase';
 import { USER_ROLES, UserRoleType } from '@/types/user';
 import { AuthUserProfile, AuthUser } from './AuthTypes';
-import { enhanceUserWithProfile, fetchUserProfile } from '@/utils/auth-utils';
+import { fetchUserProfile } from '@/utils/auth-utils';
 import { User } from '@supabase/supabase-js';
 
 /**

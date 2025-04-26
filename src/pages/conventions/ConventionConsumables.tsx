@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, PlusIcon, Pencil, ShoppingCart, BarChart, Loader2, Info, MapPin, PackagePlus, PackageMinus } from 'lucide-react';
+import { Package, PlusIcon, Pencil, Loader2, MapPin, PackagePlus, PackageMinus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +11,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Progress } from '@/components/ui/progress';
 import { AddConsumableDialog } from '@/components/conventions/AddConsumableDialog';
 import { UpdateConsumableUsageDialog } from '@/components/conventions/UpdateConsumableUsageDialog';
-import { Separator } from '@/components/ui/separator';
 
 const ConventionConsumables = () => {
   const { id: conventionId } = useParams<{ id: string }>();

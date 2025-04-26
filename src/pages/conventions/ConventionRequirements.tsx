@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, ClipboardIcon, CheckCircleIcon, XCircleIcon, Clock, Loader2, Info, User, Calendar, AlertTriangle, Check, X, Hourglass } from 'lucide-react';
+import { PlusIcon, ClipboardIcon, CheckCircleIcon, Loader2, User, Calendar, AlertTriangle, Check, X, Hourglass } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +11,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { AddRequirementDialog } from '@/components/conventions/AddRequirementDialog';
-import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,

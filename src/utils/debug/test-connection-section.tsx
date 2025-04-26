@@ -1,8 +1,6 @@
-
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Wifi, RefreshCw } from 'lucide-react';
+import { Wifi } from 'lucide-react';
 
 interface TestConnectionSectionProps {
   isTestingConnection?: boolean;

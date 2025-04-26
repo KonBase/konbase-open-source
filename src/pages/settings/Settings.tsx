@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,12 +17,8 @@ import {
   Moon, 
   Sun, 
   Laptop, 
-  Languages,
   ToggleLeft,
-  ToggleRight,
-  Maximize,
   MessageSquare,
-  Eye,
   Accessibility,
   Bug,
   Trash2
@@ -31,7 +27,6 @@ import { useTheme } from '@/contexts/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { enableDebugMode, isDebugModeEnabled, logDebug } from '@/utils/debug';
 import TwoFactorAuth from '@/components/auth/TwoFactorAuth';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AccessibilitySettings from '@/components/settings/AccessibilitySettings';
 import LanguageRegionSettings from '@/components/settings/LanguageRegionSettings';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -42,8 +37,8 @@ const Settings = () => {
   const { profile, loading, refreshProfile } = useUserProfile();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { isMobile, isTablet, screenWidth } = useResponsive();
-  const { t, language } = useTranslation();
+  const { isMobile } = useResponsive();
+  const { t } = useTranslation();
   const componentMountedRef = useRef(false);
   const location = useLocation();
   

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'; // Added useCallback
 import { Session, User, AuthError, SignInWithPasswordCredentials } from '@supabase/supabase-js';
 import { getSupabaseClient, initializeSupabaseClient } from '@/lib/supabase';
-import { loadConfig, isConfigured } from '@/lib/config-store'; 
+import { isConfigured } from '@/lib/config-store'; 
 import { UserRoleType, USER_ROLES } from '@/types/user'; // Import UserRoleType and USER_ROLES
 
 // ... (Keep existing type definitions: AuthContextType, UserProfile, etc.) ...

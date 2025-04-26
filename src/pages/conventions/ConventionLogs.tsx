@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FilterIcon, DownloadIcon, SearchIcon, CalendarIcon, History, Loader2, Info, User, Edit, Trash, Plus, Minus } from 'lucide-react';
+import { FilterIcon, DownloadIcon, SearchIcon, History, Loader2, User, Edit, Trash, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +12,6 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { exportToCSV } from '@/utils/csvExport';
-import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Bug, RefreshCw, Wifi, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Bug, RefreshCw, Wifi, Trash2, ToggleLeft } from 'lucide-react';
 import { enableDebugMode, logDebug, clearDebugLogs, isDebugModeEnabled } from '@/utils/debug';
 
 interface DebugActionButtonsProps {

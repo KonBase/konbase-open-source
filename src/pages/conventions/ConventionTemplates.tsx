@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusIcon, ClipboardIcon, Copy, CalendarIcon, Loader2, Info, FileText, Settings, User } from 'lucide-react';
+import { PlusIcon, ClipboardIcon, Copy, CalendarIcon, Loader2, Info, Settings, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAssociation } from '@/contexts/AssociationContext';
 import { useToast } from '@/hooks/use-toast';
 import { ConventionTemplate } from '@/types/convention';
 import { format, formatDistanceToNow } from 'date-fns';
 import { AddTemplateDialog } from '@/components/conventions/AddTemplateDialog';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
@@ -23,7 +22,6 @@ const ConventionTemplates = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddTemplateOpen, setIsAddTemplateOpen] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const fetchTemplates = async () => {
     if (!currentAssociation) return;

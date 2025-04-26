@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { handleError, logDebug } from '@/utils/debug';
+import { handleError } from '@/utils/debug';
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { useUserProfile } from '@/hooks/useUserProfile';
 
 // Implement a custom hook for fetching dashboard activity data
 export const useDashboardActivity = (currentAssociation: any) => {
@@ -10,12 +9,8 @@ export const useDashboardActivity = (currentAssociation: any) => {
   const [lastError, setLastError] = useState<any>(null);
   const [requestTimestamp, setRequestTimestamp] = useState<number | null>(null);
   const [responseTimestamp, setResponseTimestamp] = useState<number | null>(null);
-  const { profile } = useUserProfile();
   const isFetchingRef = useRef(false);
   const cachedDataRef = useRef<any[]>([]);
-  
-  // Is the user an admin
-  const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin';
 
   // Query to fetch recent activity data with optimized staleTime and cache settings
   const { 

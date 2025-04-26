@@ -102,7 +102,7 @@ async function executeSqlFallback(
     // For security, we only allow certain types of operations in fallback mode
     if (sql.trim().toLowerCase().startsWith('select')) {
       // For SELECT statements, we can use the .from() method with a raw query
-      const { data, error } = await supabase.from('dummy').select('*').limit(1);
+      const { error } = await supabase.from('dummy').select('*').limit(1);
       if (error) {
         return { error };
       }

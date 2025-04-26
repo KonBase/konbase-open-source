@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { enableDebugMode, isDebugModeEnabled } from '@/utils/debug';
-import { Bug, Eye, EyeOff } from 'lucide-react';
+import { enableDebugMode } from '@/utils/debug';
+import { Bug, EyeOff } from 'lucide-react';
 
 interface DebugModeToggleProps {
   isDebugMode: boolean;

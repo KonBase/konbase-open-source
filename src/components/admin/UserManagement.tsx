@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
@@ -71,7 +70,7 @@ export function UserManagement() {
   const handleDeleteUser = async (userId: string) => {
     try {
       // First check if the user exists to avoid cascading errors
-      const { data: userData, error: userCheckError } = await supabase
+      const { error: userCheckError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', userId)

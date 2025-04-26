@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -101,7 +100,7 @@ const ProfilePage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isDemoUser && !demoIdsLoading && !demoIdsError && (
+              {isDemoUser && !demoIdsError && (
                 <Alert variant="default">
                   <Info className="h-4 w-4" />
                   <AlertTitle>Demo Account Restriction</AlertTitle>

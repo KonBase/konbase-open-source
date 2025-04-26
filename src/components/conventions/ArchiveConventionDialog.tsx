@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Archive, Download } from 'lucide-react';
+import { Archive } from 'lucide-react';
 import { Convention } from '@/types/convention';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';

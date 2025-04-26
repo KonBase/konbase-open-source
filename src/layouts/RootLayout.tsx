@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { Toaster } from '@/components/ui/toaster';
@@ -11,12 +11,12 @@ import { SessionRecovery } from '@/components/SessionRecovery';
 import RouteChangeHandler from '@/components/RouteChangeHandler';
 
 export default function RootLayout() {
-  const { user, loading: isLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const location = useLocation();
   const hasProcessedOAuth = useRef(false);
-  const { status, isOffline } = useNetworkStatus({
+  const { isOffline } = useNetworkStatus({
     showToasts: false,
     testInterval: 60000, // Check connection every minute
     testEndpoint: 'https://www.google.com' // Use a reliable public endpoint

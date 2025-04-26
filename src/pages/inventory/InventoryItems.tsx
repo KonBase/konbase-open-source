@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { useAssociation } from '@/contexts/AssociationContext';
 import {
   Card,
@@ -42,7 +42,6 @@ import {
   Edit,
   Trash,
   Package,
-  Filter,
   X,
   ArrowUpDown,
   AlertCircle, // Added AlertCircle
@@ -270,7 +269,7 @@ const InventoryItems = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('items')
         .insert({
           ...formData,

@@ -19,9 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 
 export function AssociationSelector() {

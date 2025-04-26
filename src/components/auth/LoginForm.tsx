@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
-import { supabase } from '@/lib/supabase';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { logDebug, handleError } from '@/utils/debug';
@@ -23,7 +22,7 @@ const LoginForm = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const { login, signInWithOAuth, userProfile, loading: authLoading } = useAuth();
-  const [isReady, setIsReady] = useState(true);
+  const [isReady] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
   const emailVerificationNeeded = location.state?.emailVerification;

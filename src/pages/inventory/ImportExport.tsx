@@ -5,14 +5,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ArrowDownIcon, ArrowUpIcon, FileIcon, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAssociation } from '@/contexts/AssociationContext';
-import { associationToCSV, exportToCSV, generateCSVTemplate, parseCSVForImport, importCSVData } from '@/utils/csvExport';
+import { exportToCSV, generateCSVTemplate, parseCSVForImport, importCSVData } from '@/utils/csvExport';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/lib/supabase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Association } from '@/types/association';
 
 interface ImportStats {
   categoriesAdded: number;

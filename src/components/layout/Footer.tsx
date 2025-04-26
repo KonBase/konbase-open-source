@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { Github, MessageCircle, Coffee, Heart } from 'lucide-react';
 
 const Footer = () => {
