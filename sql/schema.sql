@@ -2,6 +2,18 @@
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 
 -- -----------------------------------------------------------------------------
+-- Trigger Function for Updated Timestamps
+-- -----------------------------------------------------------------------------
+-- Define the timestamp trigger function first so it can be referenced by triggers
+CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = timezone('utc', now());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- -----------------------------------------------------------------------------
 -- Enum Types
 -- -----------------------------------------------------------------------------
 -- Define user roles
@@ -686,14 +698,6 @@ WITH CHECK (is_super_admin());
 -- -----------------------------------------------------------------------------
 -- Triggers for `updated_at` columns
 -- -----------------------------------------------------------------------------
--- Function to update the `updated_at` timestamp
-CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = timezone('utc', now());
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 -- Apply the trigger to tables with `updated_at`
 CREATE TRIGGER set_associations_timestamp
