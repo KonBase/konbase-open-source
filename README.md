@@ -1,7 +1,7 @@
 # KonBase: Supply Chain Management for Conventions
 
 <div align="center">
-  <img src="https://konbase.cfd/lovable-uploads/23ec7a1d-12fd-47d9-b8eb-080c0d7c18e5.png" alt="KonBase Logo" width="100" />
+  <img src="./public/uploads/1.svg" alt="KonBase Logo" width="300" />
 </div>
 
 
