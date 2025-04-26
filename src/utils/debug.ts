@@ -79,7 +79,7 @@ export const handleError = (error: any, source: string): string => {
   const errorMessage = error?.message || String(error) || 'Unknown error';
   
   // Always log critical errors to console in development mode
-  if (import.meta.env.DEV) {
+  if (process.env.DEV) {
     console.error(`[Konbase] Error in ${source}: ${errorMessage}`, error);
   }
   

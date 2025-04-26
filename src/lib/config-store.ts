@@ -45,8 +45,8 @@ export function isConfigured(): boolean {
   }
 
   // If not configured via localStorage, check environment variables
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
   // Return true if both environment variables are present and non-empty
   return !!(supabaseUrl && supabaseAnonKey);

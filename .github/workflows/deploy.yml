@@ -39,7 +39,7 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build # Assuming your build script generates output in 'dist'
-        env: # Pass Supabase keys as environment variables during build if needed
+        env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - name: Setup Pages
