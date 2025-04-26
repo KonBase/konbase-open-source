@@ -11,7 +11,7 @@ export const logDebug = (
   level: 'info' | 'warn' | 'error' = 'info'
 ) => {
   // Only log in development or if debug mode is enabled
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = import.meta.env.NODE_ENV === 'development';
   const isDebugEnabled = localStorage.getItem('konbase_debug_mode') === 'true';
   
   if (!isDev && !isDebugEnabled) return;
