@@ -37,7 +37,7 @@ const DashboardOverviewSection: React.FC<DashboardOverviewSectionProps> = ({
       <ErrorBoundary>
         <RecentActivityCard 
           isLoading={isLoadingActivity}
-          activities={recentActivity}
+          activities={typeof recentActivity === 'function' ? recentActivity() : recentActivity}
           error={activityError}
           onRetry={handleRetry}
         />

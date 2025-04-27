@@ -12,8 +12,7 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
   currentAssociation, 
-  user, 
-  isHome 
+  user,
 }) => {
   const { profile } = useUserProfile();
   const isAdmin = profile?.role === 'super_admin' || profile?.role === 'system_admin';
@@ -23,10 +22,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          {currentAssociation && (
+          {currentAssociation ? (
             <p className="text-muted-foreground flex items-center">
               <Building2 className="h-4 w-4 mr-1 inline-block" />
               {currentAssociation.name} - Welcome back, {user?.name || 'User'}!
+            </p>
+          ) : (
+            <p className="text-muted-foreground flex items-center">
+              <Building2 className="h-4 w-4 mr-1 inline-block" />
+              No association selected
             </p>
           )}
           {isAdmin && (
