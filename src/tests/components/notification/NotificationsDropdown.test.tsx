@@ -190,7 +190,7 @@ describe('NotificationsDropdown', () => {
 
      it('shows WebSocket error state', async () => {
          // Simulate subscription error
-         mockSubscribe.mockImplementationOnce(callback => {
+         mockSubscribe.mockImplementationOnce((callback: (status: string) => void) => {
              setTimeout(() => callback('CHANNEL_ERROR'), 10);
              return { unsubscribe: vi.fn() };
          });

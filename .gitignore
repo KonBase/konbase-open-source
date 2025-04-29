@@ -22,7 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-coverage
+coverage/
+.vscode/
+.cursor/
 
 
 cd c:\Users\Artur\Documents\konbase-1 && echo "-- Fix for infinite recursion in association_members policy
