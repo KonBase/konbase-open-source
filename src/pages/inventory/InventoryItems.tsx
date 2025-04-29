@@ -351,7 +351,7 @@ const InventoryItems = () => {
 
 
   const openEditDialog = (item: Item) => {
-    setCurrentItem(item);
+    setCurrentItem(item); // Ensure currentItem is set for both edit and potential delete
     setFormData({
       name: item.name,
       description: item.description || '',
@@ -369,11 +369,6 @@ const InventoryItems = () => {
       notes: item.notes || ''
     });
     setIsEditDialogOpen(true);
-  };
-
-  const openDeleteDialog = (item: Item) => {
-    setCurrentItem(item);
-    setIsDeleteDialogOpen(true);
   };
 
   const resetForm = () => {
@@ -682,9 +677,6 @@ const InventoryItems = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDeleteDialog(item)}>
-                            <Trash className="h-4 w-4" />
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -973,14 +965,27 @@ const InventoryItems = () => {
               </Tabs>
             </div>
           </ScrollArea> {/* End ScrollArea */}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); resetForm(); }}>Cancel</Button>
-            <Button onClick={handleEditItem} disabled={!formData.name || !formData.category_id || !formData.location_id}>Save Changes</Button>
+          <DialogFooter className="sm:justify-between"> {/* Adjust footer layout */}
+            {/* Delete Button added on the left */}
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setIsEditDialogOpen(false); // Close edit dialog
+                setIsDeleteDialogOpen(true); // Open delete confirmation dialog
+              }}
+            >
+              Delete Item
+            </Button>
+            {/* Existing Cancel/Save buttons on the right */}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); resetForm(); }}>Cancel</Button>
+              <Button onClick={handleEditItem} disabled={!formData.name || !formData.category_id || !formData.location_id}>Save Changes</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog (Looks good) */}
+      {/* Delete Confirmation Dialog (Remains the same, now triggered from Edit Dialog) */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
