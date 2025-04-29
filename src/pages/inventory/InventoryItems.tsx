@@ -572,11 +572,18 @@ const InventoryItems = () => {
             <TableHeader>
               <TableRow>
                 <TableHead
+                    className="cursor-pointer hover:bg-muted/50 group hidden md:table-cell" // Hide on small screens
+                    onClick={() => handleSort('barcode')}
+                >
+                  Barcode {renderSortIcon('barcode')}
+                </TableHead>
+                <TableHead
                   className="cursor-pointer hover:bg-muted/50 group"
                   onClick={() => handleSort('name')}
                 >
                   Name {renderSortIcon('name')}
                 </TableHead>
+
                 <TableHead
                   className="cursor-pointer hover:bg-muted/50 group hidden md:table-cell" // Hide on small screens
                   onClick={() => handleSort('categoryName')}
@@ -639,6 +646,14 @@ const InventoryItems = () => {
                   const warrantyStatus = formatWarrantyStatus(item.warranty_expiration);
                   return (
                     <TableRow key={item.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{item.barcode}</span>
+                          <span className="text-xs text-muted-foreground md:hidden"> {/* Show category/location on small screens here */}
+                            {getCategoryName(item.category_id)} / {getLocationName(item.location_id)}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span>{item.name}</span>
