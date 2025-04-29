@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AssociationManagement } from '@/components/admin/AssociationManagement';
-import React from 'react';
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 vi.mock('@/lib/supabase', () => ({
   supabase: {
-    from: (table: string) => ({
+    from: () => ({
       select: vi.fn().mockResolvedValue({
         data: [
           {

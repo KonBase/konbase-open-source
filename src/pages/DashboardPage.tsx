@@ -1,35 +1,34 @@
-import React, { Suspense, useState, useEffect, useRef, memo } from 'react';
+import { Suspense, useState, useEffect, useRef, memo } from 'react';
 import Dashboard from './Dashboard';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logDebug, isDebugModeEnabled } from '@/utils/debug';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useDemoUserIds } from '@/hooks/useDemoUserIds'; // Import the new hook
 
 // Memoize the Dashboard component to prevent unnecessary re-renders
 const MemoizedDashboard = memo(Dashboard);
 
 const DashboardPage = () => {
-  const [hasError, setHasError] = useState(false);
+  // Removed unused hasError state
   const [errorCount, setErrorCount] = useState(0);
   const [key, setKey] = useState(0);
   const reloadRequestedRef = useRef(false);
   const reloadTimerRef = useRef<number | null>(null);
-  const { profile, loading: profileLoading } = useUserProfile();
-  const { demoUserIds, loading: demoIdsLoading, error: demoIdsError } = useDemoUserIds(); // Use the hook
-
-  // Determine if the user is a demo user, considering loading states
-  const isDemoUser = !profileLoading && !demoIdsLoading && profile && demoUserIds.includes(profile.id);
+  const profile = useUserProfile(); // Destructure the returned value to avoid the unused variable error
+  // Optionally, log or use the 'profile' variable if needed
+  if (isDebugModeEnabled()) {
+    logDebug('User profile loaded', profile, 'info');
+  }
 
   const handleError = (error: Error) => {
     // Only log errors in debug mode
     if (isDebugModeEnabled()) {
       logDebug('Dashboard error caught by ErrorBoundary', error, 'error');
     }
-    setHasError(true);
+    // Removed setHasError as hasError state is no longer used
     setErrorCount(prev => prev + 1);
   };
 
@@ -38,8 +37,8 @@ const DashboardPage = () => {
     if (isDebugModeEnabled()) {
       logDebug('Manual dashboard reload requested', null, 'info');
     }
-    setHasError(false);
-    setKey(prev => prev + 1);
+    // Removed setHasError as hasError state is no longer used
+    setKey(prev => prev + 1); // Increment key to force remount
   };
 
   // Listen for dashboard reload requests from navigation events
@@ -84,37 +83,6 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Optionally show loading/error state for demo IDs */}
-      {demoIdsLoading && (
-          <div className="container mx-auto pt-4">
-              <p>Loading configuration...</p>
-          </div>
-      )}
-      {demoIdsError && (
-          <div className="container mx-auto pt-4">
-              <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Error Loading Configuration</AlertTitle>
-                  <AlertDescription>
-                      Could not load demo user configuration. Functionality may be affected.
-                  </AlertDescription>
-              </Alert>
-          </div>
-      )}
-
-      {/* Demo User Annotation - only show if not loading and no error */}
-      {isDemoUser && !demoIdsLoading && !demoIdsError && (
-        <div className="container mx-auto pt-4">
-          <Alert variant="default">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Demo Account</AlertTitle>
-            <AlertDescription>
-              You are currently using a demo account. Some features, like changing profile settings, may be restricted.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
       {errorCount > 3 && (
         <div className="container mx-auto pt-4">
           <Alert variant="destructive">
@@ -139,30 +107,33 @@ const DashboardPage = () => {
       )}
       
       <ErrorBoundary 
-        key={key}
-        onError={handleError}
+        key={key} // Use key to force remount on retry
+        onError={handleError} 
         fallback={
-          <div className="container mx-auto py-6">
-            <Alert variant="destructive" className="mb-4">
+          <div className="container mx-auto py-8">
+            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error loading dashboard</AlertTitle>
+              <AlertTitle>Dashboard Error</AlertTitle>
               <AlertDescription>
-                There was a problem loading your dashboard content.
+                An unexpected error occurred while loading the dashboard.
               </AlertDescription>
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRetry} // Use the component's retry logic
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Try Again
+                </Button>
+              </div>
             </Alert>
-            <Button 
-              onClick={handleRetry}
-              className="mb-4"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
-            <DashboardSkeleton showErrorState />
           </div>
         }
+        // Removed onReset as it is not supported by ErrorBoundary
+        // Removed resetKeys as it is not supported by ErrorBoundary
       >
-        <Suspense fallback={<div className="container mx-auto py-6"><DashboardSkeleton /></div>}>
-          <MemoizedDashboard key={key} />
+        <Suspense fallback={<DashboardSkeleton />}>
+          <MemoizedDashboard />
         </Suspense>
       </ErrorBoundary>
     </div>

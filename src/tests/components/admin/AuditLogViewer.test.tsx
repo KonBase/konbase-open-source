@@ -2,14 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
-import React from 'react';
 
 vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 vi.mock('@/lib/supabase', () => ({
   supabase: {
-    from: (table: string) => ({
+    from: () => ({
       select: vi.fn().mockImplementation((...args) => {
         if (args[1]?.head) {
           return Promise.resolve({ count: 1, error: null });

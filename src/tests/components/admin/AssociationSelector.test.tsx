@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AssociationSelector } from '@/components/admin/AssociationSelector';
-import React from 'react';
 
 // Mock dependencies
 vi.mock('@/contexts/AssociationContext', () => ({
