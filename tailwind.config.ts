@@ -70,6 +70,7 @@ export default {
 					yellow: '#fce771',
 					black: '#171716',
 					white: '#e6e6dc',
+					furry: '#a2779c',
 				},
 			},
 			borderRadius: {
