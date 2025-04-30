@@ -179,7 +179,7 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
             Search for a user by email or create an invitation manually.
           </DialogDescription>
         </DialogHeader>
-        
+        {/* Invate as mail*/}
         {!inviteCode ? (
           <>
             <div className="grid gap-4 py-4">
