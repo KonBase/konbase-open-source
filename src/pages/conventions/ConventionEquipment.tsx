@@ -58,8 +58,8 @@ const ConventionEquipmentPage = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'allocated':
-        return <Badge variant="outline" className="border-blue-500 text-blue-700 dark:border-blue-400 dark:text-blue-300"><Warehouse className="mr-1 h-3 w-3" /> Allocated</Badge>;
+      case 'stored':
+        return <Badge variant="outline" className="border-blue-500 text-blue-700 dark:border-blue-400 dark:text-blue-300"><Warehouse className="mr-1 h-3 w-3" /> Stored</Badge>;
       case 'issued':
         return <Badge variant="default"><Truck className="mr-1 h-3 w-3" /> Issued</Badge>;
       case 'returned':
