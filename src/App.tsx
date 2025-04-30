@@ -109,7 +109,7 @@ function App() {
                 <Route path="/auth/callback" element={<AuthCallback />} /> {/* Add the OAuth callback route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 <Route path="/error" element={<ErrorPage />} />
-                <Route path="/setup" element={<AssociationSetup />} />
+                <Route path="/setup" element={<AssociationSetup />} /> 
 
                 {/* Protected routes wrapped by AuthGuard and RootLayout */}
 
