@@ -92,13 +92,19 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
       
       try {
         const { data, error } = await supabase
-          .from('convention_locations') // Poprawiona nazwa tabeli
+          .from('convention_locations')
           .select('id, name')
           .eq('convention_id', conventionId)
           .order('name');
         
         if (error) throw error;
         setLocations(data || []);
+
+        // Set default location to "Storage" if it exists
+        const storageLocation = data?.find((location) => location.name.toLowerCase() === 'storage');
+        if (storageLocation) {
+          form.setValue('convention_location_id', storageLocation.id);
+        }
       } catch (error: any) {
         console.error('Error loading locations:', error);
         toast({
@@ -152,7 +158,7 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
           .from('convention_equipment')
           .update({
             quantity: dataToSend.quantity,
-            convention_location_id: dataToSend.convention_location_id, // Poprawione pole
+            convention_location_id: dataToSend.convention_location_id,
             notes: dataToSend.notes,
           })
           .eq('id', existingData.id);
@@ -171,8 +177,8 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
             convention_id: conventionId,
             item_id: dataToSend.item_id,
             quantity: dataToSend.quantity,
-            convention_location_id: dataToSend.convention_location_id, // Poprawione pole
-            status: 'allocated',
+            convention_location_id: dataToSend.convention_location_id,
+            status: 'stored',
             notes: dataToSend.notes,
           });
 
@@ -250,40 +256,6 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
                   </FormControl>
                   <FormDescription>
                     How many of this item to allocate
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="convention_location_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    // Use ?? to handle null/undefined correctly for the Select value
-                    value={field.value ?? undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a location (optional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {/* Use a non-empty value for the "No location" option */}
-                      <SelectItem value="__NONE__">No location</SelectItem>
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Where this equipment will be placed
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

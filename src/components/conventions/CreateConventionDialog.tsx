@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -29,18 +28,32 @@ const CreateConventionDialog = ({ onConventionCreated }: { onConventionCreated?:
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.from('conventions').insert({
-        name: data.name,
-        description: data.description || null,
-        start_date: format(data.start_date, 'yyyy-MM-dd\'T\'HH:mm:ssXXX'),
-        end_date: format(data.end_date, 'yyyy-MM-dd\'T\'HH:mm:ssXXX'),
-        location: data.location || null,
-        association_id: currentAssociation.id,
-        status: 'planned'
-      });
+      const { data: createdConvention, error } = await supabase
+        .from('conventions')
+        .insert({
+          name: data.name,
+          description: data.description || null,
+          start_date: format(data.start_date, 'yyyy-MM-dd\'T\'HH:mm:ssXXX'),
+          end_date: format(data.end_date, 'yyyy-MM-dd\'T\'HH:mm:ssXXX'),
+          location: data.location || null,
+          association_id: currentAssociation.id,
+          status: 'planned'
+        })
+        .select('id') // Pobierz ID nowo utworzonej konwencji
+        .single();
       
       if (error) throw error;
-      
+
+      // Dodaj lokalizację "Storage" dla nowo utworzonej konwencji
+      const { error: locationError } = await supabase
+        .from('convention_locations')
+        .insert({
+          name: 'Storage',
+          convention_id: createdConvention.id // Użyj ID nowo utworzonej konwencji
+        });
+
+      if (locationError) throw locationError;
+
       toast({
         title: "Convention created",
         description: `${data.name} has been created successfully.`
