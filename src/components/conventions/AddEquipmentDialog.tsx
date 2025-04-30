@@ -33,7 +33,7 @@ interface Location {
 const equipmentSchema = z.object({
   item_id: z.string().min(1, { message: "Please select an item" }),
   quantity: z.coerce.number().int().positive({ message: "Quantity must be positive" }),
-  location_id: z.string().nullable().optional(),
+  convention_location_id: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 
@@ -53,7 +53,7 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
     defaultValues: {
       item_id: '',
       quantity: 1,
-      location_id: null,
+      convention_location_id: null,
       notes: '',
     },
   });
@@ -92,7 +92,7 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
       
       try {
         const { data, error } = await supabase
-          .from('convention_locations')
+          .from('convention_locations') // Poprawiona nazwa tabeli
           .select('id, name')
           .eq('convention_id', conventionId)
           .order('name');
@@ -130,19 +130,18 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
       if (userError) throw userError;
       if (!user) throw new Error("Not authenticated");
 
-      // Prepare data, converting "__NONE__" back to null for location_id
+      // Prepare data, converting "__NONE__" back to null for convention_location_id
       const dataToSend = {
         ...values,
-        location_id: values.location_id === '__NONE__' ? null : values.location_id,
+        convention_location_id: values.convention_location_id === '__NONE__' ? null : values.convention_location_id,
       };
-
 
       // Check if this item is already allocated to the convention
       const { data: existingData, error: checkError } = await supabase
         .from('convention_equipment')
         .select('id')
         .eq('convention_id', conventionId)
-        .eq('item_id', dataToSend.item_id) // Use dataToSend
+        .eq('item_id', dataToSend.item_id)
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -153,8 +152,8 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
           .from('convention_equipment')
           .update({
             quantity: dataToSend.quantity,
-            location_id: dataToSend.location_id, // Use dataToSend
-            notes: dataToSend.notes,             // Use dataToSend
+            convention_location_id: dataToSend.convention_location_id, // Poprawione pole
+            notes: dataToSend.notes,
           })
           .eq('id', existingData.id);
 
@@ -170,11 +169,11 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
           .from('convention_equipment')
           .insert({
             convention_id: conventionId,
-            item_id: dataToSend.item_id,       // Use dataToSend
-            quantity: dataToSend.quantity,     // Use dataToSend
-            location_id: dataToSend.location_id, // Use dataToSend
+            item_id: dataToSend.item_id,
+            quantity: dataToSend.quantity,
+            convention_location_id: dataToSend.convention_location_id, // Poprawione pole
             status: 'allocated',
-            notes: dataToSend.notes,           // Use dataToSend
+            notes: dataToSend.notes,
           });
 
         if (error) throw error;
@@ -259,14 +258,14 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
 
             <FormField
               control={form.control}
-              name="location_id"
+              name="convention_location_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Location</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
+                  <Select
+                    onValueChange={field.onChange}
                     // Use ?? to handle null/undefined correctly for the Select value
-                    value={field.value ?? undefined} 
+                    value={field.value ?? undefined}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -275,7 +274,7 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
                     </FormControl>
                     <SelectContent>
                       {/* Use a non-empty value for the "No location" option */}
-                      <SelectItem value="__NONE__">No location</SelectItem> 
+                      <SelectItem value="__NONE__">No location</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}
@@ -323,3 +322,4 @@ export const AddEquipmentDialog: React.FC<AddEquipmentDialogProps> = ({
     </Dialog>
   );
 };
+

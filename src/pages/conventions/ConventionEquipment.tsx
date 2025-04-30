@@ -29,7 +29,7 @@ const ConventionEquipmentPage = () => {
         .select(`
           *,
           items:item_id(id, name, barcode, category_id),
-          locations:location_id(id, name)
+          locations:convention_location_id(id, name)
         `)
         .eq('convention_id', conventionId);
       
@@ -312,3 +312,4 @@ const ConventionEquipmentPage = () => {
 };
 
 export default ConventionEquipmentPage;
+
