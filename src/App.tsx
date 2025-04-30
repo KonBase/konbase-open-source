@@ -65,6 +65,9 @@ import AssociationSetup from './pages/setup/AssociationSetup';
 // Layouts
 import RootLayout from './layouts/RootLayout';
 
+// Import mobile hook
+import { isMobileUserAgent } from './hooks/isMobile';
+
 // Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +84,9 @@ function App() {
   const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
   const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];
+
+  //Define mobile flag
+  const isMobile:boolean = isMobileUserAgent();
 
   useEffect(() => {
     isConfigured();
@@ -106,27 +112,32 @@ function App() {
                 <Route path="/setup" element={<AssociationSetup />} />
 
                 {/* Protected routes wrapped by AuthGuard and RootLayout */}
-                <Route element={<AuthGuard><RootLayout /></AuthGuard>}>
-                  {/* Dashboard */}
-                  <Route index element={<Navigate replace to="/dashboard" />} />
-                  <Route path="dashboard" element={<Dashboard />} />
 
+
+                <Route element={<AuthGuard><RootLayout /></AuthGuard>}>
+
+                  {/* Dashboard */}
+                  <Route
+                      index
+                      path="dashboard"
+                      element={
+                        <RoleGuard allowedRoles={managerRoles} fallbackPath={"/profile"}>
+                          <Dashboard />
+                        </RoleGuard>
+                  } />
                   {/* Profile */}
                   <Route path="profile" element={<ProfilePage />} />
-
                   {/* Settings */}
                   <Route path="settings" element={<Settings />} />
-
                   {/* Admin Panel (with RoleGuard) */}
                   <Route
-                    path="admin/*"
-                    element={
-                      <RoleGuard allowedRoles={adminRoles}>
-                        <AdminPanel />
-                      </RoleGuard>
-                    }
+                      path="admin/*"
+                      element={
+                        <RoleGuard allowedRoles={adminRoles}>
+                          <AdminPanel />
+                        </RoleGuard>
+                      }
                   />
-
                   {/* Association Management (with RoleGuard) */}
                   <Route
                     path="association/*"
@@ -214,3 +225,4 @@ function App() {
 }
 
 export default App;
+
