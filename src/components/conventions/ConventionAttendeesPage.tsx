@@ -161,7 +161,7 @@ const ConventionAttendeesPage = ({ conventionId }: ConventionAttendeesPageProps)
       case 'staff':
         return <Badge variant="secondary">Staff</Badge>;
       case 'helper':
-        return <Badge variant="outline">Helper</Badge>;
+        <Badge variant="outline" className={'bg-orange-600'}>Helper</Badge>
       case 'attendee':
       default:
         return <Badge variant="outline" className="bg-muted">Attendee</Badge>;

@@ -85,6 +85,22 @@ const ProfilePage = () => {
     }
   };
 
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'organizer':
+        return <Badge variant="default">Organizer</Badge>;
+      case 'staff':
+        return <Badge variant="secondary">Staff</Badge>;
+      case 'helper':
+        return (
+          <Badge variant="outline" className={'bg-orange-600'}>Helper</Badge>
+        );
+      case 'attendee':
+      default:
+        return <Badge variant="outline" className="bg-muted">Attendee</Badge>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 space-y-6">
@@ -220,9 +236,7 @@ const ProfilePage = () => {
                             </p>
                           </td>
                           <td className="px-4 py-2">
-                            <Badge variant="secondary" className="capitalize">
-                              {convention.role}
-                            </Badge>
+                            {getRoleBadge(convention.role)}
                           </td>
                         </tr>
                       );

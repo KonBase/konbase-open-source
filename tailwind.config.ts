@@ -19,6 +19,7 @@ export default {
 		},
 		extend: {
 			colors: {
+				// Custom theme colors based on provided palette
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -62,7 +63,9 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Custom theme colors based on provided palette
+				helper:{
+					background: '#ea8000',
+				},
 				konbase: {
 					blue: '#0c2e62',
 					cherry: '#d84165',
@@ -71,6 +74,7 @@ export default {
 					black: '#171716',
 					white: '#e6e6dc',
 					furry: '#a2779c',
+					gzdacz: '#ea8000',
 				},
 			},
 			borderRadius: {
