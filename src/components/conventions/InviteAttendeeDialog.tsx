@@ -92,6 +92,55 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
     }
   };
 
+  const handleSearchUser = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .eq('email', email)
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: 'User Found',
+        description: `User ${data.name} (${data.email}) found. Adding to attendees...`,
+      });
+
+      // Add the user to convention attendees
+      const { error: addError } = await supabase
+        .from('convention_access')
+        .insert({
+          convention_id: conventionId,
+          user_id: data.id,
+          role,
+        });
+
+      if (addError) throw addError;
+
+      toast({
+        title: 'User Added',
+        description: `${data.name} has been added to the convention as ${role}.`,
+      });
+
+      // Notify parent component and reset state
+      onInviteSent();
+      setEmail('');
+      setRole('attendee');
+      onClose();
+    } catch (error: any) {
+      console.error('Error searching or adding user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Could not add the user to the convention.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCopyCode = () => {
     if (inviteCode) {
       navigator.clipboard.writeText(inviteCode);
@@ -127,7 +176,7 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Invite Convention Attendee</DialogTitle>
           <DialogDescription>
-            Create an invitation for someone to join this convention.
+            Search for a user by email or create an invitation manually.
           </DialogDescription>
         </DialogHeader>
         
@@ -140,13 +189,14 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
                 </Label>
                 <Input
                   id="email"
-                  placeholder="Optional: recipient email"
+                  placeholder="Enter user email"
                   className="col-span-3"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+
+              <div className="grid grid-cols-4 items-center gap-4 mt-4">
                 <Label htmlFor="role" className="text-right">
                   Role
                 </Label>
@@ -167,6 +217,20 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
               </div>
             </div>
             <DialogFooter>
+              <Button
+                  type="submit"
+                  onClick={handleSearchUser}
+                  disabled={isLoading || !email}
+              >
+                {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Searching...
+                    </>
+                ) : (
+                    'Search User'
+                )}
+              </Button>
               <Button 
                 type="submit" 
                 onClick={handleCreateInvite} 
@@ -197,10 +261,10 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
                     readOnly
                     className="font-mono"
                   />
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="ml-2" 
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="ml-2"
                     onClick={handleCopyCode}
                   >
                     {isCopied ? (
@@ -239,3 +303,4 @@ export const InviteAttendeeDialog: React.FC<InviteAttendeeDialogProps> = ({
     </Dialog>
   );
 };
+
