@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
+// Import i18n config to initialize it
+import './i18n';
 
 // Determine if we're running on GitHub Pages
 const isGitHubPages = window.location.hostname.includes('github.io');

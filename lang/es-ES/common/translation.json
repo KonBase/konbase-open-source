@@ -1,0 +1,33 @@
+{
+  "common": {
+    "settings": "Configuración",
+    "account": "Cuenta",
+    "appearance": "Apariencia",
+    "accessibility": "Accesibilidad",
+    "notifications": "Notificaciones",
+    "security": "Seguridad",
+    "languageRegion": "Idioma y región",
+    "saveChanges": "Guardar cambios",
+    "displayLanguage": "Idioma de visualización",
+    "dateFormat": "Formato de fecha",
+    "timeFormat": "Formato de hora",
+    "savePreferences": "Guardar preferencias"
+  },
+  "navigation": {
+    "dashboard": "Panel de control",
+    "inventory": "Inventario",
+    "reports": "Informes",
+    "settings": "Configuración",
+    "profile": "Perfil",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "forgotPassword": "Olvidé mi contraseña",
+    "resetPassword": "Restablecer contraseña",
+    "emailAddress": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña"
+  }
+}

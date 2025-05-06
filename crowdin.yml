@@ -1,0 +1,16 @@
+"project_id": "your-project-id-here"
+"api_token": "your-api-token-here" # Use environment variables in production
+"base_path": "."
+"base_url": "https://api.crowdin.com"
+
+"preserve_hierarchy": true
+
+files:
+  [
+    {
+      "source": "/lang/en-US/common/translation.json",
+      "translation": "/lang/%locale%/common/translation.json",
+      "dest": "/lang/%locale%/common/translation.json",
+      "type": "i18next_json"
+    }
+  ]
