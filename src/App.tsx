@@ -1,5 +1,5 @@
 import { ThemeProvider } from './contexts/ThemeProvider';
-import { AuthProvider } from '@/contexts/auth';
+import { AuthProvider, useAuth } from '@/contexts/auth';
 import { AssociationProvider } from './contexts/AssociationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -65,9 +65,6 @@ import AssociationSetup from './pages/setup/AssociationSetup';
 // Layouts
 import RootLayout from './layouts/RootLayout';
 
-// Import mobile hook
-import { isMobileUserAgent } from './hooks/isMobile';
-
 // Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,14 +76,20 @@ const queryClient = new QueryClient({
   },
 });
 
+function IndexRedirect() {
+  const { user } = useAuth();
+  if (user?.role === 'guest') {
+    return <Navigate to="/profile" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+}
+
 function App() {
+
   // Define role permissions for different routes
   const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
   const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];
-
-  //Define mobile flag
-  const isMobile:boolean = isMobileUserAgent();
 
   useEffect(() => {
     isConfigured();
@@ -109,24 +112,24 @@ function App() {
                 <Route path="/auth/callback" element={<AuthCallback />} /> {/* Add the OAuth callback route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 <Route path="/error" element={<ErrorPage />} />
-                <Route path="/setup" element={<AssociationSetup />} /> 
+                <Route path="/setup" element={<AssociationSetup />} />
 
                 {/* Protected routes wrapped by AuthGuard and RootLayout */}
-
-
                 <Route element={<AuthGuard><RootLayout /></AuthGuard>}>
-
+                  <Route index element={<IndexRedirect />} />
                   {/* Dashboard */}
                   <Route
-                      index
-                      path="dashboard"
-                      element={
-                        <RoleGuard allowedRoles={managerRoles} fallbackPath={"/profile"}>
-                          <Dashboard />
-                        </RoleGuard>
-                  } />
+                    path="dashboard"
+                    element={
+                      <RoleGuard allowedRoles={managerRoles || adminRoles}>
+                        <Dashboard />
+                      </RoleGuard>
+                    }
+                  />
+
                   {/* Profile */}
                   <Route path="profile" element={<ProfilePage />} />
+
                   {/* Settings */}
                   <Route path="settings" element={<Settings />} />
                   {/* Admin Panel (with RoleGuard) */}
