@@ -89,7 +89,8 @@ function App() {
   // Define role permissions for different routes
   const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
-  const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];
+  const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];  // Define mobile flag for responsive UI adjustments
+  const isMobile: boolean = isMobileUserAgent();
 
   useEffect(() => {
     isConfigured();
