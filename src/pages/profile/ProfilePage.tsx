@@ -7,7 +7,6 @@ import { User, AlertTriangle, Clock, Calendar, CheckCircle, Archive } from 'luci
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import {fetchUserAssociations} from "@/contexts/association";
 
 const ProfilePage = () => {
   const { profile, loading: profileLoading } = useUserProfile();
