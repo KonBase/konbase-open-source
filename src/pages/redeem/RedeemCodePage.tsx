@@ -172,7 +172,7 @@ const RedeemInvitationPages = () => {
               </Label>
               <Input
                 id="invitationCode"
-                placeholder="Wpisz kod"
+                placeholder="Write code"
                 className="col-span-3"
                 value={invitationCode}
                 onChange={(e) => setInvitationCode(e.target.value)}
