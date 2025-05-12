@@ -210,7 +210,7 @@ const RedeemInvitationPages = () => {
                     Verifying...
                   </>
                 ) : (
-                  'Invate'
+                  'Redeem'
                 )}
               </Button>
             </div>
