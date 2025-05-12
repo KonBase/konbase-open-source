@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -11,8 +10,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { User, Settings, Shield } from 'lucide-react';
+import { User, Settings, Shield, TicketPlus } from 'lucide-react';
 import LogoutButton from '@/components/auth/LogoutButton';
+import RedeemInvitationButton from '@/components/conventions/RedeemInvitationButton';
 
 interface UserMenuProps {
   userName: string;
@@ -53,6 +53,12 @@ const UserMenu: React.FC<UserMenuProps> = ({
           <Link to="/profile">
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/redeem-code">
+            <TicketPlus className="mr-2 h-4 w-4" />
+            <span>Invate</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

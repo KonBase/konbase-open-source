@@ -1,9 +1,9 @@
 import { ThemeProvider } from './contexts/ThemeProvider';
-import { AuthProvider } from '@/contexts/auth';
+import { AuthProvider, useAuth } from '@/contexts/auth';
 import { AssociationProvider } from './contexts/AssociationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from './components/ui/toaster';
 import { SessionRecovery } from '@/components/SessionRecovery';
 import AuthGuard from './components/guards/AuthGuard';
@@ -17,6 +17,8 @@ import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
 import ErrorPage from './pages/ErrorPage';
+import RedeemInvitationPages from './pages/redeem/RedeemCodePage';
+
 
 import NotFound from './pages/NotFound';
 import Unauthorized from './pages/error/Unauthorized';
@@ -65,9 +67,6 @@ import AssociationSetup from './pages/setup/AssociationSetup';
 // Layouts
 import RootLayout from './layouts/RootLayout';
 
-// Import mobile hook
-import { isMobileUserAgent } from './hooks/isMobile';
-
 // Create a QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,22 +78,25 @@ const queryClient = new QueryClient({
   },
 });
 
+function IndexRedirect() {
+  const { user } = useAuth();
+  if (user?.role === 'guest') {
+    return <Navigate to="/profile" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+}
+
 function App() {
+
   // Define role permissions for different routes
   const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
   const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];  // Define mobile flag for responsive UI adjustments
-  const isMobile: boolean = isMobileUserAgent();
 
   useEffect(() => {
     isConfigured();
-    // Log device type detection for debugging
-    console.log(`Device type detected: ${isMobile ? 'Mobile' : 'Desktop'}`);
-    
-    // Set a data attribute on the HTML element for CSS targeting
-    document.documentElement.setAttribute('data-device-type', isMobile ? 'mobile' : 'desktop');
-    
-  }, [isMobile]); // Added isMobile as a dependency
+
+  },); // Added isMobile as a dependency
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -110,24 +112,25 @@ function App() {
                 <Route path="/auth/callback" element={<AuthCallback />} /> {/* Add the OAuth callback route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 <Route path="/error" element={<ErrorPage />} />
-                <Route path="/setup" element={<AssociationSetup />} /> 
+                <Route path="/setup" element={<AssociationSetup />} />
 
                 {/* Protected routes wrapped by AuthGuard and RootLayout */}
-
-
                 <Route element={<AuthGuard><RootLayout /></AuthGuard>}>
-
+                  <Route index element={<IndexRedirect />} />
                   {/* Dashboard */}
                   <Route
-                      index
-                      path="dashboard"
-                      element={
-                        <RoleGuard allowedRoles={managerRoles} fallbackPath={"/profile"}>
-                          <Dashboard />
-                        </RoleGuard>
-                  } />
+                    path="dashboard"
+                    element={
+                      <RoleGuard allowedRoles={managerRoles}>
+                        <Dashboard />
+                      </RoleGuard>
+                    }
+                  />
+
                   {/* Profile */}
                   <Route path="profile" element={<ProfilePage />} />
+                  {/* Redeem Code */}
+                  <Route path="redeem-code" element={<RedeemInvitationPages />} />
                   {/* Settings */}
                   <Route path="settings" element={<Settings />} />
                   {/* Admin Panel (with RoleGuard) */}
