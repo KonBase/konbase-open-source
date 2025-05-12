@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '@/contexts/auth';
 import { AssociationProvider } from './contexts/AssociationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from './components/ui/toaster';
 import { SessionRecovery } from '@/components/SessionRecovery';
 import AuthGuard from './components/guards/AuthGuard';
@@ -17,6 +17,8 @@ import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/profile/ProfilePage';
 import Settings from './pages/settings/Settings';
 import ErrorPage from './pages/ErrorPage';
+import RedeemInvitationPages from './pages/redeem/RedeemCodePage';
+
 
 import NotFound from './pages/NotFound';
 import Unauthorized from './pages/error/Unauthorized';
@@ -90,17 +92,11 @@ function App() {
   const memberRoles: UserRoleType[] = ['member', 'manager', 'admin', 'system_admin', 'super_admin', 'guest'];
   const managerRoles: UserRoleType[] = ['manager', 'admin', 'system_admin', 'super_admin'];
   const adminRoles: UserRoleType[] = ['admin', 'system_admin', 'super_admin'];  // Define mobile flag for responsive UI adjustments
-  const isMobile: boolean = isMobileUserAgent();
 
   useEffect(() => {
     isConfigured();
-    // Log device type detection for debugging
-    console.log(`Device type detected: ${isMobile ? 'Mobile' : 'Desktop'}`);
-    
-    // Set a data attribute on the HTML element for CSS targeting
-    document.documentElement.setAttribute('data-device-type', isMobile ? 'mobile' : 'desktop');
-    
-  }, [isMobile]); // Added isMobile as a dependency
+
+  },); // Added isMobile as a dependency
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -133,7 +129,8 @@ function App() {
 
                   {/* Profile */}
                   <Route path="profile" element={<ProfilePage />} />
-
+                  {/* Redeem Code */}
+                  <Route path="redeem-code" element={<RedeemInvitationPages />} />
                   {/* Settings */}
                   <Route path="settings" element={<Settings />} />
                   {/* Admin Panel (with RoleGuard) */}
