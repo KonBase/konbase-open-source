@@ -99,7 +99,7 @@ const RedeemInvitationPages = () => {
         .from('conventions')
         .select('id, name, association_id')
         .eq('id', invitation.convention_id)
-        .maybeSingle(); // <-- Zmieniono z .single() na .maybeSingle()
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
 
       if (conventionError) throw conventionError;
       if (!convention) {
