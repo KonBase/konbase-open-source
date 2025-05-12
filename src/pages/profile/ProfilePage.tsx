@@ -35,11 +35,10 @@ const ProfilePage = () => {
       }
     };
 
-    // Pobierz nazwę stowarzyszenia, do którego należy użytkownik
+    // Download association name
     const fetchAssociation = async () => {
       if (!profile?.id) return;
       try {
-        // Pobierz powiązania użytkownika z tabeli association_members wraz z nazwą stowarzyszenia
         const { data, error } = await supabase
           .from('association_members')
           .select('association_id, associations(name)')
