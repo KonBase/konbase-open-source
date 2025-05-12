@@ -7,7 +7,6 @@ import { User, AlertTriangle, Clock, Calendar, CheckCircle, Archive } from 'luci
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import {fetchUserAssociations} from "@/contexts/association";
 
 const ProfilePage = () => {
   const { profile, loading: profileLoading } = useUserProfile();
@@ -36,11 +35,10 @@ const ProfilePage = () => {
       }
     };
 
-    // Pobierz nazwę stowarzyszenia, do którego należy użytkownik
+    // Fetch association name
     const fetchAssociation = async () => {
       if (!profile?.id) return;
       try {
-        // Pobierz powiązania użytkownika z tabeli association_members wraz z nazwą stowarzyszenia
         const { data, error } = await supabase
           .from('association_members')
           .select('association_id, associations(name)')

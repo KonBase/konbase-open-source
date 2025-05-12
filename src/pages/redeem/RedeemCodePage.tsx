@@ -99,18 +99,27 @@ const RedeemInvitationPages = () => {
         .from('conventions')
         .select('id, name, association_id')
         .eq('id', invitation.convention_id)
-        .single();
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
 
       if (conventionError) throw conventionError;
+      if (!convention) {
+        setRedeemStatus('error');
+        setStatusMessage('Convention not found.');
+        return;
+      }
       
       // Get association details for complete context
       const { data: association, error: associationError } = await supabase
         .from('associations')
         .select('name')
-        .eq('id', convention.association_id)
-        .single();
+        .eq('id', convention.association_id);
       
       if (associationError) throw associationError;
+      if (!association) {
+        setRedeemStatus('error');
+        setStatusMessage('Association not found.');
+        return;
+      }
 
       // Log to convention logs
       await supabase.from('convention_logs').insert({

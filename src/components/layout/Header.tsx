@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from "@/components/ui/button";
 import { Building2, ArrowLeft } from "lucide-react";
@@ -51,7 +51,9 @@ export function Header() {
               )}
               <div className="hidden md:flex items-center">
                 <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="font-medium truncate max-w-[200px]">{currentAssociation.name}</span>
+                <Link to="/dashboard">
+                  <span className="font-medium truncate max-w-[200px]">{currentAssociation.name}</span>
+                </Link>
               </div>
             </div>
           )}
@@ -90,3 +92,4 @@ export function Header() {
     </header>
   );
 }
+
