@@ -168,7 +168,7 @@ const RedeemInvitationPages = () => {
           >
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="invitationCode" className="text-right">
-                Invate code
+                Invitation code
               </Label>
               <Input
                 id="invitationCode"
@@ -210,7 +210,7 @@ const RedeemInvitationPages = () => {
                     Verifying...
                   </>
                 ) : (
-                  'Invate'
+                  'Redeem'
                 )}
               </Button>
             </div>

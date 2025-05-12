@@ -7,11 +7,13 @@ import { User, AlertTriangle, Clock, Calendar, CheckCircle, Archive } from 'luci
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import {fetchUserAssociations} from "@/contexts/association";
 
 const ProfilePage = () => {
   const { profile, loading: profileLoading } = useUserProfile();
   const [conventions, setConventions] = useState([]);
   const [loadingConventions, setLoadingConventions] = useState(true);
+  const [associationName, setAssociationName] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchConventions = async () => {
@@ -21,7 +23,7 @@ const ProfilePage = () => {
       try {
         const { data, error } = await supabase
           .from('convention_access')
-          .select('id, role, conventions(name, start_date, end_date)')
+          .select('id, role, conventions(name, start_date, end_date, logo)')
           .eq('user_id', profile.id);
 
         if (error) throw error;
@@ -34,7 +36,30 @@ const ProfilePage = () => {
       }
     };
 
+    // Pobierz nazwę stowarzyszenia, do którego należy użytkownik
+    const fetchAssociation = async () => {
+      if (!profile?.id) return;
+      try {
+        // Pobierz powiązania użytkownika z tabeli association_members wraz z nazwą stowarzyszenia
+        const { data, error } = await supabase
+          .from('association_members')
+          .select('association_id, associations(name)')
+          .eq('user_id', profile.id)
+          .limit(1)
+          .single();
+
+        if (error || !data || !data.associations) {
+          setAssociationName(null);
+        } else {
+          setAssociationName(data.associations.name);
+        }
+      } catch (error) {
+        setAssociationName(null);
+      }
+    };
+
     fetchConventions();
+    fetchAssociation();
   }, [profile?.id]);
 
   if (profileLoading) {
@@ -146,8 +171,8 @@ const ProfilePage = () => {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Association</p>
                   <div className="mt-1 flex items-center gap-2">
-                    {profile?.association_id ? (
-                      <p>Member</p>
+                    {associationName ? (
+                      <p>{associationName}</p>
                     ) : (
                       <button
                         className="px-3 py-1 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600"

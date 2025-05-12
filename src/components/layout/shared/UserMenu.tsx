@@ -58,7 +58,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
         <DropdownMenuItem asChild>
           <Link to="/redeem-code">
             <TicketPlus className="mr-2 h-4 w-4" />
-            <span>Invate</span>
+            <span>Invite</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
