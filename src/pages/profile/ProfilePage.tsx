@@ -35,7 +35,7 @@ const ProfilePage = () => {
       }
     };
 
-    // Download association name
+    // Fetch association name
     const fetchAssociation = async () => {
       if (!profile?.id) return;
       try {
