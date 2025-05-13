@@ -22,12 +22,12 @@ const ProfilePage = () => {
       try {
         const { data, error } = await supabase
           .from('convention_access')
-          .select('id, role, conventions(name, start_date, end_date, logo)')
+          .select('id, role, conventions(id, name, start_date, end_date)')
           .eq('user_id', profile.id);
 
         if (error) throw error;
 
-        setConventions(data || []);
+        console.log(data);        setConventions(data || []);
       } catch (error) {
         console.error('Error fetching conventions:', error);
       } finally {
