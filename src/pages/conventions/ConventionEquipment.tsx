@@ -10,6 +10,8 @@ import { ConventionEquipment } from '@/types/convention';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AddEquipmentDialog } from '@/components/conventions/AddEquipmentDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const ConventionEquipmentPage = () => {
   const { id: conventionId } = useParams<{ id: string }>();
@@ -18,6 +20,14 @@ const ConventionEquipmentPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddEquipmentOpen, setIsAddEquipmentOpen] = useState(false);
   const { toast } = useToast();
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [isIssuingStored, setIsIssuingStored] = useState(false);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
+  const [filteredStoredEquipment, setFilteredStoredEquipment] = useState<ConventionEquipment[]>([]);
+  const [users, setUsers] = useState<{ id: string; full_name: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const fetchEquipment = async () => {
     if (!conventionId || !currentAssociation) return;
@@ -75,6 +85,7 @@ const ConventionEquipmentPage = () => {
   const statusCounts = {
     total: equipmentList.length,
     allocated: equipmentList.filter(e => e.status === 'allocated').length,
+    stored: equipmentList.filter(e => e.status === 'stored').length,
     issued: equipmentList.filter(e => e.status === 'issued').length,
     returned: equipmentList.filter(e => e.status === 'returned').length,
     damaged: equipmentList.filter(e => e.status === 'damaged').length,
@@ -183,7 +194,91 @@ const ConventionEquipmentPage = () => {
       });
     }
   };
-  
+
+  // Pobierz dostępne lokalizacje dla konwencji
+  const fetchLocations = async () => {
+    if (!conventionId) return;
+    const { data, error } = await supabase
+      .from('convention_locations')
+      .select('id, name')
+      .eq('convention_id', conventionId);
+    if (!error && data) setLocations(data);
+  };
+
+  // Pobierz użytkowników do wyboru kto pobiera sprzęt (tylko organizatorzy i helperzy tej konwencji)
+  const fetchUsers = async () => {
+    if (!conventionId) return;
+    // Pobierz powiązania userów z konwencją jako organizator lub helper
+    const { data, error } = await supabase
+      .from('convention_access')
+      .select('user_id, profiles(name), role')
+      .eq('convention_id', conventionId)
+      .in('role', ['organizer', 'helper']);
+    if (!error && data) {
+      setUsers(
+        data
+          .filter((row: any) => row.profiles)
+          .map((row: any) => ({
+            id: row.user_id, // poprawka tutaj
+            full_name: row.profiles.name,
+          }))
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (isLocationDialogOpen) {
+      fetchLocations();
+      fetchUsers();
+      // Filtruj sprzęt w statusie 'stored'
+      setFilteredStoredEquipment(equipmentList.filter(e => e.status === 'stored'));
+    }
+  }, [isLocationDialogOpen, equipmentList]);
+
+  // Wydanie wybranego sprzętu ze statusem "stored" do wybranej lokalizacji i osoby
+  const issueStoredEquipment = async () => {
+    if (!conventionId || !selectedLocationId || !selectedEquipmentId || !selectedUserId) return;
+    setIsIssuingStored(true);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('convention_equipment')
+        .update({
+          status: 'issued',
+          assigned_by: selectedUserId,
+          assigned_at: new Date().toISOString(),
+          convention_location_id: selectedLocationId,
+        })
+        .eq('convention_id', conventionId)
+        .eq('id', selectedEquipmentId)
+        .eq('status', 'stored');
+
+      if (error) throw error;
+
+      toast({
+        title: "Sprzęt wydany",
+        description: `Sprzęt został wydany do wybranej lokalizacji.`,
+      });
+
+      setIsLocationDialogOpen(false);
+      setSelectedLocationId(null);
+      setSelectedEquipmentId(null);
+      setSelectedUserId(null);
+      fetchEquipment();
+    } catch (error: any) {
+      toast({
+        title: 'Błąd wydania sprzętu',
+        description: error.message || 'Wystąpił nieznany błąd',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsIssuingStored(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
@@ -219,6 +314,14 @@ const ConventionEquipmentPage = () => {
             <Button onClick={issueEquipment} disabled={statusCounts.allocated === 0} className="w-full sm:w-auto">
               <Truck className="mr-2 h-4 w-4" />
               Issue All Allocated ({statusCounts.allocated})
+            </Button>
+            <Button
+              onClick={() => setIsLocationDialogOpen(true)}
+              disabled={statusCounts.stored === 0}
+              className="w-full sm:w-auto mt-2"
+            >
+              <Truck className="mr-2 h-4 w-4" />
+              Issue Stored ({statusCounts.stored})
             </Button>
           </CardContent>
         </Card>
@@ -307,9 +410,72 @@ const ConventionEquipmentPage = () => {
         conventionId={conventionId || ''}
         onEquipmentAdded={handleEquipmentAdded}
       />
+
+      {/* Dialog wyboru lokalizacji, sprzętu i osoby dla "Issue Stored" */}
+      <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Wydaj sprzęt ze stanu magazynowego</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Lokalizacja */}
+            <Select
+              value={selectedLocationId || ''}
+              onValueChange={setSelectedLocationId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz lokalizację" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Sprzęt */}
+            <Select
+              value={selectedEquipmentId || ''}
+              onValueChange={setSelectedEquipmentId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz sprzęt (nazwa lub barcode)" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredStoredEquipment.map(eq => (
+                  <SelectItem key={eq.id} value={eq.id}>
+                    {eq.items?.name || 'N/A'} {eq.items?.barcode ? `(${eq.items.barcode})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Osoba pobierająca */}
+            <Select
+              value={selectedUserId || ''}
+              onValueChange={setSelectedUserId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Kto pobiera?" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map(u => (
+                  <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={issueStoredEquipment}
+              disabled={!selectedLocationId || !selectedEquipmentId || !selectedUserId || isIssuingStored}
+            >
+              {isIssuingStored ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}
+              Wydaj do lokalizacji
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default ConventionEquipmentPage;
-
