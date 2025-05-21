@@ -166,13 +166,32 @@ const ConventionEquipmentPage = () => {
         return;
       }
 
-      // Update all issued equipment to returned
+      // Pobierz lokalizację typu "Storage" przypisaną do tej konwencji
+      const { data: storageLocations, error: storageLocError } = await supabase
+        .from('convention_locations')
+        .select('id, name')
+        .eq('convention_id', conventionId)
+        .ilike('name', '%storage%'); // lub inny warunek, jeśli masz typ/kategorię
+
+      if (storageLocError) throw storageLocError;
+      if (!storageLocations || storageLocations.length === 0) {
+        toast({
+          title: "Brak lokalizacji Storage",
+          description: "Nie znaleziono lokalizacji typu Storage dla tej konwencji.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const storageLocationId = storageLocations[0].id;
+
+      // Update all issued equipment to returned i ustaw convention_location_id na Storage
       const { error } = await supabase
         .from('convention_equipment')
         .update({
-          status: 'returned',
-          returned_by: user.id,
-          returned_at: new Date().toISOString(),
+          status: 'stored',
+          assigned_by: user.id,
+          assigned_at: new Date().toISOString(),
+          convention_location_id: storageLocationId,
         })
         .eq('convention_id', conventionId)
         .eq('status', 'issued');
