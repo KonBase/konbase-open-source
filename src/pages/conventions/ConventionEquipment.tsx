@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { AddEquipmentDialog } from '@/components/conventions/AddEquipmentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
 const ConventionEquipmentPage = () => {
   const { id: conventionId } = useParams<{ id: string }>();
@@ -28,6 +29,14 @@ const ConventionEquipmentPage = () => {
   const [filteredStoredEquipment, setFilteredStoredEquipment] = useState<ConventionEquipment[]>([]);
   const [users, setUsers] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [returnPassword, setReturnPassword] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
+  const [issuePassword, setIssuePassword] = useState('');
+  const [isIssueVerifying, setIsIssueVerifying] = useState(false);
+  const [selectedIssueLocationId, setSelectedIssueLocationId] = useState<string | null>(null);
 
   const fetchEquipment = async () => {
     if (!conventionId || !currentAssociation) return;
@@ -92,7 +101,7 @@ const ConventionEquipmentPage = () => {
   };
 
   // Update equipment status (issue all allocated equipment)
-  const issueEquipment = async () => {
+  const issueEquipment = async (locationId?: string | null) => {
     if (!conventionId) return;
     
     try {
@@ -114,14 +123,17 @@ const ConventionEquipmentPage = () => {
         return;
       }
 
-      // Update all allocated equipment to issued
+      // Update all allocated equipment to issued, ustaw lokalizację jeśli wybrano
+      const updateObj: any = {
+        status: 'issued',
+        assigned_by: user.id,
+        assigned_at: new Date().toISOString(),
+      };
+      if (locationId) updateObj.convention_location_id = locationId;
+
       const { error } = await supabase
         .from('convention_equipment')
-        .update({
-          status: 'issued',
-          issued_by: user.id,
-          issued_at: new Date().toISOString(),
-        })
+        .update(updateObj)
         .eq('convention_id', conventionId)
         .eq('status', 'allocated');
 
@@ -171,7 +183,7 @@ const ConventionEquipmentPage = () => {
         .from('convention_locations')
         .select('id, name')
         .eq('convention_id', conventionId)
-        .ilike('name', '%storage%'); // lub inny warunek, jeśli masz typ/kategorię
+        .ilike('type', '%storage%'); // lub inny warunek, jeśli masz typ/kategorię
 
       if (storageLocError) throw storageLocError;
       if (!storageLocations || storageLocations.length === 0) {
@@ -221,7 +233,13 @@ const ConventionEquipmentPage = () => {
       .from('convention_locations')
       .select('id, name')
       .eq('convention_id', conventionId);
-    if (!error && data) setLocations(data);
+    if (!error && data) {
+      setLocations(data);
+      // Ustaw domyślną lokalizację jeśli nie wybrano
+      if (data.length > 0 && !selectedIssueLocationId) {
+        setSelectedIssueLocationId(data[0].id);
+      }
+    }
   };
 
   // Pobierz użytkowników do wyboru kto pobiera sprzęt (tylko organizatorzy i helperzy tej konwencji)
@@ -245,14 +263,28 @@ const ConventionEquipmentPage = () => {
     }
   };
 
+  // Pobierz rolę aktualnego użytkownika dla tej konwencji
+  const fetchUserRole = async () => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return setUserRole(null);
+    const { data, error } = await supabase
+      .from('convention_access')
+      .select('role')
+      .eq('convention_id', conventionId)
+      .eq('user_id', user.id)
+      .single();
+    if (!error && data) setUserRole(data.role);
+    else setUserRole(null);
+  };
+
   useEffect(() => {
-    if (isLocationDialogOpen) {
+    fetchUserRole();
+    if (isLocationDialogOpen || isIssueDialogOpen) {
       fetchLocations();
       fetchUsers();
-      // Filtruj sprzęt w statusie 'stored'
       setFilteredStoredEquipment(equipmentList.filter(e => e.status === 'stored'));
     }
-  }, [isLocationDialogOpen, equipmentList]);
+  }, [isLocationDialogOpen, isIssueDialogOpen, equipmentList, conventionId]);
 
   // Wydanie wybranego sprzętu ze statusem "stored" do wybranej lokalizacji i osoby
   const issueStoredEquipment = async () => {
@@ -298,6 +330,62 @@ const ConventionEquipmentPage = () => {
     }
   };
 
+  // Weryfikacja hasła i zwrot sprzętu
+  const handleReturnAllIssued = async () => {
+    setIsVerifying(true);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Błąd autoryzacji');
+
+      // Weryfikacja hasła
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: returnPassword,
+      });
+      if (signInError) throw new Error('Nieprawidłowe hasło');
+
+      setIsReturnDialogOpen(false);
+      setReturnPassword('');
+      await returnEquipment();
+    } catch (error: any) {
+      toast({
+        title: 'Błąd autoryzacji',
+        description: error.message || 'Nie udało się zweryfikować hasła',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Weryfikacja hasła i wydanie sprzętu z wyborem lokalizacji
+  const handleIssueAllAllocated = async () => {
+    setIsIssueVerifying(true);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Błąd autoryzacji');
+
+      // Weryfikacja hasła
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: issuePassword,
+      });
+      if (signInError) throw new Error('Nieprawidłowe hasło');
+
+      setIsIssueDialogOpen(false);
+      setIssuePassword('');
+      await issueEquipment(selectedIssueLocationId);
+    } catch (error: any) {
+      toast({
+        title: 'Błąd autoryzacji',
+        description: error.message || 'Nie udało się zweryfikować hasła',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsIssueVerifying(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
@@ -328,12 +416,18 @@ const ConventionEquipmentPage = () => {
           <CardContent>
             <p className="mb-4 text-sm text-muted-foreground">
               Marks equipment as actively in use at the convention.
-              Requires {statusCounts.allocated} item(s) in 'Allocated' status.
+              Requires {statusCounts.stored} item(s) in 'Allocated' status.
             </p>
-            <Button onClick={issueEquipment} disabled={statusCounts.allocated === 0} className="w-full sm:w-auto">
-              <Truck className="mr-2 h-4 w-4" />
-              Issue All Allocated ({statusCounts.allocated})
-            </Button>
+            {userRole === 'organizer' && (
+              <Button
+                onClick={() => setIsIssueDialogOpen(true)}
+                disabled={statusCounts.stored === 0}
+                className="w-full sm:w-auto"
+              >
+                <Truck className="mr-2 h-4 w-4" />
+                Issue All Allocated ({statusCounts.stored})
+              </Button>
+            )}
             <Button
               onClick={() => setIsLocationDialogOpen(true)}
               disabled={statusCounts.stored === 0}
@@ -355,10 +449,17 @@ const ConventionEquipmentPage = () => {
               Marks equipment as returned from the convention.
               Requires {statusCounts.issued} item(s) in 'Issued' status.
             </p>
-            <Button variant="outline" onClick={returnEquipment} disabled={statusCounts.issued === 0} className="w-full sm:w-auto">
-              <Warehouse className="mr-2 h-4 w-4" />
-              Return All Issued ({statusCounts.issued})
-            </Button>
+            {userRole === 'organizer' && (
+              <Button
+                variant="outline"
+                onClick={() => setIsReturnDialogOpen(true)}
+                disabled={statusCounts.issued === 0}
+                className="w-full sm:w-auto"
+              >
+                <Warehouse className="mr-2 h-4 w-4" />
+                Return All Issued ({statusCounts.issued})
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -489,6 +590,83 @@ const ConventionEquipmentPage = () => {
             >
               {isIssuingStored ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}
               Wydaj do lokalizacji
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog potwierdzający zwrot wszystkich sprzętów */}
+      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Potwierdź zwrot wszystkich wydanych sprzętów</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-red-600 font-semibold">
+              Uwaga! Ta operacja zwróci <b>wszystkie</b> wydane sprzęty do magazynu tej konwencji.
+            </div>
+            <Input
+              type="password"
+              placeholder="Wpisz swoje hasło"
+              value={returnPassword}
+              onChange={e => setReturnPassword(e.target.value)}
+              disabled={isVerifying}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={handleReturnAllIssued}
+              disabled={!returnPassword || isVerifying}
+            >
+              {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Warehouse className="mr-2 h-4 w-4" />}
+              Potwierdź zwrot wszystkich
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog potwierdzający wydanie wszystkich sprzętów */}
+      <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Potwierdź wydanie wszystkich sprzętów z alokacji</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-red-600 font-semibold">
+              Uwaga! Ta operacja wyda <b>wszystkie</b> sprzęty ze statusem "allocated" na tej konwencji.
+            </div>
+            {/* Lokalizacja docelowa */}
+            <Select
+              value={selectedIssueLocationId || ''}
+              onValueChange={setSelectedIssueLocationId}
+              disabled={locations.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz lokalizację docelową" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="password"
+              placeholder="Wpisz swoje hasło"
+              value={issuePassword}
+              onChange={e => setIssuePassword(e.target.value)}
+              disabled={isIssueVerifying}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={handleIssueAllAllocated}
+              disabled={!issuePassword || isIssueVerifying || !selectedIssueLocationId}
+            >
+              {isIssueVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}
+              Potwierdź wydanie wszystkich
             </Button>
           </DialogFooter>
         </DialogContent>
