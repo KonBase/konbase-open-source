@@ -3,8 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Spinner } from '@/components/ui/spinner';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, AlertTriangle, Clock, Calendar, CheckCircle, Archive } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { User, Clock, Calendar, CheckCircle, Archive } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 

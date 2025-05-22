@@ -94,7 +94,7 @@ const ConventionEquipmentPage = () => {
   const statusCounts = {
     total: equipmentList.length,
     allocated: equipmentList.filter(e => e.status === 'allocated').length,
-    stored: equipmentList.filter(e => e.status === 'stored').length,
+    stored: equipmentList.filter(e => e.status === 'allocated').length, // Use 'allocated' instead of 'stored'
     issued: equipmentList.filter(e => e.status === 'issued').length,
     returned: equipmentList.filter(e => e.status === 'returned').length,
     damaged: equipmentList.filter(e => e.status === 'damaged').length,
@@ -282,7 +282,7 @@ const ConventionEquipmentPage = () => {
     if (isLocationDialogOpen || isIssueDialogOpen) {
       fetchLocations();
       fetchUsers();
-      setFilteredStoredEquipment(equipmentList.filter(e => e.status === 'stored'));
+      setFilteredStoredEquipment(equipmentList.filter(e => e.status === 'allocated'));
     }
   }, [isLocationDialogOpen, isIssueDialogOpen, equipmentList, conventionId]);
 
